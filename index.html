@@ -2,17 +2,67 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>Game Projects</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>遊戲計劃區 | 光風濟月工作室</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00ff88;--bg:#010201;--border:rgba(0,255,136,0.25);--text-dim:#7a8a7a;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Share Tech Mono','Noto Sans TC',sans-serif;background:var(--bg);color:var(--primary);}
+.wrapper{display:grid;grid-template-columns:320px 1fr 280px;grid-template-rows:60px 1fr 30px;height:100vh;gap:1px;background:var(--border);}
+nav{grid-column:1/-1;grid-row:1;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--primary);}
+.nav-brand{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.nav-brand img{height:35px;border:1px solid var(--primary);}
+.nav-links button{background:none;border:1px solid transparent;color:var(--primary);padding:6px 12px;font-family:inherit;cursor:pointer;transition:0.2s;}
+.nav-links button.active,.nav-links button:hover{background:rgba(0,255,136,0.1);border-bottom:2px solid var(--primary);}
+.panel{background:var(--bg);padding:20px;overflow-y:auto;position:relative;}
+.panel-header{font-size:0.75rem;background:var(--primary);color:#000;padding:2px 8px;font-weight:900;margin-bottom:15px;display:inline-block;}
+.section{display:block;}
+.card{border:1px solid var(--border);padding:15px;margin-bottom:15px;transition:0.3s;border-radius:6px;}
+.card:hover{background:rgba(0,255,136,0.05);border-color:var(--primary);}
+.btn-ext{display:inline-block;padding:8px 16px;border:1px solid var(--primary);color:var(--primary);text-decoration:none;font-size:0.8rem;font-weight:900;margin-right:8px;transition:0.3s;background:rgba(0,0,0,0.5);}
+.btn-ext:hover{background:var(--primary);color:#000;box-shadow:0 0 10px var(--primary);}
+footer{grid-column:1/-1;grid-row:3;background:var(--primary);color:#000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;font-size:0.7rem;font-weight:900;}
+</style>
 </head>
 <body>
+<div class="wrapper">
+<nav>
+  <div class="nav-brand" onclick="location.href='../index.html'">
+    <img src="../assets/img/logo.png" alt="logo">
+    <span>光風濟月獨立工作室 / 遊戲計劃</span>
+  </div>
+</nav>
 
-<h1>我的遊戲計劃</h1>
+<aside class="panel left">
+  <div class="panel-header">快速導航</div>
+  <a href="rust-survival/index.html" class="btn-ext">Rust Survival</a>
+  <!-- 未來可以放更多遊戲 -->
+</aside>
 
-<div>
-  <h2>Rust Survival</h2>
-  <p>生存 × 策略 × 開放世界</p>
-  <a href="rust-survival/">查看計劃</a>
+<main class="panel">
+  <div class="panel-header">遊戲計劃總覽</div>
+  <p>歡迎來到光風濟月獨立工作室的遊戲計劃區，這裡收錄所有開發中的遊戲與版本。</p>
+  <div class="card">
+    <h4>Rust Survival</h4>
+    <p>核心生存遊戲專案，包含多個版本。</p>
+    <a href="rust-survival/index.html" class="btn-ext">前往專案頁</a>
+  </div>
+</main>
+
+<aside class="panel right">
+  <div class="panel-header">INFO</div>
+  <p style="font-size:0.75rem;color:var(--text-dim);">
+    [2026] 遊戲計劃首頁啟動<br>
+    [2024] Rust Survival 計劃開發定案<br>
+    [2023] 獨立工作室成立
+  </p>
+</aside>
+
+<footer>
+  <span>TERMINAL_ID: GAME_HUB</span>
+  <span>© 2026 光風濟月工作室</span>
+</footer>
 </div>
-
 </body>
 </html>
