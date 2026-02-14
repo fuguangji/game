@@ -3,66 +3,140 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>遊戲計劃區 | 光風濟月工作室</title>
+<title>光風濟月 | 遊戲計劃</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
+
 <style>
-:root{--primary:#00ff88;--bg:#010201;--border:rgba(0,255,136,0.25);--text-dim:#7a8a7a;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Share Tech Mono','Noto Sans TC',sans-serif;background:var(--bg);color:var(--primary);}
-.wrapper{display:grid;grid-template-columns:320px 1fr 280px;grid-template-rows:60px 1fr 30px;height:100vh;gap:1px;background:var(--border);}
-nav{grid-column:1/-1;grid-row:1;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--primary);}
-.nav-brand{display:flex;align-items:center;gap:10px;cursor:pointer;}
-.nav-brand img{height:35px;border:1px solid var(--primary);}
-.nav-links button{background:none;border:1px solid transparent;color:var(--primary);padding:6px 12px;font-family:inherit;cursor:pointer;transition:0.2s;}
-.nav-links button.active,.nav-links button:hover{background:rgba(0,255,136,0.1);border-bottom:2px solid var(--primary);}
-.panel{background:var(--bg);padding:20px;overflow-y:auto;position:relative;}
-.panel-header{font-size:0.75rem;background:var(--primary);color:#000;padding:2px 8px;font-weight:900;margin-bottom:15px;display:inline-block;}
-.section{display:block;}
-.card{border:1px solid var(--border);padding:15px;margin-bottom:15px;transition:0.3s;border-radius:6px;}
-.card:hover{background:rgba(0,255,136,0.05);border-color:var(--primary);}
-.btn-ext{display:inline-block;padding:8px 16px;border:1px solid var(--primary);color:var(--primary);text-decoration:none;font-size:0.8rem;font-weight:900;margin-right:8px;transition:0.3s;background:rgba(0,0,0,0.5);}
-.btn-ext:hover{background:var(--primary);color:#000;box-shadow:0 0 10px var(--primary);}
-footer{grid-column:1/-1;grid-row:3;background:var(--primary);color:#000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;font-size:0.7rem;font-weight:900;}
+:root {
+  --primary: #00ff88;
+  --bg-dark: #020202;
+  --panel-bg: #111;
+  --card-border: rgba(0,255,136,0.2);
+  --text-dim: #7a8a7a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
+  background: var(--bg-dark);
+  color: var(--primary);
+  overflow-x:hidden;
+}
+
+/* 背景動畫：網格 + 粒子 + 光暈 */
+body::before {
+  content:"";
+  position:fixed; inset:0; z-index:-2;
+  background:
+    linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px) repeat,
+    linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px) repeat,
+    radial-gradient(circle at center, rgba(0,255,136,0.02), transparent 70%);
+  background-size: 20px 20px, 20px 20px, 100% 100%;
+  animation: bgMove 40s linear infinite;
+}
+@keyframes bgMove { 0%{background-position:0 0,0 0,0 0;} 100%{background-position:100px 100px,100px 100px,0 0;} }
+
+.particle {
+  position: fixed; width:2px; height:2px; background:var(--primary);
+  border-radius:50%; opacity:0.2; animation:particleMove linear infinite;
+}
+@keyframes particleMove { 0%{transform:translateY(0);} 100%{transform:translateY(-120vh);} }
+
+/* 容器 */
+.container { max-width:700px; margin:0 auto; padding:20px; display:flex; flex-direction:column; gap:25px; }
+
+/* LOGO + 名稱 */
+.header { display:flex; align-items:center; gap:15px; cursor:pointer; }
+.header img { width:50px; border:1px solid var(--primary); padding:2px; border-radius:5px; transition:0.3s; }
+.header img:hover { transform:scale(1.1); box-shadow:0 0 15px var(--primary);}
+.header span { font-size:1.5rem; font-weight:900; }
+
+/* 假切頁導航 */
+.tab-nav { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+.tab-nav button { background:none; border:1px solid var(--primary); color:var(--primary); padding:8px 15px; cursor:pointer; font-family:inherit; font-weight:900; border-radius:5px; transition:0.3s; }
+.tab-nav button.active, .tab-nav button:hover { background:var(--primary); color:#000; box-shadow:0 0 12px var(--primary); }
+
+/* 卡片 */
+.tab-content { background: var(--panel-bg); border:1px solid var(--card-border); border-radius:10px; padding:20px; min-height:180px; opacity:0; transform:translateY(30px); transition:0.6s ease, opacity 0.6s ease; display:flex; flex-direction:column; gap:15px; }
+.tab-content.active { opacity:1; transform:translateY(0); }
+
+/* 遊戲卡片 */
+.game-card { border:1px solid var(--card-border); border-radius:10px; padding:15px; background: var(--panel-bg); transition:0.3s; cursor:pointer; }
+.game-card:hover { background:rgba(0,255,136,0.05); border-color:var(--primary); }
+.game-card h3 { margin-bottom:5px; color:#fff; }
+.game-card p { color:var(--text-dim); font-size:0.9rem; }
+.game-card.disabled { opacity:0.5; cursor:default; }
+.game-card.disabled:hover { background: var(--panel-bg); border-color: var(--card-border); }
+
+/* 響應式 */
+@media(max-width:768px){ .container { padding:10px; } }
 </style>
 </head>
+
 <body>
-<div class="wrapper">
-<nav>
-  <div class="nav-brand" onclick="location.href='../index.html'">
-    <img src="../assets/img/logo.png" alt="logo">
-    <span>光風濟月獨立工作室 / 遊戲計劃</span>
+
+<div class="container">
+
+  <!-- LOGO + 名稱 -->
+  <div class="header" onclick="location.href='../index.html'">
+    <img src="../assets/logo.png" alt="logo">
+    <span>光風濟月</span>
   </div>
-</nav>
 
-<aside class="panel left">
-  <div class="panel-header">快速導航</div>
-  <a href="rust-survival/index.html" class="btn-ext">Rust Survival</a>
-  <!-- 未來可以放更多遊戲 -->
-</aside>
-
-<main class="panel">
-  <div class="panel-header">遊戲計劃總覽</div>
-  <p>歡迎來到光風濟月獨立工作室的遊戲計劃區，這裡收錄所有開發中的遊戲與版本。</p>
-  <div class="card">
-    <h4>Rust Survival</h4>
-    <p>核心生存遊戲專案，包含多個版本。</p>
-    <a href="rust-survival/index.html" class="btn-ext">前往專案頁</a>
+  <!-- 假切頁 -->
+  <div class="tab-nav">
+    <button class="active" onclick="showTab(0)">遊戲計劃</button>
   </div>
-</main>
 
-<aside class="panel right">
-  <div class="panel-header">INFO</div>
-  <p style="font-size:0.75rem;color:var(--text-dim);">
-    [2026] 遊戲計劃首頁啟動<br>
-    [2024] Rust Survival 計劃開發定案<br>
-    [2023] 獨立工作室成立
-  </p>
-</aside>
+  <!-- 假切頁內容 -->
+  <div class="tab-content active">
 
-<footer>
-  <span>TERMINAL_ID: GAME_HUB</span>
-  <span>© 2026 光風濟月工作室</span>
-</footer>
+    <!-- Rust Suvival -->
+    <div class="game-card" onclick="location.href='rust-survival/'">
+      <h3>Rust Suvival</h3>
+      <p>我的代表作遊戲，點擊進入計劃頁面</p>
+    </div>
+
+    <!-- 飛行模擬器 -->
+    <div class="game-card disabled">
+      <h3>飛行模擬器</h3>
+      <p>專案尚未啟用</p>
+    </div>
+
+    <!-- 裸眼 3D -->
+    <div class="game-card disabled">
+      <h3>裸眼 3D</h3>
+      <p>專案尚未啟用</p>
+    </div>
+
+  </div>
+
 </div>
+
+<script>
+// 假切頁功能
+const tabs = document.querySelectorAll('.tab-content');
+const buttons = document.querySelectorAll('.tab-nav button');
+function showTab(index){
+  tabs.forEach((t,i)=>t.classList.remove('active'));
+  buttons.forEach((b,i)=>b.classList.remove('active'));
+  tabs[index].classList.add('active');
+  buttons[index].classList.add('active');
+}
+
+// 背景粒子
+for(let i=0;i<40;i++){
+  const p = document.createElement('div');
+  p.className='particle';
+  p.style.left=Math.random()*100+'vw';
+  p.style.top=Math.random()*100+'vh';
+  p.style.width=(Math.random()*2+1)+'px';
+  p.style.height=p.style.width;
+  p.style.animationDuration=(Math.random()*20+10)+'s';
+  document.body.appendChild(p);
+}
+</script>
+
 </body>
 </html>
