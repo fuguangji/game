@@ -57,9 +57,19 @@ body::before {
 .tab-nav button { background:none; border:1px solid var(--primary); color:var(--primary); padding:8px 15px; cursor:pointer; font-family:inherit; font-weight:900; border-radius:5px; transition:0.3s; }
 .tab-nav button.active, .tab-nav button:hover { background:var(--primary); color:#000; box-shadow:0 0 12px var(--primary); }
 
-/* 卡片 */
-.tab-content { background: var(--panel-bg); border:1px solid var(--card-border); border-radius:10px; padding:20px; min-height:180px; opacity:0; transform:translateY(30px); transition:0.6s ease, opacity 0.6s ease; display:flex; flex-direction:column; gap:15px; }
-.tab-content.active { opacity:1; transform:translateY(0); }
+/* 假切頁容器，兩個內容重疊 */
+.tab-wrapper { position: relative; min-height:420px; }
+.tab-content {
+  position: absolute;
+  top:0; left:0; right:0;
+  opacity:0;
+  transform: translateY(30px);
+  transition:0.6s ease, opacity 0.6s ease;
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+}
+.tab-content.active { opacity:1; transform:translateY(0); z-index:1; }
 
 /* 遊戲版本卡 */
 .game-card { border:1px solid var(--card-border); border-radius:10px; padding:15px; background: var(--panel-bg); transition:0.3s; cursor:pointer; }
@@ -98,36 +108,39 @@ body::before {
   </div>
 
   <!-- 假切頁內容 -->
-  <div class="tab-content active plan-overview">
-    <h2>Rust Suvival 計劃書概述</h2>
-    <p>Rust Suvival 是一款策略生存遊戲，結合工業建造與戰略戰鬥，提供玩家高效沉浸式遊戲體驗。</p>
-    
-    <h3>遊戲特色</h3>
-    <ul>
-      <li>高效性能：Galaxy 版本優化遊戲流暢度</li>
-      <li>沉浸體驗：Galaxy-Max 加入更多視覺特效</li>
-      <li>特別活動：Happy Birthday 版本提供生日驚喜</li>
-    </ul>
+  <div class="tab-wrapper">
+    <!-- 介紹內容 -->
+    <div class="tab-content active plan-overview">
+      <h2>Rust Suvival 計劃書概述</h2>
+      <p>Rust Suvival 是一款策略生存遊戲，結合工業建造與戰略戰鬥，提供玩家高效沉浸式遊戲體驗。</p>
+      
+      <h3>遊戲特色</h3>
+      <ul>
+        <li>高效性能：Galaxy 版本優化遊戲流暢度</li>
+        <li>沉浸體驗：Galaxy-Max 加入更多視覺特效</li>
+        <li>特別活動：Happy Birthday 版本提供生日驚喜</li>
+      </ul>
 
-    <h3>開發團隊與未來計畫</h3>
-    <p>本遊戲由 NovaCircuit 團隊開發，未來將持續優化遊戲性能，增加新功能與特殊事件，提升玩家體驗。</p>
-  </div>
+      <h3>開發團隊與未來計畫</h3>
+      <p>本遊戲由 NovaCircuit 團隊開發，未來將持續優化遊戲性能，增加新功能與特殊事件，提升玩家體驗。</p>
+    </div>
 
-  <div class="tab-content">
     <!-- 版本卡內容 -->
-    <div class="game-card" onclick="location.href='galaxy/'">
-      <h3>版本: Galaxy（效率版）</h3>
-      <p>標準版本，最高效遊戲體驗。光風濟月祝張芷菱生日快樂</p>
-    </div>
+    <div class="tab-content">
+      <div class="game-card" onclick="location.href='galaxy/'">
+        <h3>版本: Galaxy（效率版）</h3>
+        <p>標準版本，最高效遊戲體驗。光風濟月祝張芷菱生日快樂</p>
+      </div>
 
-    <div class="game-card" onclick="location.href='galaxy-max/'">
-      <h3>版本: Galaxy-Max（體驗版）</h3>
-      <p>加強版，更多功能與顯示技術，部分效能較差</p>
-    </div>
+      <div class="game-card" onclick="location.href='galaxy-max/'">
+        <h3>版本: Galaxy-Max（體驗版）</h3>
+        <p>加強版，更多功能與顯示技術，部分效能較差</p>
+      </div>
 
-    <div class="game-card birthday" onclick="location.href='happy-birthday/'">
-      <h3>版本: Happy-Birthday-for-yu-tong（最強頂尖版）</h3>
-      <p>特別釋出版 🎉 <br>NovaCircuit 團隊與光風濟月祝福羽彤生日快樂！</p>
+      <div class="game-card birthday" onclick="location.href='happy-birthday/'">
+        <h3>版本: Happy-Birthday-for-yu-tong（最強頂尖版）</h3>
+        <p>特別釋出版 🎉 <br>NovaCircuit 團隊與光風濟月祝福羽彤生日快樂！</p>
+      </div>
     </div>
   </div>
 
