@@ -71,6 +71,12 @@ body::before {
 .game-card.birthday { border-color:#ffab19; box-shadow:0 0 10px #ffab19; }
 .game-card.birthday:hover { background: rgba(255,171,25,0.1); }
 
+/* 介紹頁文字 */
+.plan-overview h2, .plan-overview h3 { color:#fff; margin-bottom:8px; }
+.plan-overview p, .plan-overview ul { color:var(--text-dim); font-size:0.95rem; }
+.plan-overview ul { padding-left:20px; list-style-type: disc; }
+
+/* 響應式 */
 @media(max-width:768px){ .container { padding:10px; } }
 </style>
 </head>
@@ -87,13 +93,28 @@ body::before {
 
   <!-- 假切頁 -->
   <div class="tab-nav">
-    <button class="active" onclick="showTab(0)">Rust Suvival</button>
+    <button class="active" onclick="showTab(0)">介紹</button>
+    <button onclick="showTab(1)">版本</button>
   </div>
 
   <!-- 假切頁內容 -->
-  <div class="tab-content active">
+  <div class="tab-content active plan-overview">
+    <h2>Rust Suvival 計劃書概述</h2>
+    <p>Rust Suvival 是一款策略生存遊戲，結合工業建造與戰略戰鬥，提供玩家高效沉浸式遊戲體驗。</p>
+    
+    <h3>遊戲特色</h3>
+    <ul>
+      <li>高效性能：Galaxy 版本優化遊戲流暢度</li>
+      <li>沉浸體驗：Galaxy-Max 加入更多視覺特效</li>
+      <li>特別活動：Happy Birthday 版本提供生日驚喜</li>
+    </ul>
 
-    <!-- Rust Suvival 版本卡 -->
+    <h3>開發團隊與未來計畫</h3>
+    <p>本遊戲由 NovaCircuit 團隊開發，未來將持續優化遊戲性能，增加新功能與特殊事件，提升玩家體驗。</p>
+  </div>
+
+  <div class="tab-content">
+    <!-- 版本卡內容 -->
     <div class="game-card" onclick="location.href='galaxy/'">
       <h3>版本: Galaxy（效率版）</h3>
       <p>標準版本，最高效遊戲體驗。光風濟月祝張芷菱生日快樂</p>
@@ -106,9 +127,8 @@ body::before {
 
     <div class="game-card birthday" onclick="location.href='happy-birthday/'">
       <h3>版本: Happy-Birthday-for-yu-tong（最強頂尖版）</h3>
-      <p>特別釋出版 🎉 <br>NovaCircuit團隊與光風濟月祝福羽彤生日快樂！</p>
+      <p>特別釋出版 🎉 <br>NovaCircuit 團隊與光風濟月祝福羽彤生日快樂！</p>
     </div>
-
   </div>
 
 </div>
