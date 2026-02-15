@@ -58,7 +58,7 @@ body::before {
 .tab-nav button.active, .tab-nav button:hover { background:var(--primary); color:#000; box-shadow:0 0 12px var(--primary); }
 
 /* 假切頁容器，兩個內容重疊 */
-.tab-wrapper { position: relative; min-height:420px; }
+.tab-wrapper { position: relative; min-height:450px; }
 .tab-content {
   position: absolute;
   top:0; left:0; right:0;
@@ -85,6 +85,25 @@ body::before {
 .plan-overview h2, .plan-overview h3 { color:#fff; margin-bottom:8px; }
 .plan-overview p, .plan-overview ul { color:var(--text-dim); font-size:0.95rem; }
 .plan-overview ul { padding-left:20px; list-style-type: disc; }
+
+/* 介紹頁按鈕 */
+.play-now {
+  margin-top:20px;
+  padding:10px 20px;
+  border:1px solid var(--primary);
+  border-radius:5px;
+  background:none;
+  color:var(--primary);
+  font-weight:900;
+  cursor:pointer;
+  transition:0.3s;
+  font-family:inherit;
+}
+.play-now:hover {
+  background: var(--primary);
+  color:#000;
+  box-shadow:0 0 12px var(--primary);
+}
 
 /* 響應式 */
 @media(max-width:768px){ .container { padding:10px; } }
@@ -123,6 +142,9 @@ body::before {
 
       <h3>開發團隊與未來計畫</h3>
       <p>本遊戲由 NovaCircuit 團隊開發，未來將持續優化遊戲性能，增加新功能與特殊事件，提升玩家體驗。</p>
+
+      <!-- 直接玩最新版本按鈕 -->
+      <button class="play-now" onclick="location.href='happy-birthday/'">直接玩最新版本</button>
     </div>
 
     <!-- 版本卡內容 -->
