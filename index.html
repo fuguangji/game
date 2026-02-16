@@ -16,6 +16,7 @@
   --text-dim: #7a8a7a;
 }
 
+/* Reset */
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
   font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
@@ -24,7 +25,7 @@ body {
   overflow-x:hidden;
 }
 
-/* 背景動畫：網格 + 粒子 + 光暈 */
+/* 背景動畫：網格 + 光暈 */
 body::before {
   content:"";
   position:fixed; inset:0; z-index:-2;
@@ -37,9 +38,13 @@ body::before {
 }
 @keyframes bgMove { 0%{background-position:0 0,0 0,0 0;} 100%{background-position:100px 100px,100px 100px,0 0;} }
 
+/* 粒子 */
 .particle {
-  position: fixed; width:2px; height:2px; background:var(--primary);
-  border-radius:50%; opacity:0.2; animation:particleMove linear infinite;
+  position: fixed;
+  border-radius:50%;
+  opacity:0.2;
+  animation:particleMove linear infinite;
+  background: var(--primary);
 }
 @keyframes particleMove { 0%{transform:translateY(0);} 100%{transform:translateY(-120vh);} }
 
@@ -57,17 +62,56 @@ body::before {
 .tab-nav button { background:none; border:1px solid var(--primary); color:var(--primary); padding:8px 15px; cursor:pointer; font-family:inherit; font-weight:900; border-radius:5px; transition:0.3s; }
 .tab-nav button.active, .tab-nav button:hover { background:var(--primary); color:#000; box-shadow:0 0 12px var(--primary); }
 
-/* 卡片 */
+/* 卡片內容 */
 .tab-content { background: var(--panel-bg); border:1px solid var(--card-border); border-radius:10px; padding:20px; min-height:180px; opacity:0; transform:translateY(30px); transition:0.6s ease, opacity 0.6s ease; display:flex; flex-direction:column; gap:15px; }
 .tab-content.active { opacity:1; transform:translateY(0); }
 
-/* 遊戲卡片 */
-.game-card { border:1px solid var(--card-border); border-radius:10px; padding:15px; background: var(--panel-bg); transition:0.3s; cursor:pointer; }
-.game-card:hover { background:rgba(0,255,136,0.05); border-color:var(--primary); }
-.game-card h3 { margin-bottom:5px; color:#fff; }
-.game-card p { color:var(--text-dim); font-size:0.9rem; }
-.game-card.disabled { opacity:0.5; cursor:default; }
-.game-card.disabled:hover { background: var(--panel-bg); border-color: var(--card-border); }
+/* 遊戲卡片共用 */
+.game-card {
+  border:1px solid var(--card-border);
+  border-radius:10px;
+  padding:15px;
+  background: var(--panel-bg);
+  transition:0.3s;
+  cursor:pointer;
+}
+.game-card h3 { margin-bottom:5px; word-break: break-word; }
+.game-card p { color:var(--text-dim); font-size:0.9rem; word-break: break-word; }
+.game-card:hover { transform: scale(1.02); }
+
+/* 已發佈 */
+.game-card.published {
+  border-color: #00ff88;
+  background: rgba(0,255,136,0.05);
+  color: #00ff88;
+}
+.game-card.published:hover {
+  background: rgba(0,255,136,0.2);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+/* 正在進行 */
+.game-card.ongoing {
+  border-color: rgba(0,255,136,0.2);
+  background: var(--panel-bg);
+  color: #fff;
+}
+.game-card.ongoing:hover {
+  background: rgba(0,255,136,0.05);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* 尚未開始 */
+.game-card.upcoming {
+  opacity:0.5;
+  cursor:default;
+  border-color: var(--card-border);
+  background: var(--panel-bg);
+  color: var(--text-dim);
+}
+.game-card.upcoming:hover { transform:none; }
 
 /* 響應式 */
 @media(max-width:768px){ .container { padding:10px; } }
@@ -92,30 +136,30 @@ body::before {
   <!-- 假切頁內容 -->
   <div class="tab-content active">
 
-    <!-- Rust Suvival -->
-    <div class="game-card" onclick="location.href='rust-survival/'">
-      <h3>Rust Suvival</h3>
+    <!-- 已發佈 -->
+    <div class="game-card published" onclick="location.href='rust-survival/'">
+      <h3>Rust Survival</h3>
       <p>我的代表作遊戲，點擊進入計劃頁面</p>
     </div>
 
-    <div class="game-card", onclick="location.href='BeacCrux:Industry/'">
+    <!-- 正在進行 -->
+    <div class="game-card ongoing" onclick="location.href='BeacCrux:Industry/'">
       <h3>BeacCrux:Industry</h3>
-      <p>史詩級戰爭模擬計劃，我們要製作一個完整的戰爭模擬器，從採礦、經營帝國到玩家之間的掠奪，都要完整模擬</p>
+      <p>戰爭模擬計劃，從採礦、經營到掠奪，完整模擬</p>
     </div>
 
-    <div class="game-card", onclick="location.href='account/'">
-      <h3>NovaCircuit雲端帳號系統，目前專案尚未完成</h3>
-      <p>歡迎向我們提出技術指導或系統使用要求，我們目標建立一個系統，此系統可以共用帳號並將資訊儲存在雲端，由遊戲子程式來進行更新、註冊</p>
+    <div class="game-card ongoing" onclick="location.href='account/'">
+      <h3>NovaCircuit雲端帳號系統<br>目前專案尚未完成</h3>
+      <p>目標建立一個系統，可共用帳號並將資訊儲存在雲端，由遊戲子程式進行更新與註冊</p>
     </div>
     
-    <!-- 飛行模擬器 -->
-    <div class="game-card disabled">
+    <!-- 尚未開始 -->
+    <div class="game-card upcoming">
       <h3>飛行模擬器</h3>
       <p>專案尚未啟用</p>
     </div>
 
-    <!-- 裸眼 3D -->
-    <div class="game-card disabled">
+    <div class="game-card upcoming">
       <h3>裸眼 3D</h3>
       <p>專案尚未啟用</p>
     </div>
@@ -141,8 +185,9 @@ for(let i=0;i<40;i++){
   p.className='particle';
   p.style.left=Math.random()*100+'vw';
   p.style.top=Math.random()*100+'vh';
-  p.style.width=(Math.random()*2+1)+'px';
-  p.style.height=p.style.width;
+  let size = Math.random()*2+1;
+  p.style.width=size+'px';
+  p.style.height=size+'px';
   p.style.animationDuration=(Math.random()*20+10)+'s';
   document.body.appendChild(p);
 }
