@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雲端帳號系統｜NovaCircuit計劃書</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: #00ff88;
+  --bg-dark: #020202;
+  --panel-bg: #111;
+  --card-border: rgba(0,255,136,0.2);
+  --text-dim: #7a8a7a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
+  background: var(--bg-dark);
+  color: var(--primary);
+  overflow-x:hidden;
+}
+
+/* 背景動畫 */
+body::before {
+  content:"";
+  position:fixed; inset:0; z-index:-2;
+  background:
+    linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px) repeat,
+    linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px) repeat,
+    radial-gradient(circle at center, rgba(0,255,136,0.02), transparent 70%);
+  background-size: 20px 20px, 20px 20px, 100% 100%;
+  animation: bgMove 40s linear infinite;
+}
+@keyframes bgMove { 0%{background-position:0 0,0 0,0 0;} 100%{background-position:100px 100px,100px 100px,0 0;} }
+
+.particle {
+  position: fixed; width:2px; height:2px; background:var(--primary);
+  border-radius:50%; opacity:0.2; animation:particleMove linear infinite;
+}
+@keyframes particleMove { 0%{transform:translateY(0);} 100%{transform:translateY(-120vh);} }
+
+/* 容器 */
+.container { max-width:700px; margin:0 auto; padding:20px; display:flex; flex-direction:column; gap:25px; }
+
+/* LOGO + 名稱 */
+.header { display:flex; align-items:center; gap:15px; cursor:pointer; }
+.header img { width:50px; border:1px solid var(--primary); padding:2px; border-radius:5px; transition:0.3s; }
+.header img:hover { transform:scale(1.1); box-shadow:0 0 15px var(--primary);}
+.header span { font-size:1.5rem; font-weight:900; }
+
+/* 假切頁導航 */
+.tab-nav { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+.tab-nav button { background:none; border:1px solid var(--primary); color:var(--primary); padding:8px 15px; cursor:pointer; font-family:inherit; font-weight:900; border-radius:5px; transition:0.3s; }
+.tab-nav button.active, .tab-nav button:hover { background:var(--primary); color:#000; box-shadow:0 0 12px var(--primary); }
+
+/* 假切頁容器，兩個內容重疊 */
+.tab-wrapper { position: relative; min-height:450px; }
+.tab-content {
+  position: absolute;
+  top:0; left:0; right:0;
+  opacity:0;
+  transform: translateY(30px);
+  transition:0.6s ease, opacity 0.6s ease;
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+}
+.tab-content.active { opacity:1; transform:translateY(0); z-index:1; }
+
+/* 遊戲版本卡 */
+.game-card { border:1px solid var(--card-border); border-radius:10px; padding:15px; background: var(--panel-bg); transition:0.3s; cursor:pointer; }
+.game-card:hover { background:rgba(0,255,136,0.05); border-color:var(--primary); }
+.game-card h3 { margin-bottom:5px; color:#fff; }
+.game-card p { color:var(--text-dim); font-size:0.9rem; }
+
+/* 特別版 */
+.game-card.special{ border-color:#ffab19; box-shadow:0 0 10px #ffab19; }
+.game-card.birthday:hover { background: rgba(255,171,25,0.1); }
+
+/* 介紹頁文字 */
+.plan-overview h2, .plan-overview h3 { color:#fff; margin-bottom:8px; }
+.plan-overview p, .plan-overview ul { color:var(--text-dim); font-size:0.95rem; }
+.plan-overview ul { padding-left:20px; list-style-type: disc; }
+
+/* 介紹頁按鈕 */
+.play-now {
+  margin-top:20px;
+  padding:10px 20px;
+  border:1px solid var(--primary);
+  border-radius:5px;
+  background:none;
+  color:var(--primary);
+  font-weight:900;
+  cursor:pointer;
+  transition:0.3s;
+  font-family:inherit;
+}
+.play-now:hover {
+  background: var(--primary);
+  color:#000;
+  box-shadow:0 0 12px var(--primary);
+}
+
+/* 響應式 */
+@media(max-width:768px){ .container { padding:10px; } }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- LOGO + 名稱 -->
+  <div class="header" onclick="location.href='../index.html'">
+    <img src="../assets/logo.png" alt="logo">
+    <span>光風濟月</span>
+  </div>
+
+  <!-- 假切頁 -->
+  <div class="tab-nav">
+    <button class="active" onclick="showTab(0)">介紹</button>
+    <button onclick="showTab(1)">版本</button>
+  </div>
+
+  <!-- 假切頁內容 -->
+  <div class="tab-wrapper">
+    <!-- 介紹內容 -->
+    <div class="tab-content active plan-overview">
+      <h2>NovaCircuit雲端帳號計劃書概述</h2>
+      <p>NovaCircuit雲端帳號系統預計能支援100人同時在線，目前技術遇到瓶頸，若您有類似技術歡迎與我們聯絡，衷心感謝。</p>
+      
+      <h3>系統特色</h3>
+      <ul>
+        <li>敬請期待！</li>
+        <li>敬請期待！</li>
+        <li>敬請期待！</li>
+      </ul>
+
+      <h3>開發團隊與未來計畫</h3>
+      <p>本系統以NovaCircuit名義研究，期望未來能研發完成，增加新功能，甚至提供部分非團隊設計師使用共同帳號系統。</p>
+
+      <!-- 直接玩最新版本按鈕 -->
+      <button class="play-now" onclick="location.href=''">直接使用最新版本（尚未開放）</button>
+    </div>
+
+    <!-- 版本卡內容 -->
+    <div class="tab-content">
+      <div class="game-card" onclick="location.href=''">
+        <h3>版本: Standard</h3>
+        <p>標準版本，尚未開放</p>
+      </div>
+
+      <div class="game-card" onclick="location.href=''">
+        <h3>版本: Galaxy（特殊測試版）</h3>
+        <p>加強版，尚未開放</p>
+      </div>
+
+      <div class="game-card" onclick="location.href=''">
+        <h3>版本: 內部使用版</h3>
+        <p>尚未開放</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// 假切頁功能
+const tabs = document.querySelectorAll('.tab-content');
+const buttons = document.querySelectorAll('.tab-nav button');
+function showTab(index){
+  tabs.forEach((t,i)=>t.classList.remove('active'));
+  buttons.forEach((b,i)=>b.classList.remove('active'));
+  tabs[index].classList.add('active');
+  buttons[index].classList.add('active');
+}
+
+// 背景粒子
+for(let i=0;i<40;i++){
+  const p = document.createElement('div');
+  p.className='particle';
+  p.style.left=Math.random()*100+'vw';
+  p.style.top=Math.random()*100+'vh';
+  p.style.width=(Math.random()*2+1)+'px';
+  p.style.height=p.style.width;
+  p.style.animationDuration=(Math.random()*20+10)+'s';
+  document.body.appendChild(p);
+}
+</script>
+
+</body>
+</html>
