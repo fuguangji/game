@@ -43,18 +43,74 @@ const STATE_HOOKS = {
   enter: { play() {}, pause() {}, shop() {}, over() {}, menu() {} },
   exit: {},
 };
+// 擴充點：新增狀態、轉移邊、進出狀態回呼與轉移守門條件，不必改動 setState 本體。
+const STATE_EXTENSION_HOOKS = { enter: new Map(), exit: new Map() };
+const STATE_TRANSITION_GUARDS = new Set();
 let STATE_STRICT = false; // true：非法轉移直接拒絕；false：只在 console 警告
+
+// 註冊或移除狀態轉移；回傳取消註冊函式，方便模組卸載。
+function registerStateTransition(from, to, allowed = true) {
+  if (!STATE_GRAPH[from]) STATE_GRAPH[from] = {};
+  if (!STATE_GRAPH[to]) STATE_GRAPH[to] = {};
+  const previous = STATE_GRAPH[from][to];
+  STATE_GRAPH[from][to] = allowed ? 1 : 0;
+  return () => {
+    if (previous === undefined) delete STATE_GRAPH[from][to];
+    else STATE_GRAPH[from][to] = previous;
+  };
+}
+
+// 註冊狀態進入／離開回呼；同一狀態可由多個模組分別擴充。
+function registerStateHook(stateName, phase, callback) {
+  if (phase !== "enter" && phase !== "exit")
+    throw new TypeError('phase 必須是 "enter" 或 "exit"');
+  if (typeof callback !== "function")
+    throw new TypeError("callback 必須是函式");
+  if (!STATE_GRAPH[stateName]) STATE_GRAPH[stateName] = {};
+  const hooks = STATE_EXTENSION_HOOKS[phase];
+  if (!hooks.has(stateName)) hooks.set(stateName, new Set());
+  hooks.get(stateName).add(callback);
+  return () => hooks.get(stateName)?.delete(callback);
+}
+
+// 守門函式回傳 false 即拒絕轉移；可用來集中管理教學、過場等限制。
+function registerStateGuard(guard) {
+  if (typeof guard !== "function") throw new TypeError("guard 必須是函式");
+  STATE_TRANSITION_GUARDS.add(guard);
+  return () => STATE_TRANSITION_GUARDS.delete(guard);
+}
+
+function runStateHooks(phase, stateName, ...args) {
+  const legacyHook = STATE_HOOKS[phase][stateName];
+  if (legacyHook) legacyHook(...args);
+  for (const callback of STATE_EXTENSION_HOOKS[phase].get(stateName) || []) {
+    try {
+      callback(...args);
+    } catch (error) {
+      console.error(`[state] ${phase} hook failed for "${stateName}"`, error);
+    }
+  }
+}
+
 // 功能：驗證並執行狀態轉移，觸發離開與進入狀態的鉤子。
 function setState(next) {
   if (state === next) return true;
-  if (!(STATE_GRAPH[state] && STATE_GRAPH[state][next])) {
-    console.warn("[state] 非法轉移 " + state + " -> " + next);
+  const previous = state;
+  for (const guard of STATE_TRANSITION_GUARDS) {
+    try {
+      if (guard(previous, next) === false) return false;
+    } catch (error) {
+      console.error("[state] transition guard failed", error);
+      return false;
+    }
+  }
+  if (!(STATE_GRAPH[previous] && STATE_GRAPH[previous][next])) {
+    console.warn("[state] 非法轉移 " + previous + " -> " + next);
     if (STATE_STRICT) return false;
   }
-  if (STATE_HOOKS.exit[state]) STATE_HOOKS.exit[state](next);
-  const prev = state;
+  runStateHooks("exit", previous, next);
   state = next;
-  if (STATE_HOOKS.enter[next]) STATE_HOOKS.enter[next](prev);
+  runStateHooks("enter", next, previous);
   return true;
 }
 const N = 44,
@@ -631,6 +687,70 @@ WD.push(
   "手動·近戰由左向右揮砍，大範圍強擊退，同時擊落範圍內的敵方子彈",
   "手動·飛行一段距離或命中後爆開成碎片",
 );
+
+// 武器設定採用可讀性較高的正名；舊欄位以 getter/setter 暫時相容既有戰鬥程式。
+const WEAPON_PROPERTY_ALIASES = Object.freeze({
+  "n": "name",
+  "c": "color",
+  "n1": "projectilesPerShot",
+  "sp": "spreadAngle",
+  "dmg": "damage",
+  "v": "projectileSpeed",
+  "life": "projectileLifetime",
+  "cd": "fireCooldown",
+  "cost": "ammoCost",
+  "kb": "knockback",
+  "r": "projectileRadius",
+  "pierce": "pierceCount",
+  "hm": "homingEnabled",
+  "acc": "accuracySpread",
+  "mp": "muzzleParameter",
+  "wd": "wallDamage",
+  "auto": "automaticFire",
+  "ad": "aimPreviewMode",
+  "laser": "laserMode",
+  "ex": "explosionRadius",
+  "pa": "pierceWalls",
+  "bn": "bounceCount",
+  "bm": "boomerangEnabled",
+  "ch": "chainLightningEnabled",
+  "mine": "mineMode",
+  "fz4": "freezeOnHit",
+  "gp": "gravityFieldEnabled",
+  "cg": "chargeStackEnabled",
+  "web": "webMode",
+  "tur": "turretMode",
+  "tox": "poisonCloudMode",
+  "slash": "meleeArcEnabled",
+  "rg": "meleeRange",
+  "sw": "meleeSweepAngle",
+  "cs": "clusterShotEnabled",
+  "gren": "grenadeMode",
+  "fl": "flameMode",
+  "rcg": "legacyRcg",
+  "ms0": "magazineCapacity",
+  "ms": "ammoInMagazine",
+  "rs": "reloadDuration"
+});
+function normalizeWeaponProperties(weapon) {
+  for (const [legacyName, canonicalName] of Object.entries(WEAPON_PROPERTY_ALIASES)) {
+    if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+      if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
+      delete weapon[legacyName];
+    }
+    if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+      Object.defineProperty(weapon, legacyName, {
+        configurable: true,
+        enumerable: false,
+        get() { return this[canonicalName]; },
+        set(value) { this[canonicalName] = value; },
+      });
+    }
+  }
+  return weapon;
+}
+const WEAPON_DEFINITIONS = ALLW;
+for (const weaponDefinition of WEAPON_DEFINITIONS) normalizeWeaponProperties(weaponDefinition);
 let LO = [0, 1, 2];
 try {
   const s = JSON.parse(localStorage.getItem("neonShardLO"));
@@ -4555,7 +4675,7 @@ function chipWhere(i) {
 }
 // 功能：將芯片效果合併至武器數值。
 function chipApply(w, list) {
-  const o = Object.assign({}, w);
+  const o = normalizeWeaponProperties(Object.assign({}, w));
   for (const c of list) if (CH[c]) CH[c].fn(o);
   const e = (o.dmg * o.n1) / (w.dmg * w.n1 || 1);
   if (e > 2) o.dmg *= (2 + (e - 2) * 0.5) / e;
@@ -7907,7 +8027,7 @@ function aimBullet(w, a, c, pu, Rt) {
   }
 }
 // 功能：繪製或建立「drawAim」所需的畫面元素。
-function drawAim() {
+function drawAimLegacy() {
   const w = WP[pl.w];
   let a = pl.aim;
   if (w.slash) {
@@ -8011,6 +8131,65 @@ function drawAim() {
   }
   cx.restore();
 }
+
+/*
+ * 瞄準線擴充註冊表：
+ * - before：先畫額外提示，不取代預設瞄準線
+ * - override：符合條件且 render 回傳 true 時，取代預設瞄準線
+ * - after：在預設瞄準線之後畫額外提示
+ * 新武器只需註冊 renderer，不必再往 drawAim 的條件鏈塞 if/else。
+ */
+const AIM_LINE_EXTENSIONS = new Map();
+function registerAimLineExtension({
+  id,
+  phase = "override",
+  priority = 0,
+  supports = () => true,
+  render,
+}) {
+  if (!id || typeof id !== "string") throw new TypeError("瞄準線擴充需要字串 id");
+  if (!["before", "override", "after"].includes(phase))
+    throw new TypeError('phase 必須是 "before"、"override" 或 "after"');
+  if (typeof supports !== "function" || typeof render !== "function")
+    throw new TypeError("supports 與 render 必須是函式");
+  AIM_LINE_EXTENSIONS.set(id, { id, phase, priority, supports, render });
+  return () => AIM_LINE_EXTENSIONS.delete(id);
+}
+
+function drawAim() {
+  const weapon = WP[pl?.w];
+  if (!weapon || !pl) return;
+  const context = {
+    weapon,
+    player: pl,
+    canvas: cx,
+    state,
+    helpers: { ray, rayK, fanG, bouncePath, turLand, cone, aimT },
+    drawDefault: drawAimLegacy,
+  };
+  const extensions = [...AIM_LINE_EXTENSIONS.values()].sort(
+    (a, b) => b.priority - a.priority || a.id.localeCompare(b.id),
+  );
+  const runPhase = (phase) => {
+    for (const extension of extensions) {
+      if (extension.phase !== phase) continue;
+      try {
+        if (extension.supports(context)) {
+          const handled = extension.render(context);
+          if (phase === "override" && handled === true) return true;
+        }
+      } catch (error) {
+        console.error(`[aim] extension "${extension.id}" failed`, error);
+      }
+    }
+    return false;
+  };
+  runPhase("before");
+  const overridden = runPhase("override");
+  if (!overridden) drawAimLegacy();
+  runPhase("after");
+}
+
 // 範圍爆炸：傷害敵人並破壞範圍內方塊
 function explode(b) {
   const R = b.ex,
