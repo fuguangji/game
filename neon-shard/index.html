@@ -1806,7 +1806,7 @@
      * 架構：輸入(keys/mouse/touch) -> setState 狀態機 -> update(dt) -> render()
      *   - 狀態機：menu / play / pause / shop / over（見 STATE_GRAPH）
      *   - 執行緒：路徑場 BFS 在 Web Worker 計算（flowWorkerMain），主執行緒只負責模擬與繪圖
-     *   - 術式系統：10 套術式取代所有槍械（SPELLS / CASTS / FIELDS）
+     *   - 術式系統：以 SPELLS 資料表定義術式組合，並由 CASTS / FIELDS 負責效果執行；術式數量以 SPELLS.length 為準。
      *   - 教學模式：文末 TUT 區塊；localStorage 判斷首次遊玩並自動進入，主頁「教學模式」按鈕可再次開啟
      * 命名縮寫：pl=玩家 en=敵人陣列 bl=子彈 pk=掉落物 pt=粒子 zones=地面區域 T=格寬 N=格數
      * ===================================================================== */
@@ -2835,7 +2835,9 @@
       cx.restore()
     }
     /** 目前是空函式；呼叫端期待它顯示浮動文字，但此實作不會繪製任何內容（已列入審查報告）。 */
-    function ftxt() {}
+    function ftxt(x, y, text, col='#ffffff', size=14) {
+      fxs.push({k:'txt', x, y, text, col, sz:size, t:.8, max:.8});
+    }
     function zigPts(x0, y0, x1, y1, n, amp) {
       const pts=[[x0, y0]], dx=x1-x0, dy=y1-y0, L=Math.hypot(dx, dy)||1, nx=-dy/L, ny=dx/L;
       for (let i=1; i<n; i++) {
@@ -8899,6 +8901,13 @@
           cx.fillRect(f.x, f.y, f.w, f.w);
           cx.globalAlpha=.8;
           cx.strokeRect(f.x, f.y, f.w, f.w)
+        } else if (f.k==='txt') {
+          cx.globalAlpha=Math.max(0, 1-p);
+          cx.fillStyle=f.col;
+          cx.font='bold '+(f.sz||14)+'px system-ui,"Noto Sans TC",sans-serif';
+          cx.textAlign='center';
+          cx.textBaseline='middle';
+          cx.fillText(f.text, f.x, f.y-24*p)
         } else if (f.k==='w') {
           cx.globalAlpha=1-p;
           cx.lineWidth=1+6*(1-p);
