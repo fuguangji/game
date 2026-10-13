@@ -13582,3 +13582,20 @@ addEventListener("keydown", (e) => {
 });
 tutorialButton(); // 放在檔尾：所有 let/const 都已初始化（避免暫時性死區）
 if (!tutorialSeen) startTutorial(); // 第一次遊玩：自動進入教學
+
+/*
+ * NEON SHARD 擴充 API。
+ * 其他模組載入完成後可透過 window.NEON_SHARD_API 註冊狀態與瞄準線擴充。
+ * getWeaponDefinitions() 回傳原始設定陣列；請在正式玩法規則中加入必要的伺服器端驗證。
+ */
+Object.defineProperty(window, "NEON_SHARD_API", {
+  configurable: true,
+  value: Object.freeze({
+    registerStateTransition,
+    registerStateHook,
+    registerStateGuard,
+    registerAimLineExtension,
+    getState: () => state,
+    getWeaponDefinitions: () => WEAPON_DEFINITIONS,
+  }),
+});
