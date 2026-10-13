@@ -1846,7 +1846,7 @@
       safeT=$('sa').offsetHeight
     }
     addEventListener('resize', resize);
-    // 功能：處理「P」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：以點列座標建立 Canvas 路徑，供圖示繪製共用。
     const P=(c, p)=>{
       c.moveTo(p[0][0], p[0][1]);
       for (let i=1; i<p.length; i++)c.lineTo(p[i][0], p[i][1]);
@@ -2135,11 +2135,11 @@
     } catch (e) {}
     const keys={}, mouse={x:0, y:0, down:false, has:false}, tm={id:null, sx:0, sy:0, x:0, y:0}, ta={id:null, sx:0, sy:0, x:0, y:0, a:0, act:false};
     let touchOn=false;
-    // 功能：判斷「cell」所需的條件或位置。
+    // 功能：讀取地圖格；超出地圖邊界時視為不可通行。
     const cell=(i, j)=>i<0||j<0||i>=N||j>=N?-1:grid[j*N+i];
-    // 功能：處理「solidAt」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：判斷指定座標是否落在實心地圖格。
     const solidAt=(x, y)=>cell(Math.floor(x/T), Math.floor(y/T))!==0;
-    // 功能：判斷「blocked」所需的條件或位置。
+    // 功能：以角色碰撞半徑檢查四角是否被地形阻擋。
     const blocked=(x, y, r)=>solidAt(x-r, y-r)||solidAt(x+r, y-r)||solidAt(x-r, y+r)||solidAt(x+r, y+r);
     // 功能：處理「turLand」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function turLand(x, y, r, m) {
@@ -2170,7 +2170,7 @@
       while (l<m&&!solidAt(x+c*l, y+s*l))l+=8;
       return l
     }
-    // 功能：處理「hc」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：將敵人索引轉換為對應色相的 HSLA 顏色字串。
     const hc=(v, a)=>`hsla(${(v-1)*36},85%,46%,${a})`;
     // 隨機產生地圖：外框不可破、中央安全區、其餘依關卡密度放可破壞牆
     function genMap() {
@@ -2459,7 +2459,7 @@
     function ultMods() {
       const c=WP[pl.w], b=c&&ALLW[c.id];
       if (!b)return null;
-    // 功能：本行宣告多個相關輔助函式；「g」及同列工具供後續邏輯共用。
+      // 功能：計算兩個武器屬性之間的倍率；分母無效時回傳預設倍率。
       const g=(x, y)=>y>0?x/y:1, fl=k=>c[k]&&!b[k]?1:0;
       return{dm:1+(g(c.dmg*(c.n1||1), b.dmg*(b.n1||1))-1)*.6, kb:g(c.kb, b.kb), wd:(c.wd||0)-(b.wd||0), r:g(c.r, b.r), v:g(c.v, b.v), life:g(c.life, b.life), xb:fl('xb'), ch:fl('ch'), bu:fl('bu'), fr:fl('fr'), fz4:fl('fz4'), lk:fl('lk'), hm:fl('hm'), bn:(c.bn||0)-(b.bn||0), cr:(c.cr||0)-(b.cr||0), cm:c.cm||1}
     }
@@ -2592,7 +2592,7 @@
     }
     const SQ=[];
     let fxs=[];
-    // 功能：本行宣告多個相關輔助函式；「later」及同列工具供後續邏輯共用。
+    // 功能：將延遲執行的回呼加入特效排程佇列。
     const later=(t, fn)=>SQ.push({t, fn}), line=(a, len, t, col)=>fxs.push({k:'l', x:pl.x, y:pl.y, a, len, t, max:t, col}), spot=(x, y, r, t, col)=>fxs.push({k:'c', x, y, r, t, max:t, col}), LR=q=>q*330;
     const ULTS={
     0(a) {
@@ -4293,7 +4293,7 @@
         return d
       };
       if (MWI<0||!own.includes(MWI))MWI=LO[0]!==undefined?LO[0]:own[0];
-    // 功能：處理「gm」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：取得指定武器的改裝資料。
       const gm=i=>{
         const m=(SV.mods[i]||[]).slice();
         while (m.length<2)m.push(-1);
@@ -4375,7 +4375,7 @@
       }
       el.append(sl);
       const base=ALLW[MWI], cur=chipApply(base, m.filter(has));
-    // 功能：處理「stat」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：計算並顯示武器的屬性統計。
       const stat=o=>{
         const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
         return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
@@ -4433,7 +4433,7 @@
     // 功能：處理「csR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function csR(el) {
       el.innerHTML='';
-    // 功能：處理「dv」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：建立角色或裝備比較介面中的數值列。
       const dv=(c, h)=>{
         const d=document.createElement('div');
         d.className=c;
@@ -4560,7 +4560,7 @@
 
     const ITM={heal:{n:'治療針', d:'回復 50% 最大血量', c:'#3dff8f', ic:'heal', p:120}, shield:{n:'護盾卡', d:'護盾 +40（上限 60）', c:'#4d9bff', ic:'shield', p:100}, ammo:{n:'彈藥包', d:'所有出戰槍補滿彈藥', c:'#ffe14a', ic:'ammo', p:150}, ult:{n:'能量電池', d:'SUPER 立刻充滿', c:'#ff9a3d', ic:'ult', p:200}, bomb:{n:'震波彈', d:'身邊大範圍爆炸，傷害並擊退敵人', c:'#ff5a7a', ic:'pull', p:180}, speed:{n:'加速劑', d:'移動速度 +40%，持續 10 秒', c:'#ffffff', ic:'speed', p:100}}, ITK=Object.keys(ITM);
     let itCd=0;
-    // 功能：本行宣告多個相關輔助函式；「BAG」及同列工具供後續邏輯共用。
+    // 功能：取得背包中有效且符合槽位上限的道具清單。
     const BAG=()=>(SV.bagSel||[]).filter(k=>ITM[k]).slice(0, 3);
     // 功能：使用指定背包道具並套用效果。
     function useItem(k) {
@@ -4680,25 +4680,25 @@
     }
     /* ===== NEON SHARD · 新版選單（資料與工具） ===== */
     const XCAT=[['精準', [0, 2, 8, 11]], ['速射', [3, 9, 12, 13]], ['近距', [1, 4, 22]], ['爆破', [5, 7, 10, 23]], ['控場', [16, 17, 18, 19]], ['特殊', [6, 14, 15, 20, 21]]];
-    // 功能：處理「wCat」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：取得指定武器的分類名稱與武器索引。
     const wCat=i=>{
       for (const c of XCAT)if (c[1].includes(i))return c[0];
       return'其他'
     };
-    // 功能：處理「wMode」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：取得武器描述中的模式欄位。
     const wMode=i=>(WD[i]||'').split('·')[0];
-    // 功能：處理「wNote」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：取得武器描述中的補充說明。
     const wNote=i=>(WD[i]||'').split('·').slice(1).join('·');
     const XS={t:'h', lc:'全部', ws:0, sl:0, sh:'up', sc:'全部', rf:-1, cx:'i', over:0, fresh:0};
     const CI={coins:'coin', sh:'shard', co:'core'};
-    // 功能：處理介面系統「xh」相關的資料、互動或顯示。
+    // 功能：建立介面標題或區塊標籤。
     const xh=(c, t, tag)=>{
       const d=document.createElement(tag||'div');
       if (c)d.className=c;
       if (t!==undefined)d.innerHTML=t;
       return d
     };
-    // 功能：處理介面系統「xbt」相關的資料、互動或顯示。
+    // 功能：建立帶有文字與點擊回呼的介面按鈕。
     const xbt=(c, t, f, dis)=>{
       const b=xh(c, t, 'button');
       b.type='button';
@@ -4706,19 +4706,19 @@
       if (dis)b.disabled=true;
       return b
     };
-    // 功能：處理介面系統「xic」相關的資料、互動或顯示。
+    // 功能：建立指定類型的介面圖示。
     const xic=(t, c, s)=>{
       const w=xh('x-ic');
       w.append(mkIcon(t, c, s||24));
       return w
     };
-    // 功能：處理介面系統「xSaveLO」相關的資料、互動或顯示。
+    // 功能：保存目前選定的武器配置。
     const xSaveLO=()=>{
       try {
         localStorage.setItem('neonShardLO', JSON.stringify(LO))
       } catch (e) {}
     };
-    // 功能：處理介面系統「xGo」相關的資料、互動或顯示。
+    // 功能：切換至指定介面分頁或遊戲狀態。
     const xGo=t=>{
       if (t!==XS.t) {
         XS.t=t;
@@ -4726,19 +4726,19 @@
       }
       window.upd()
     };
-    // 功能：處理介面系統「xSub」相關的資料、互動或顯示。
+    // 功能：更新指定介面欄位的內容。
     const xSub=(k, v)=>{
       XS[k]=v;
       XS.fresh=1;
       window.upd()
     };
-    // 功能：處理介面系統「xFlt」相關的資料、互動或顯示。
+    // 功能：依目前篩選條件整理清單並建立篩選介面。
     const xFlt=(list, cur, fn)=>{
       const f=xh('x-flt');
       for (const n of list)f.append(xbt('x-f'+(cur===n?' on':''), n, ()=>fn(n)));
       return f
     };
-    // 功能：處理「wStat」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：計算武器的傷害、射速、彈速與每秒傷害等數值。
     const wStat=o=>{
       const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
       return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
@@ -4749,7 +4749,7 @@
       const a=ALLW.map(w=>wStat(w)), mx=k=>Math.max(...a.map(s=>s[k]))||1;
       return{dmg:mx('dmg'), rate:mx('rate'), ms:mx('ms'), dps:mx('dps')}
     })());
-    // 功能：處理介面系統「xfmt」相關的資料、互動或顯示。
+    // 功能：依顯示需求格式化數值與小數位數。
     const xfmt=(v, dp)=>dp?v.toFixed(v<100?1:0):String(Math.round(v));
     // 功能：處理介面系統「xEquip」相關的資料、互動或顯示。
     function xEquip(i, sl) {
@@ -4775,7 +4775,7 @@
       xSaveLO();
       window.upd()
     }
-    // 功能：處理介面系統「xSide」相關的資料、互動或顯示。
+    // 功能：建立介面側欄內容或操作項目。
     const xSide=(c, f)=>{
       const s=xh('x-side'), i=xh('x-sc');
       i.dataset.sc='r';
@@ -4784,12 +4784,12 @@
       if (f)s.append(f);
       return s
     };
-    // 功能：本行宣告多個相關輔助函式；「xChipTotal」及同列工具供後續邏輯共用。
+    // 功能：加總目前已裝備或持有的芯片數量。
     const xChipTotal=()=>Object.values(SV.chips).reduce((a, b)=>a+b, 0);
 
     // 功能：處理介面系統「xEmb」相關的資料、互動或顯示。
     function xEmb() {
-    // 功能：處理「poly」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：繪製指定邊數與半徑的多邊形。
       const poly=(x, y, n, r, off)=>{
         const o=[];
         for (let k=0; k<n; k++) {
@@ -5137,7 +5137,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
-    // 功能：處理「cost」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：處理「cost」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const cost=(K, c, can, fn, txt)=>{
         const b=xbt('x-btn sm '+(can?'pri':''), `${c} ${CN[K]}`, fn, !can);
         b.prepend(mkIcon(CI[K], can?'#04101a':CC[K], 14));
@@ -5310,7 +5310,7 @@
       w.append(xh('', '<h3>召喚 '+name+'　選擇型態</h3>'));
       const tri='<svg width="18" height="18" viewBox="-4 -4 22 22" style="vertical-align:-4px;overflow:visible;filter:drop-shadow(0 0 3px #ffb21a) drop-shadow(0 0 7px #ffb21a)"><polygon points="7,2.5 12,11.5 2,11.5" fill="#ffc83a" stroke="#ffb21a" stroke-width="1.2" stroke-linejoin="round"/></svg>';
       const g=xh('x-elg'), E=ELITE[i];
-    // 功能：建立或生成「mk」所需的遊戲資料。
+      // 功能：建立或生成「mk」所需的遊戲資料。
       const mk=(el)=>{
         const c=xh('x-elc'+(el?' el':''), '', 'button');
         c.style.cssText='text-align:left;color:inherit;font:inherit;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start';
@@ -5343,7 +5343,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
-    // 功能：本行宣告多個相關輔助函式；「ul」及同列工具供後續邏輯共用。
+      // 功能：本行宣告多個相關輔助函式；「ul」及同列工具供後續邏輯共用。
       const ul=a=>`<ul class="x-ul">${a.map(t=>`<li>${t}</li>`).join('')}</ul>`;
       if (XS.cx==='i') {
         box.append(xh('x-lead', '在霓虹方塊構成的戰場上，一邊瞄準、一邊閃避。清光每一波敵人，擊敗關底 Boss，再把戰利品帶回來強化自己。'));
@@ -5472,7 +5472,7 @@
       const fb=$('xfs');
       if (!fsOK)fb.style.display='none';
       else fb.onclick=toggleFS;
-    // 功能：處理「sync」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：處理「sync」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const sync=()=>document.body.classList.toggle('inmenu', !$('ov').classList.contains('h'));
       new MutationObserver(sync).observe($('ov'), {attributes:true, attributeFilter:['class']});
       sync();
@@ -5517,7 +5517,7 @@
       const el=$('tr');
       if (el.children.length)return;
       let rowEl;
-    // 功能：處理「sec」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：處理「sec」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const sec=t=>{
         rowEl=document.createElement('div');
         rowEl.className='tr-row';
@@ -5562,7 +5562,7 @@
           el.style.left=Math.max(0, Math.min(innerWidth-w, e.clientX-o.dx))+'px';
           el.style.top=Math.max(0, Math.min(innerHeight-Math.min(h, 60), e.clientY-o.dy))+'px'
         });
-    // 功能：處理「up」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「up」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const up=e=>{
           if (o&&e.pointerId===o.id)o=null
         };
@@ -5581,7 +5581,7 @@
       sec('敵人');
       g=grid();
       EN.forEach((n, i)=>btn(g, 'e'+i, ECOL[i], n, ()=>{
-    // 功能：處理「go」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「go」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const go=el=>{
           const a=pl.aim;
           let p={x:pl.x+Math.cos(a)*220, y:pl.y+Math.sin(a)*220};
@@ -5640,7 +5640,7 @@
         trHd.textContent='訓練 ≡';
         tg.className='tr-b';
         tb.append(trHd, tg);
-    // 功能：處理「show」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「show」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const show=k=>{
           window._trTab=k;
           rows.forEach((r, i)=>r.style.display=i===k?'flex':'none');
@@ -5794,7 +5794,7 @@
       cx.lineWidth=2;
       cx.lineCap='round';
       cx.lineJoin='round';
-    // 功能：處理「band」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：處理「band」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const band=(aa, len, wd, pu)=>{
         const l=rayK(ox, oy, aa, len, pu), ex=ox+Math.cos(aa)*l, ey=oy+Math.sin(aa)*l;
         cx.save();
@@ -6223,7 +6223,7 @@
       const A=[], n=Math.max(8, Math.ceil((a1-a0)/.06));
       for (let i=0; i<=n; i++)A.push(a0+(a1-a0)*i/n);
       if (pu!==2) {
-    // 功能：處理「solid」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「solid」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const solid=(i, j)=>{
           const v=cell(i, j);
           return pu===1?v<0:v!==0
@@ -6680,7 +6680,7 @@
         const {
           grid, n, sx, sy
         }=e.data;
-    // 功能：處理「wide」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「wide」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const wide=(x, y)=>{
           for (let dx=-1; dx<=1; dx++)for (let dy=-1; dy<=1; dy++) {
             const a=x+dx, b=y+dy;
@@ -6688,7 +6688,7 @@
           }
           return true
         };
-    // 功能：處理「run」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+        // 功能：處理「run」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const run=w=>{
           const F=new Int16Array(n*n).fill(-1), q=new Int32Array(n*n);
           let h=0, t=0;
@@ -6741,7 +6741,7 @@
     }
     // 敵人尋路：有視線直接追，否則沿路徑場下降方向走
     function nav(e, a, d) {
-    // 功能：處理「vis」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      // 功能：處理「vis」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const vis=(x, y)=>{
         const L=Math.hypot(x-e.x, y-e.y);
         if (L<4)return true;
@@ -9322,7 +9322,7 @@
           cx.save();
           cx.globalCompositeOperation='source-over';
           cx.shadowBlur=0;
-    // 功能：處理「hex」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+          // 功能：處理「hex」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
           const hex=(r)=>{
             cx.beginPath();
             for (let i=0; i<6; i++) {
@@ -10069,7 +10069,7 @@
     };
     // 功能：處理「tutNew」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const tutNew=()=>({moved:0, aimed:0, shots:0, auto:0, switches:0, dashes:0, walls:0, kills:0, supers:0, pauses:0, emptied:0});
-    // 功能：處理「tutAhead」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+    // 功能：計算玩家面向方向上指定距離的座標。
     const tutAhead=d=>({x:pl.x+Math.cos(pl.aim)*d, y:pl.y+Math.sin(pl.aim)*d}); // 玩家面向前方 d 像素處
 
     /** 生成教學敵人；frozen=靜止靶（不會移動），位置被牆擋住時改找空地 */
@@ -10407,7 +10407,7 @@
     function tutorialButton() {
       tutBox=document.createElement('div');
       tutBox.style.cssText='position:fixed;z-index:25;left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 54px);display:none;flex-direction:column;gap:6px';
-    // 功能：建立或生成「mk」所需的遊戲資料。
+      // 功能：建立或生成「mk」所需的遊戲資料。
       const mk=(t, fn)=>{
         const b=document.createElement('button');
         b.className='sb';
