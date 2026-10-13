@@ -1817,6 +1817,7 @@
     exit:{}
     };
     let STATE_STRICT=false; // true：非法轉移直接拒絕；false：只在 console 警告
+    // 功能：驗證並執行狀態轉移，觸發離開與進入狀態的鉤子。
     function setState(next) {
       if (state===next)return true;
       if (!(STATE_GRAPH[state]&&STATE_GRAPH[state][next])) {
@@ -1845,6 +1846,7 @@
       safeT=$('sa').offsetHeight
     }
     addEventListener('resize', resize);
+    // 功能：以點列座標建立 Canvas 路徑，供圖示繪製共用。
     const P=(c, p)=>{
       c.moveTo(p[0][0], p[0][1]);
       for (let i=1; i<p.length; i++)c.lineTo(p[i][0], p[i][1]);
@@ -1994,6 +1996,7 @@
       }
       c.restore()
     }
+    // 功能：建立指定種類與顏色的物品圖示 Canvas。
     function mkIcon(t, col, sz) {
       const k=document.createElement('canvas');
       k.width=k.height=sz*2;
@@ -2030,10 +2033,12 @@
     26:{n:'連鎖爆彈客', hk:45/28, sk:230/210, fx:['爆炸範圍更大、傷害更高', '爆炸後留下 2 顆延遲小炸彈']}
     };
     const ESTAT={0:'30 / 125 / —', 1:'40 / 80 / 2.3', 2:'60 / 70 / 2.8', 3:'35 / 75 / 3.0', 4:'35 / 80 / 2.6', 5:'50 / 60 / 6.0', 6:'70 / 55 / 4.5', 7:'45 / 65 / 3.2', 8:'90 / 90 / 2.4~3.4', 9:'60 / 60 / 5.0', 10:'55 / 60 / 3.0', 11:'40 / 70 / 2.8', 12:'100 / 75 / —', 13:'55 / 50 / 4.5', 26:'28 / 210 / —', 27:'45 / 70 / 3.2', 28:'60 / 60 / 4.0', 29:'55 / 65 / 4.5'};
+    // 功能：計算菁英敵人的基礎生命值。
     function eliteHP() {
       const bw=ST().g?ST().g:Math.max(1, Math.ceil(wave/5))*5, bi=ST().g?SV.sel:(bw/5-1)%8;
       return Math.round(mkEn(14+bi, 0, 0).mhp*.25)
     }
+    // 功能：依菁英倍率調整敵人屬性。
     function elify(m, q) {
       const E=ELITE[m.t];
       m.el=1;
@@ -2047,6 +2052,7 @@
         eliteL[E.n]=(eliteL[E.n]||0)+1
       }
     }
+    // 功能：繪製敵人專用的向量圖示。
     function eIcon(c, t, x, y, s, col) {
       icon(c, t, x, y, s, col);
       c.save();
@@ -2057,6 +2063,7 @@
       icon.eo=0;
       c.restore()
     }
+    // 功能：建立敵人圖示用的離屏 Canvas。
     function mkEIcon(t, col, sz) {
       const k=document.createElement('canvas');
       k.width=k.height=sz*2;
@@ -2069,6 +2076,7 @@
     }
     const PC={chip:'#9dff3d', shard:'#4de1ff', core:'#ff4dff', coin:'#ffd23a', heal:'#3dff8f', ammo:'#ffe14a', shield:'#4d9bff', speed:'#ffffff'}, PN=['heal', 'ammo', 'shield', 'speed'];
     const LEG_A=[['heal', '補血 +30 HP'], ['ammo', '彈藥 全槍 +40% · 能量 +25'], ['shield', '護盾 +30 吸收'], ['speed', '加速 6 秒'], ['coin', '金幣 · 用來解鎖槍械'], ['shard', '碎片 · 基礎永久升級（方塊、敵人掉落）'], ['core', '晶核 · 進階永久升級和芯片包（強敵、Boss 掉落）'], ['chip', '芯片 · Boss 掉落，顏色代表稀有度（灰 / 綠 / 藍 / 紫 / 金），可裝到槍上']], LEG_B=[['e0', '#ff3d9a', '追擊 · 貼身衝撞'], ['e1', '#ff9a3d', '狙擊 · 預判單發'], ['e2', '#b45cff', '散射 · 5 發扇形'], ['e3', '#9dff3d', '投擲 · 延遲炸彈'], ['e4', '#4de1ff', '緩速 · 命中減速'], ['e5', '#ff4dff', '牽引 · 吸力力場'], ['e6', '#3dffb0', '召喚 · 生出小怪'], ['e7', '#ff2a4a', '雷射 · 瞬發光束'], ['e8', '#c0c8ff', '衝鋒 · 蓄力撞擊'], ['e9', '#ffd23a', '築牆 · 圍困玩家'], ['e10', '#ff9ad5', '環射 · 旋轉彈環'], ['e11', '#7a7aff', '瞬移 · 閃現後連射'], ['e12', '#ff7a5a', '分裂 · 死後分成小怪'], ['e13', '#d4ff3d', '迫擊 · 多枚延遲炸彈'], ['e26', '#ff9f2a', '爆彈客 · 衝向你自爆'], ['e27', '#e04dff', '追蹤者 · 發射追蹤光球'], ['e28', '#6dffb0', '治療者 · 治療附近敵人'], ['e29', '#c0a060', '陷阱師 · 佈下減速陷阱'], ['pb', '#22e6ff', '我方子彈 · 青色拖尾'], ['eb', '#ff5a7a', '敵方子彈 · 空心圓']];
+    // 功能：建立遊戲圖示圖例。
     function legend() {
       $('iS').append(mkIcon('ult', '#ffe14a', 26));
       $('iD').append(mkIcon('dash', '#22e6ff', 24))
@@ -2115,6 +2123,7 @@
       const s=JSON.parse(localStorage.getItem('neonShardLO'));
       if (Array.isArray(s)&&s.length&&s.length<=3&&s.every(i=>ALLW[i]))LO=s
     } catch (e) {}
+    // 功能：讀取並套用保存的武器配置。
     function applyLO() {
       LO=LO.filter(i=>SV.own.includes(i));
       if (!LO.length)LO=[SV.own[0]];
@@ -2126,9 +2135,13 @@
     } catch (e) {}
     const keys={}, mouse={x:0, y:0, down:false, has:false}, tm={id:null, sx:0, sy:0, x:0, y:0}, ta={id:null, sx:0, sy:0, x:0, y:0, a:0, act:false};
     let touchOn=false;
+    // 功能：讀取地圖格；超出地圖邊界時視為不可通行。
     const cell=(i, j)=>i<0||j<0||i>=N||j>=N?-1:grid[j*N+i];
+    // 功能：判斷指定座標是否落在實心地圖格。
     const solidAt=(x, y)=>cell(Math.floor(x/T), Math.floor(y/T))!==0;
+    // 功能：以角色碰撞半徑檢查四角是否被地形阻擋。
     const blocked=(x, y, r)=>solidAt(x-r, y-r)||solidAt(x+r, y-r)||solidAt(x-r, y+r)||solidAt(x+r, y+r);
+    // 功能：處理「turLand」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function turLand(x, y, r, m) {
       m=m||20;
       x=Math.max(m, Math.min(MW-m, x));
@@ -2140,6 +2153,7 @@
       }
       return[x, y]
     }
+    // 功能：處理「mv」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function mv(e, dx, dy) {
       if (e.root>0&&!MVF)return true;
       let b=false;
@@ -2149,12 +2163,14 @@
       else b=true;
       return b
     }
+    // 功能：處理「ray」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ray(x, y, a, m) {
       let l=0;
       const c=Math.cos(a), s=Math.sin(a);
       while (l<m&&!solidAt(x+c*l, y+s*l))l+=8;
       return l
     }
+    // 功能：將敵人索引轉換為對應色相的 HSLA 顏色字串。
     const hc=(v, a)=>`hsla(${(v-1)*36},85%,46%,${a})`;
     // 隨機產生地圖：外框不可破、中央安全區、其餘依關卡密度放可破壞牆
     function genMap() {
@@ -2169,6 +2185,7 @@
         grid[j*N+i]=v
       }
     }
+    // 功能：尋找符合距離條件且未被障礙物阻擋的位置。
     function empty(minD, ref, maxD) {
       for (let k=0; k<400; k++) {
         const i=1+Math.random()*(N-2)|0, j=1+Math.random()*(N-2)|0;
@@ -2179,12 +2196,14 @@
       }
       return maxD?empty(minD, ref):null
     }
+    // 功能：在指定位置建立粒子爆發特效。
     function burst(x, y, col, n, sp, sz, life) {
       for (let i=0; i<n&&pt.length<700; i++) {
         const a=Math.random()*TAU, s=sp*(.3+Math.random()*.7);
         pt.push({x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:life*(.6+Math.random()*.4), max:life, col, sz:sz*(.6+Math.random()*.8)})
       }
     }
+    // 功能：建立指定掉落物。
     function drop(x, y, p) {
       if (Math.random()<p&&pk.filter(q=>PN.includes(q.t)).length<12)pk.push({...jit(x, y), t:PN[[0, 0, 0, 1, 1, 1, 2, 2, 3, 3][Math.random()*10|0]], life:18})
     }
@@ -2428,6 +2447,7 @@
       burst(pl.x+Math.cos(ba)*22, pl.y+Math.sin(ba)*22, w.c, 3, 120, 1.8, .2);
       shake=Math.max(shake, w.n1>1||w.kb>400?4:1)
     }
+    // 功能：處理「ub」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ub(a, v, o) {
       const b=Object.assign({x:pl.x+Math.cos(a)*16, y:pl.y+Math.sin(a)*16, vx:Math.cos(a)*v*BS, vy:Math.sin(a)*v*BS, r:5, own:1, dmg:30, life:1.2/BS, col:'#ffe14a', kb:300, pe:1, ult:1, hit:[], lc:-1}, o);
       b.dmg*=1+.06*UL('dmg')+.1*RUN.dmg;
@@ -2435,12 +2455,15 @@
       bl.push(b)
     }
     let UM=null;
+    // 功能：處理「ultMods」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ultMods() {
       const c=WP[pl.w], b=c&&ALLW[c.id];
       if (!b)return null;
+      // 功能：計算兩個武器屬性之間的倍率；分母無效時回傳預設倍率。
       const g=(x, y)=>y>0?x/y:1, fl=k=>c[k]&&!b[k]?1:0;
       return{dm:1+(g(c.dmg*(c.n1||1), b.dmg*(b.n1||1))-1)*.6, kb:g(c.kb, b.kb), wd:(c.wd||0)-(b.wd||0), r:g(c.r, b.r), v:g(c.v, b.v), life:g(c.life, b.life), xb:fl('xb'), ch:fl('ch'), bu:fl('bu'), fr:fl('fr'), fz4:fl('fz4'), lk:fl('lk'), hm:fl('hm'), bn:(c.bn||0)-(b.bn||0), cr:(c.cr||0)-(b.cr||0), cm:c.cm||1}
     }
+    // 功能：處理「applyUM」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function applyUM(b) {
       if (!UM||b.um)return;
       b.um=1;
@@ -2523,6 +2546,7 @@
       for (let k=0; k<24; k++)ub(k/24*TAU, 450, {dmg:35, r:4, pierce:1, wd:2, life:1.3/BS})
     }
     };
+    // 功能：處理「ultT」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ultT() {
       if (!AA)return null;
       const R=AIMR*(AA===2?3.4:2.6), ex=AA===2?.7:.35;
@@ -2568,6 +2592,7 @@
     }
     const SQ=[];
     let fxs=[];
+    // 功能：將延遲執行的回呼加入特效排程佇列。
     const later=(t, fn)=>SQ.push({t, fn}), line=(a, len, t, col)=>fxs.push({k:'l', x:pl.x, y:pl.y, a, len, t, max:t, col}), spot=(x, y, r, t, col)=>fxs.push({k:'c', x, y, r, t, max:t, col}), LR=q=>q*330;
     const ULTS={
     0(a) {
@@ -2668,6 +2693,7 @@
       for (let k=-1; k<=1; k++)ub(a+k*.4, 520, {dmg:90, r:14, bm:1, life:1.6/BS, l0:1.6/BS})
     };
     ULN.push('反彈風暴', '雷暴', '地雷陣', '三連巨鏢');
+    // 功能：處理「dmM」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function dmM() {
       return 1+.06*UL('dmg')+.1*RUN.dmg
     }
@@ -2678,9 +2704,11 @@
       const m=UM;
       return m?{bu:m.bu, fr:m.fr, fz4:m.fz4, lk:m.lk, ch:m.ch}:{}
     }
+    // 功能：處理「zfl」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function zfl(w) {
       return w?{bu:w.bu, fr:w.fr, fz4:w.fz4, lk:w.lk, ch:w.ch}:{}
     }
+    // 功能：處理「chipHit」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipHit(e, dd, f) {
       if (!f||!(dd>0))return;
       if (f.bu)e.bu=3;
@@ -2709,6 +2737,7 @@
         }
       }
     }
+    // 功能：處理「chipTick」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipTick(e, dt, z, dd) {
       if (z.bu)e.bu=3;
       if (z.fr)e.fr=Math.max(e.fr||0, .6);
@@ -2719,12 +2748,14 @@
       }
       if (z.lk&&dd>0&&pl.hp<pl.mhp)pl.hp=Math.min(pl.mhp, pl.hp+dd*.025);
     }
+    // 功能：處理「chainZone」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chainZone(z, d) {
       if (!(d>0))return;
       const c=en.filter(e=>e.hp>0&&Math.hypot(e.x-z.x, e.y-z.y)<z.r+e.r);
       if (!c.length)return;
       chipHit(c[Math.random()*c.length|0], d*2, {ch:1})
     }
+    // 功能：處理「gpTick」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function gpTick(z, dt) {
       for (const e of en) {
         if (e.hp<=0||Math.hypot(e.x-z.x, e.y-z.y)>=z.r+e.r)continue;
@@ -2749,6 +2780,7 @@
         explode({x:z.x, y:z.y, ex:z.r*.6, dmg:(z.dps||10)*1.2, kb:300, wd:1, col:z.col})
       }
     }
+    // 功能：處理「explodeU」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function explodeU(o) {
       const m=UM;
       if (m) {
@@ -2763,11 +2795,13 @@
     const LZ=[];
     let UMANUAL=false;
     const FT=[];
+    // 功能：建立或生成「mkDummy」所需的遊戲資料。
     function mkDummy(x, y) {
       const e=mkEn(14, x, y);
       Object.assign(e, {t:22, r:34, hp:5000, mhp:5000, sp:0, m:1e6, col:'#9aa0ab', sc:0, cd:1e9, dummy:1, hx:x, hy:y, hv:5000});
       return e
     }
+    // 功能：建立或生成「spawnDummy」所需的遊戲資料。
     function spawnDummy() {
       for (let k=en.length-1; k>=0; k--)if (en[k].dummy)en.splice(k, 1);
       const a=pl.aim;
@@ -2776,6 +2810,7 @@
       en.push(mkDummy(p.x, p.y));
       burst(p.x, p.y, '#ffffff', 12, 160, 2, .5)
     }
+    // 功能：繪製或建立「drawDummyBar」所需的畫面元素。
     function drawDummyBar(e) {
       const u=HU, x=8*u, w=W-16*u, y=safeT+74*u, h=14*u, f=Math.max(0, e.hp/e.mhp);
       cx.save();
@@ -2806,7 +2841,12 @@
       cx.fillText('肉盾', W/2, y-4);
       cx.restore()
     }
-    function ftxt() {}
+    // 功能：建立浮動文字特效，供電荷、引爆與暈眩提示使用。
+    function ftxt(x, y, text, col='#ffffff', size=12) {
+      // 將戰鬥提示加入特效佇列，由 render() 依剩餘時間繪製並淡出。
+      fxs.push({k:'txt', x, y, text:String(text), col, size, t:1.15, max:1.15})
+    }
+    // 功能：計算閃電折線的隨機節點。
     function zigPts(x0, y0, x1, y1, n, amp) {
       const pts=[[x0, y0]], dx=x1-x0, dy=y1-y0, L=Math.hypot(dx, dy)||1, nx=-dy/L, ny=dx/L;
       for (let i=1; i<n; i++) {
@@ -2816,6 +2856,7 @@
       pts.push([x1, y1]);
       return pts
     }
+    // 功能：建立閃電折線及分支特效。
     function zig(x0, y0, x1, y1, col, t, w, br, a) {
       const L=Math.hypot(x1-x0, y1-y0), n=Math.max(5, Math.round(L/22)), pts=zigPts(x0, y0, x1, y1, n, Math.min(26, L*.12)), brs=[];
       for (let k=0; k<(br||0); k++) {
@@ -2824,24 +2865,29 @@
       }
       fxs.push({k:'zig', pts, brs, x:x0, y:y0, col, t, max:t, w:w||5, a:a||1})
     }
+    // 功能：處理「strikeFx」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function strikeFx(e) {
       zig(e.x+(Math.random()-.5)*40, e.y-300, e.x, e.y, '#ffe14a', .22, 3, 1, .55);
       fxs.push({k:'w', x:e.x, y:e.y, r:30, t:.2, max:.2, col:'#fff4a6'});
       burst(e.x, e.y, '#fff4a6', 6, 180, 2, .3)
     }
+    // 功能：處理「cloudSpark」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function cloudSpark(z) {
       const a=Math.random()*TAU, r=Math.sqrt(Math.random())*z.r*.9, x=z.x+Math.cos(a)*r, y=z.y+Math.sin(a)*r, b=Math.random()*TAU, l=40+Math.random()*70;
       zig(x, y, x+Math.cos(b)*l, y+Math.sin(b)*l, Math.random()<.5?'#fff4a6':'#ffe14a', .1, 1.4, 0, .4)
     }
+    // 功能：處理「cloudSky」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function cloudSky(z) {
       const x=z.x+(Math.random()-.5)*z.r*1.6, y=z.y+(Math.random()-.5)*z.r*1.2;
       zig(x+(Math.random()-.5)*60, z.y-z.r*2.2, x, y, '#ffe14a', .14, 1.8, 1, .35)
     }
+    // 功能：處理敵人電荷增加時的特效與文字提示。
     function chgHit(e) {
       fxs.push({k:'w', x:e.x, y:e.y, r:e.r+26, t:.25, max:.25, col:'#ffe14a'});
       burst(e.x, e.y, '#fff4a6', 8, 200, 2, .3);
       ftxt(e.x, e.y-e.r-26, e.cg>=2?'電荷 '+e.cg+'/3 · 再一發引爆！':'電荷 '+e.cg+'/3', '#ffe14a', e.cg>=2?13:11)
     }
+    // 功能：繪製敵人電荷層數與蓄電狀態。
     function drawChg(e) {
       const t=time;
       if (e.cg>0) {
@@ -2929,6 +2975,7 @@
       }
     }
 
+    // 功能：處理「lzDmg」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function lzDmg(e, d, a, kb, o) {
       const dd=dm(e, d, Math.atan2(pl.y-e.y, pl.x-e.x));
       e.hp-=dd;
@@ -3013,6 +3060,7 @@
       d:14*dmM()*(m.dm||1), kb:50, o:{bu:m.bu, fr:m.fr, fz4:m.fz4, lk:m.lk, ch:m.ch, xb:m.xb, col:'#ffe14a'}, col:'#ffe14a'});
       fxs.push({k:'w', x:pl.x, y:pl.y, r:110, t:.5, max:.5, col:'#ffe14a'});
     }
+    // 功能：更新雷射武器與光束狀態。
     function updLZ(dt) {
       for (const e of en)if (e.dummy) {
         e.x=e.hx;
@@ -3066,6 +3114,7 @@
         }
       }
     }
+    // 功能：繪製指定方向的雷射光束。
     function lzBeam(x, y, a, L, w, col, al) {
       const ex=x+Math.cos(a)*L, ey=y+Math.sin(a)*L, fl=1+.12*Math.sin(time*70);
       cx.save();
@@ -3102,6 +3151,7 @@
       }
       cx.restore();
     }
+    // 功能：繪製目前的雷射武器視覺效果。
     function drawLZ() {
       if (state!=='play')return;
       for (const f of FT) {
@@ -3228,6 +3278,7 @@
     };
     ULN[16]='冰河期';
     ULN[18]='雷暴領域';
+    // 功能：處理「fTarget」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function fTarget(e) {
       let b=null, bd=Math.hypot(pl.x-e.x, pl.y-e.y)*.9;
       for (const z of zones) {
@@ -3240,11 +3291,13 @@
       }
       return b
     }
+    // 功能：處理「wBul」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function wBul(w, x, y, a, mul) {
       const crt=w.cr&&Math.random()<w.cr;
       a+=(Math.random()-.5)*.06;
       bl.push({x, y, vx:Math.cos(a)*w.v*BS, vy:Math.sin(a)*w.v*BS, r:w.r, own:1, dmg:w.dmg*mul*(crt?w.cm:1), life:w.life/BS, col:crt?'#ffffff':w.c, kb:w.kb, wi:WP.indexOf(w), pe:w.pierce, pierce:w.pa, hm:w.hm, ch:w.ch, bn:w.bn, xb:w.xb, bu:w.bu, fr:w.fr, lk:w.lk, fz4:w.fz4, wd:w.wd, l0:w.life/BS, age:0, lc:-1, hit:[]})
     }
+    // 功能：處理「frag」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function frag(b) {
       const n=b.cs>1?b.cs:8;
       for (let k=0; k<n; k++) {
@@ -3254,6 +3307,7 @@
       burst(b.x, b.y, b.col, 10, 200, 2.5, .35);
       shake=Math.max(shake, 3)
     }
+    // 功能：處理「slashHit」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function slashHit(x, y, a, sw, rg, dmg, kb, col, w, nu) {
       const full=sw>=TAU-.01, an=(px, py)=>Math.atan2(py-y, px-x), df=(p, q)=>Math.abs(Math.atan2(Math.sin(p-q), Math.cos(p-q)));
       for (const e of en) {
@@ -3318,6 +3372,7 @@
     ULTS[23]=(a, q)=>{
       for (let k=0; k<5; k++)later(k*.08, ()=>ub(a+(k-2)*.22, 520, {dmg:70, r:11, life:.5/BS, cs:12, pe:0, kb:200, col:'#ffe14a'}))
     };
+    // 功能：處理「ultRing」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ultRing() {
       for (let k=0; k<28; k++) {
         const a=k/28*TAU;
@@ -3345,6 +3400,7 @@
       pl.dashT=.17;
       pl.dashCd=1.2*(1-.06*UL('dsh'))
     }
+    // 功能：彙整鍵盤、滑鼠與觸控輸入。
     function inp() {
       let ix=(keys.KeyD?1:0)-(keys.KeyA?1:0), iy=(keys.KeyS?1:0)-(keys.KeyW?1:0);
       if (ix||iy) {
@@ -3456,9 +3512,11 @@
         }
       }
     }
+    // 功能：處理「eb」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function eb(e, a, sp, dmg, eff) {
       bl.push({eff, hm2:eff===2, x:e.x+Math.cos(a)*e.r, y:e.y+Math.sin(a)*e.r, vx:Math.cos(a)*sp*BS, vy:Math.sin(a)*sp*BS, r:5, own:0, dmg, life:3, col:e.col})
     }
+    // 功能：更新「updEW」所管理的遊戲狀態。
     function updEW(dt) {
       for (let n=ewl.length-1; n>=0; n--) {
         const w=ewl[n], x=(w.i+.5)*T, y=(w.j+.5)*T;
@@ -3509,10 +3567,12 @@
         if (g.t<=0)egh.splice(n, 1)
       }
     }
+    // 功能：處理「elzHit」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function elzHit(e, dmg) {
       const c=Math.cos(e.lza), s=Math.sin(e.lza), dx=pl.x-e.x, dy=pl.y-e.y, u=dx*c+dy*s;
       if (u>0&&u<e.lzL&&Math.abs(-dx*s+dy*c)<pl.r+10)hurt(dmg)
     }
+    // 功能：處理「lzEnd」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function lzEnd(e, n) {
       const c=Math.cos(e.lza), s=Math.sin(e.lza);
       hitCell(Math.floor((e.x+c*(e.lzL+4))/T), Math.floor((e.y+s*(e.lzL+4))/T));
@@ -3838,6 +3898,7 @@
     try {
       Object.assign(SV, JSON.parse(localStorage.getItem('neonShardSave'))||{})
     } catch (e) {}
+    // 功能：保存或讀取「save」相關資料。
     const save=()=>{
       try {
         localStorage.setItem('neonShardSave', JSON.stringify(SV))
@@ -3964,6 +4025,7 @@
     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2].forEach((r, i)=>{
       CH[i].r=r
     });
+    // 功能：處理「spl」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const spl=(o, k, f)=>{
       if (o.mine||o.web||o.gren||o.tox) {
         o.r*=1+.12*k;
@@ -4066,6 +4128,7 @@
     }
     );
     const TW=[[56, 28, 11, 4.2, .8], [24, 36, 26, 11, 3], [0, 30, 42, 22, 6]];
+    // 功能：依機率與稀有度抽取芯片。
     function rollChip(b, mt) {
       const w=(TW[+b||0]||TW[0]).slice();
       for (let t=0; t<(mt||0); t++)w[t]=0;
@@ -4081,6 +4144,7 @@
       return pool[Math.floor(Math.random()*pool.length)]
     }
     let SLI=-1, wsNote='', lastPk=null;
+    // 功能：處理「chipEl」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipEl(i, o) {
       o=o||{};
       const c=CH[i], d=document.createElement('div');
@@ -4098,6 +4162,7 @@
       }
       return d
     }
+    // 功能：處理「chipToast」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipToast(i) {
       const c=CH[i];
       let el=document.getElementById('cts');
@@ -4117,6 +4182,7 @@
         flash(RC[c.r], .22, .3)
       } catch (x) {}
     }
+    // 功能：處理「chipSum」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipSum() {
       if (!chp.length)return'';
       const n=[0, 0, 0, 0, 0];
@@ -4125,9 +4191,11 @@
       });
       return'（'+n.map((v, t)=>v?RN[t]+' '+v:'').filter(Boolean).reverse().join(' · ')+'）'
     }
+    // 功能：處理「chipWhere」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipWhere(i) {
       return Object.keys(SV.mods).filter(k=>(SV.mods[k]||[]).includes(i)).map(k=>ALLW[+k]?ALLW[+k].n:'').filter(Boolean).join('、')
     }
+    // 功能：將芯片效果合併至武器數值。
     function chipApply(w, list) {
       const o=Object.assign({}, w);
       for (const c of list)if (CH[c])CH[c].fn(o);
@@ -4136,12 +4204,14 @@
       if (o.cr>.6)o.cr=.6;
       return o
     }
+    // 功能：處理「modW」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function modW(w) {
       const o=chipApply(w, (train?TM:SV.mods)[w.id]||[]);
       if (o.bm)o.ms0=1;
       return o
     }
 
+    // 功能：處理「chipAvail」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chipAvail(i) {
       let u=0;
       for (const k in SV.mods)for (const c of SV.mods[k])if (c===i)u++;
@@ -4149,6 +4219,7 @@
     }
     const CHS=[{n:'游擊者', c:'#22e6ff', hp:0, dr:1, sc:1, kh:0, p:0, d:'均衡型，沒有弱點'}, {n:'重裝兵', c:'#ffb040', hp:50, Lspd:-3.75, dr:.85, sc:1, kh:0, p:900, d:'血量 +50、受到傷害 -15%，移動 -15%'}, {n:'疾風', c:'#9dff3d', hp:-20, Lspd:6.25, Ldsh:5, dr:1, sc:1, kh:0, p:900, d:'移動 +25%、衝刺冷卻 -30%，血量 -20'}, {n:'工程師', c:'#7ab8ff', hp:0, Lreg:4, Lmag:2.5, dr:1, sc:1, kh:0, p:1100, d:'彈藥回復 +32%、彈匣 +25%'}, {n:'刺客', c:'#ff5a5a', hp:-15, Lspd:2, Ldsh:1.7, Ldmg:4.2, dr:1, sc:1, kh:0, p:1300, d:'傷害 +25%、移動 +8%，血量 -15'}, {n:'術士', c:'#d070ff', hp:0, Ldmg:1.3, dr:1, sc:1.6, kh:3, p:1600, d:'大招充能 +60%、擊殺回復 3 血量'}];
     let CHR=CHS[0];
+    // 功能：處理「chR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chR(el) {
       el.innerHTML='';
       const h=document.createElement('div');
@@ -4177,16 +4248,19 @@
       });
       el.append(g)
     }
+    // 功能：處理「bankChips」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bankChips() {
       for (const c of chp)SV.chips[c]=(SV.chips[c]||0)+1
     }
     let TM={}, trK='', trHd=null;
+    // 功能：處理「trRebuild」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function trRebuild() {
       const id=WP[pl.w].id, m=modW(ALLW[id]);
       m.ms=Math.round(m.ms0*(1+.1*UL('mag')));
       m.am=m.ms;
       WP[pl.w]=m
     }
+    // 功能：處理「trChip」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function trChip(i) {
       const id=WP[pl.w].id, a=(TM[id]||[]).slice(), k=a.indexOf(i);
       if (k>=0)a.splice(k, 1);
@@ -4197,6 +4271,7 @@
       TM[id]=a;
       trRebuild()
     }
+    // 功能：處理「trMark」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function trMark() {
       const id=WP[pl.w].id, k=id+':'+(TM[id]||[]).join(',');
       if (k===trK)return;
@@ -4208,6 +4283,7 @@
       })
     }
     let MWI=-1, lastPack='';
+    // 功能：處理「wsR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function wsR(el) {
       el.innerHTML='';
       const own=SV.own, dv=(c, h)=>{
@@ -4217,6 +4293,7 @@
         return d
       };
       if (MWI<0||!own.includes(MWI))MWI=LO[0]!==undefined?LO[0]:own[0];
+      // 功能：取得指定武器的改裝資料。
       const gm=i=>{
         const m=(SV.mods[i]||[]).slice();
         while (m.length<2)m.push(-1);
@@ -4298,6 +4375,7 @@
       }
       el.append(sl);
       const base=ALLW[MWI], cur=chipApply(base, m.filter(has));
+      // 功能：計算並顯示武器的屬性統計。
       const stat=o=>{
         const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
         return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
@@ -4352,8 +4430,10 @@
         el.append(g)
       }
     }
+    // 功能：處理「csR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function csR(el) {
       el.innerHTML='';
+      // 功能：建立角色或裝備比較介面中的數值列。
       const dv=(c, h)=>{
         const d=document.createElement('div');
         d.className=c;
@@ -4389,6 +4469,7 @@
         el.append(gr)
       }
     }
+    // 功能：處理「jit」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function jit(x, y) {
       for (let k=0; k<6; k++) {
         const a=Math.random()*TAU, r=8+Math.random()*30, qx=x+Math.cos(a)*r, qy=y+Math.sin(a)*r;
@@ -4397,11 +4478,13 @@
       return{x, y}
     }
     let BK2=0;
+    // 功能：處理「cur」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function cur(t, x, y, v) {
       if (pk.length>=80&&!BK2)return;
       const j=jit(x, y);
       pk.push({x:j.x, y:j.y, t, v, life:14})
     }
+    // 功能：處理「collectPk」相關操作與狀態更新。
     function collectPk(q, n) {
       const p=pl;
       if (q.t==='coin')coins+=q.v;
@@ -4416,6 +4499,7 @@
       else p.boost=Math.min(10, Math.max(0, p.boost)+6);
       burst(q.x, q.y, PC[q.t], n||14, 200, 2.5, .5)
     }
+    // 功能：處理「vacAll」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function vacAll() {
       for (const q of pk) {
         q.vac=1;
@@ -4425,6 +4509,7 @@
       }
       fxs.push({k:'cring', x:pl.x, y:pl.y, r:170, t:.7, max:.7, col:'#ffffff'})
     }
+    // 功能：處理「ucost」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ucost(u, lv) {
       return UC[u.k]==='sh'?Math.round(UB[u.k]*(1+lv)):Math.round(UB[u.k]*(1+lv*.9))
     }
@@ -4438,6 +4523,7 @@
         window.upd()
       }
     }
+    // 功能：處理「coin」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function coin(x, y, v) {
       cur('coin', x, y, v)
     }
@@ -4446,11 +4532,13 @@
     EN[27]='追蹤者';
     EN[28]='治療者';
     EN[29]='陷阱師';
+    // 功能：處理「cone」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function cone() {
       const w=WP[pl.w], mf=Math.min(1, Math.hypot(pl.vx, pl.vy)/(PSPD*1.4));
       return w.acc+w.mp*mf+pl.rc+(w.n1===1?w.sp/2:0)
     }
     let drag=null;
+    // 功能：處理「LAY」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function LAY() {
       const u=HU, n=WP.length, sz=58*u, g=10*u, bm=22*u, hw=n*sz+(n-1)*g, x0=W/2-hw/2, sy=H-sz-bm, por=H>W*1.05, isz=46*u, ig=8*u, ni=BAG().length;
       let ix, iy;
@@ -4464,6 +4552,7 @@
       const bh=11*u;
       return{u, n, sz, g, hw, x0, sy, por, isz, ig, ix, iy, bh, by:(por?iy:sy)-bh-8*u}
     }
+    // 功能：處理「slotR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function slotR(i) {
       const L=LAY();
       return{x:L.x0+i*(L.sz+L.g), y:L.sy, w:L.sz}
@@ -4471,7 +4560,9 @@
 
     const ITM={heal:{n:'治療針', d:'回復 50% 最大血量', c:'#3dff8f', ic:'heal', p:120}, shield:{n:'護盾卡', d:'護盾 +40（上限 60）', c:'#4d9bff', ic:'shield', p:100}, ammo:{n:'彈藥包', d:'所有出戰槍補滿彈藥', c:'#ffe14a', ic:'ammo', p:150}, ult:{n:'能量電池', d:'SUPER 立刻充滿', c:'#ff9a3d', ic:'ult', p:200}, bomb:{n:'震波彈', d:'身邊大範圍爆炸，傷害並擊退敵人', c:'#ff5a7a', ic:'pull', p:180}, speed:{n:'加速劑', d:'移動速度 +40%，持續 10 秒', c:'#ffffff', ic:'speed', p:100}}, ITK=Object.keys(ITM);
     let itCd=0;
+    // 功能：取得背包中有效且符合槽位上限的道具清單。
     const BAG=()=>(SV.bagSel||[]).filter(k=>ITM[k]).slice(0, 3);
+    // 功能：使用指定背包道具並套用效果。
     function useItem(k) {
       if (state!=='play'||!k||!ITM[k]||itCd>0)return;
       if (!train&&!(SV.items[k]>0))return;
@@ -4504,10 +4595,12 @@
       burst(p.x, p.y, ITM[k].c, 18, 220, 2.5, .5);
       fxs.push({k:'w', x:p.x, y:p.y, r:90, t:.4, max:.4, col:ITM[k].c})
     }
+    // 功能：處理「itemR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function itemR(i) {
       const L=LAY();
       return{x:L.ix+i*(L.isz+L.ig), y:L.iy, w:L.isz}
     }
+    // 功能：判斷「itemAt」所需的條件或位置。
     function itemAt(x, y) {
       const b=BAG();
       for (let i=0; i<b.length; i++) {
@@ -4516,6 +4609,7 @@
       }
       return -1
     }
+    // 功能：繪製或建立「drawItems」所需的畫面元素。
     function drawItems() {
       if (state!=='play')return;
       const b=BAG(), u=HU;
@@ -4547,6 +4641,7 @@
         cx.restore()
       }
     }
+    // 功能：判斷「slotAt」所需的條件或位置。
     function slotAt(x, y) {
       for (let i=0; i<WP.length; i++) {
         const r=slotR(i);
@@ -4554,6 +4649,7 @@
       }
       return -1
     }
+    // 功能：處理「slotDown」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function slotDown(x, y, id) {
       const ii=itemAt(x, y);
       if (ii>=0) {
@@ -4565,6 +4661,7 @@
       drag={from:i, x, y, id};
       return true
     }
+    // 功能：處理「slotUp」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function slotUp(x, y) {
       if (!drag)return;
       const d=drag, to=slotAt(x, y);
@@ -4583,20 +4680,25 @@
     }
     /* ===== NEON SHARD · 新版選單（資料與工具） ===== */
     const XCAT=[['精準', [0, 2, 8, 11]], ['速射', [3, 9, 12, 13]], ['近距', [1, 4, 22]], ['爆破', [5, 7, 10, 23]], ['控場', [16, 17, 18, 19]], ['特殊', [6, 14, 15, 20, 21]]];
+    // 功能：取得指定武器的分類名稱與武器索引。
     const wCat=i=>{
       for (const c of XCAT)if (c[1].includes(i))return c[0];
       return'其他'
     };
+    // 功能：取得武器描述中的模式欄位。
     const wMode=i=>(WD[i]||'').split('·')[0];
+    // 功能：取得武器描述中的補充說明。
     const wNote=i=>(WD[i]||'').split('·').slice(1).join('·');
     const XS={t:'h', lc:'全部', ws:0, sl:0, sh:'up', sc:'全部', rf:-1, cx:'i', over:0, fresh:0};
     const CI={coins:'coin', sh:'shard', co:'core'};
+    // 功能：建立介面標題或區塊標籤。
     const xh=(c, t, tag)=>{
       const d=document.createElement(tag||'div');
       if (c)d.className=c;
       if (t!==undefined)d.innerHTML=t;
       return d
     };
+    // 功能：建立帶有文字與點擊回呼的介面按鈕。
     const xbt=(c, t, f, dis)=>{
       const b=xh(c, t, 'button');
       b.type='button';
@@ -4604,16 +4706,19 @@
       if (dis)b.disabled=true;
       return b
     };
+    // 功能：建立指定類型的介面圖示。
     const xic=(t, c, s)=>{
       const w=xh('x-ic');
       w.append(mkIcon(t, c, s||24));
       return w
     };
+    // 功能：保存目前選定的武器配置。
     const xSaveLO=()=>{
       try {
         localStorage.setItem('neonShardLO', JSON.stringify(LO))
       } catch (e) {}
     };
+    // 功能：切換至指定介面分頁或遊戲狀態。
     const xGo=t=>{
       if (t!==XS.t) {
         XS.t=t;
@@ -4621,26 +4726,32 @@
       }
       window.upd()
     };
+    // 功能：更新指定介面欄位的內容。
     const xSub=(k, v)=>{
       XS[k]=v;
       XS.fresh=1;
       window.upd()
     };
+    // 功能：依目前篩選條件整理清單並建立篩選介面。
     const xFlt=(list, cur, fn)=>{
       const f=xh('x-flt');
       for (const n of list)f.append(xbt('x-f'+(cur===n?' on':''), n, ()=>fn(n)));
       return f
     };
+    // 功能：計算武器的傷害、射速、彈速與每秒傷害等數值。
     const wStat=o=>{
       const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
       return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
     };
     let XM=null;
+    // 功能：本行宣告多個相關輔助函式；「xmax」及同列工具供後續邏輯共用。
     const xmax=()=>XM||(XM=(()=>{
       const a=ALLW.map(w=>wStat(w)), mx=k=>Math.max(...a.map(s=>s[k]))||1;
       return{dmg:mx('dmg'), rate:mx('rate'), ms:mx('ms'), dps:mx('dps')}
     })());
+    // 功能：依顯示需求格式化數值與小數位數。
     const xfmt=(v, dp)=>dp?v.toFixed(v<100?1:0):String(Math.round(v));
+    // 功能：處理介面系統「xEquip」相關的資料、互動或顯示。
     function xEquip(i, sl) {
       const a=LO.slice(), o=a.indexOf(i);
       if (o>=0) {
@@ -4656,6 +4767,7 @@
       xSaveLO();
       window.upd()
     }
+    // 功能：處理介面系統「xUnequip」相關的資料、互動或顯示。
     function xUnequip(i) {
       if (LO.length<2)return;
       LO=LO.filter(x=>x!==i);
@@ -4663,6 +4775,7 @@
       xSaveLO();
       window.upd()
     }
+    // 功能：建立介面側欄內容或操作項目。
     const xSide=(c, f)=>{
       const s=xh('x-side'), i=xh('x-sc');
       i.dataset.sc='r';
@@ -4671,9 +4784,12 @@
       if (f)s.append(f);
       return s
     };
+    // 功能：加總目前已裝備或持有的芯片數量。
     const xChipTotal=()=>Object.values(SV.chips).reduce((a, b)=>a+b, 0);
 
+    // 功能：處理介面系統「xEmb」相關的資料、互動或顯示。
     function xEmb() {
+      // 功能：繪製指定邊數與半徑的多邊形。
       const poly=(x, y, n, r, off)=>{
         const o=[];
         for (let k=0; k<n; k++) {
@@ -5013,6 +5129,7 @@
 
     /* ---------- 商城 ---------- */
     const XPK=[{n:'普通芯片包', cost:30, k:1, b:0, g:0}, {n:'精選芯片包', cost:80, k:3, b:1, g:0}, {n:'頂級芯片包', cost:200, k:3, b:2, g:1}];
+    // 功能：處理介面系統「xShop」相關的資料、互動或顯示。
     function xShop(v) {
       const subs=[['up', '永久升級'], ['wp', '槍械'], ['it', '消耗品'], ['ch', '角色'], ['pk', '芯片包']];
       const fl=xh('x-flt');
@@ -5020,6 +5137,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
+      // 功能：處理「cost」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const cost=(K, c, can, fn, txt)=>{
         const b=xbt('x-btn sm '+(can?'pri':''), `${c} ${CN[K]}`, fn, !can);
         b.prepend(mkIcon(CI[K], can?'#04101a':CC[K], 14));
@@ -5149,6 +5267,7 @@
       }
     }
 
+    // 功能：處理介面系統「xEnemyCmp」相關的資料、互動或顯示。
     function xEnemyCmp(t, c, d) {
       const id=+String(t).slice(1), E=ELITE[id], nm=(typeof EN!=='undefined'&&EN[id])||d.split(' · ')[0];
       const bk=xh('x-elbk'), w=xh('x-elw');
@@ -5184,12 +5303,14 @@
       document.body.append(bk)
     }
 
+    // 功能：處理「trPick」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function trPick(i, name, col, go) {
       const bk=xh('x-elbk'), w=xh('x-elw');
       bk.append(w);
       w.append(xh('', '<h3>召喚 '+name+'　選擇型態</h3>'));
       const tri='<svg width="18" height="18" viewBox="-4 -4 22 22" style="vertical-align:-4px;overflow:visible;filter:drop-shadow(0 0 3px #ffb21a) drop-shadow(0 0 7px #ffb21a)"><polygon points="7,2.5 12,11.5 2,11.5" fill="#ffc83a" stroke="#ffb21a" stroke-width="1.2" stroke-linejoin="round"/></svg>';
       const g=xh('x-elg'), E=ELITE[i];
+      // 功能：建立或生成「mk」所需的遊戲資料。
       const mk=(el)=>{
         const c=xh('x-elc'+(el?' el':''), '', 'button');
         c.style.cssText='text-align:left;color:inherit;font:inherit;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start';
@@ -5222,6 +5343,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
+      // 功能：本行宣告多個相關輔助函式；「ul」及同列工具供後續邏輯共用。
       const ul=a=>`<ul class="x-ul">${a.map(t=>`<li>${t}</li>`).join('')}</ul>`;
       if (XS.cx==='i') {
         box.append(xh('x-lead', '在霓虹方塊構成的戰場上，一邊瞄準、一邊閃避。清光每一波敵人，擊敗關底 Boss，再把戰利品帶回來強化自己。'));
@@ -5304,6 +5426,7 @@
       };
       m.classList.add('on')
     }
+    // 功能：處理介面系統「xPause」相關的資料、互動或顯示。
     function xPause() {
       const e=$('psi');
       if (e)e.textContent=train?'訓練場 · 不計入進度':`第 ${wave} 波 · 分數 ${score} · 本局金幣 ${coins}`
@@ -5311,6 +5434,7 @@
 
     /* ---------- 版面總管 ---------- */
     const XFIT={h:1, b:1, i:1, k:1};
+    // 功能：處理介面系統「xRender」相關的資料、互動或顯示。
     function xRender() {
       const v=$('xV'), sv={}, tp=v.scrollTop, t=XS.t, fresh=XS.fresh;
       XS.fresh=0;
@@ -5348,6 +5472,7 @@
       const fb=$('xfs');
       if (!fsOK)fb.style.display='none';
       else fb.onclick=toggleFS;
+      // 功能：處理「sync」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const sync=()=>document.body.classList.toggle('inmenu', !$('ov').classList.contains('h'));
       new MutationObserver(sync).observe($('ov'), {attributes:true, attributeFilter:['class']});
       sync();
@@ -5359,6 +5484,7 @@
     ECOL[27]='#e04dff';
     ECOL[28]='#6dffb0';
     ECOL[29]='#c0a060';
+    // 功能：處理「endTrain」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function endTrain() {
       train=false;
       $('tr').classList.add('h');
@@ -5386,10 +5512,12 @@
       $('tr').classList.remove('h');
       $('trt').classList.remove('h')
     }
+    // 功能：處理「trBuild」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function trBuild() {
       const el=$('tr');
       if (el.children.length)return;
       let rowEl;
+      // 功能：處理「sec」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const sec=t=>{
         rowEl=document.createElement('div');
         rowEl.className='tr-row';
@@ -5434,6 +5562,7 @@
           el.style.left=Math.max(0, Math.min(innerWidth-w, e.clientX-o.dx))+'px';
           el.style.top=Math.max(0, Math.min(innerHeight-Math.min(h, 60), e.clientY-o.dy))+'px'
         });
+        // 功能：處理「up」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const up=e=>{
           if (o&&e.pointerId===o.id)o=null
         };
@@ -5452,6 +5581,7 @@
       sec('敵人');
       g=grid();
       EN.forEach((n, i)=>btn(g, 'e'+i, ECOL[i], n, ()=>{
+        // 功能：處理「go」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const go=el=>{
           const a=pl.aim;
           let p={x:pl.x+Math.cos(a)*220, y:pl.y+Math.sin(a)*220};
@@ -5510,6 +5640,7 @@
         trHd.textContent='訓練 ≡';
         tg.className='tr-b';
         tb.append(trHd, tg);
+        // 功能：處理「show」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const show=k=>{
           window._trTab=k;
           rows.forEach((r, i)=>r.style.display=i===k?'flex':'none');
@@ -5564,6 +5695,7 @@
       setState('play');
       startWave()
     };
+    // 功能：繪製或建立「drawBuffs」所需的畫面元素。
     function drawBuffs(x, yb, u) {
       const p=pl, L=[];
       if (p.boost>0)L.push(['speed', '#ffffff', p.boost/10]);
@@ -5584,6 +5716,7 @@
         cx.fillRect(bx+2, by+s-4, (s-4)*Math.max(0, Math.min(1, b[2])), 2.5)
       })
     }
+    // 功能：處理「bar」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bar(x, y, w, h, f, col, ic, txt) {
       const u=HU, ix=ic?h+6:0;
       cx.fillStyle='#05060d99';
@@ -5606,6 +5739,7 @@
         cx.fillText(txt, x+ix+(w-ix)/2, y+h/2+.5)
       }
     }
+    // 功能：處理「ammoBar」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ammoBar(x, y, w, h) {
       const u=HU, wp=WP[pl.w], c=5/wp.ms, n=wp.ms, ix=h+6, tw=24*u, bx=x+ix, aw=w-ix-tw, sh=Math.floor(wp.am+1e-6);
       cx.fillStyle='#05060d99';
@@ -5637,6 +5771,7 @@
 
     let dd=null, sd=null;
     const SPV={0:{k:'b', l:650, w:8}, 1:{k:'a', r:290, h:.6}, 2:{k:'b', l:900, w:28}, 3:{k:'a', r:310, h:.27}, 4:{k:'a', r:230, h:.32}, 5:{k:'l', r:120}, 6:{k:'a', r:320, h:.95}, 7:{k:'r', r:[312, 408, 504]}, 8:{k:'a', r:585, h:.65}, 9:{k:'r', r:[720]}, 10:{k:'l', r:150, c:1}, 11:{k:'a', r:810, h:.33}, 12:{k:'r', r:[420]}, 13:{k:'t'}, 14:{k:'l', r:160}, 15:{k:'f', l:290, w:28, h:.4}, 16:{k:'r', r:[260]}, 17:{k:'l', r:220}, 18:{k:'l', r:130}, 19:{k:'l', r:160}, 20:{k:'tu'}, 21:{k:'l', r:190}, 22:{k:'r', r:[215]}, 23:{k:'cl'}};
+    // 功能：繪製或建立「drawSuperDir」所需的畫面元素。
     function drawSuperDir() {
       if (pl.ult<100||state!=='play')return;
       let a, q, al=1;
@@ -5659,6 +5794,7 @@
       cx.lineWidth=2;
       cx.lineCap='round';
       cx.lineJoin='round';
+      // 功能：處理「band」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const band=(aa, len, wd, pu)=>{
         const l=rayK(ox, oy, aa, len, pu), ex=ox+Math.cos(aa)*l, ey=oy+Math.sin(aa)*l;
         cx.save();
@@ -5829,6 +5965,7 @@
       }
       cx.restore()
     }
+    // 功能：繪製或建立「drawDashDir」所需的畫面元素。
     function drawDashDir() {
       if (!dd)return;
       const dx=dd.x-dd.sx, dy=dd.y-dd.sy;
@@ -5855,6 +5992,7 @@
       cx.fill();
       cx.restore()
     }
+    // 功能：處理「ring」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function ring(el, f, col, flash) {
       const r=el.getBoundingClientRect();
       if (!r.width)return;
@@ -5876,6 +6014,7 @@
       }
       cx.restore()
     }
+    // 功能：繪製或建立「drawBars」所需的畫面元素。
     function drawBars() {
       if (train)trMark();
       if (state!=='play')return;
@@ -5891,6 +6030,7 @@
       ring($('bS'), p.ult/100, '#ffe14a', p.ult>=100&&Math.floor(time*6)%2);
       ring($('bD'), 1-Math.max(0, p.dashCd)/(1.2*(1-.06*UL('dsh'))), '#22e6ff', false)
     }
+    // 功能：繪製或建立「drawLast」所需的畫面元素。
     function drawLast() {
       if (state!=='play'||en.length>3||!en.length)return;
       const u=HU, mx=W/2, my=H/2;
@@ -5932,6 +6072,7 @@
       }
     }
     const AAH=['完全手動，不做任何修正', '只修正你準星附近的敵人，其他方向照你瞄的打', '修正範圍較大，但仍只會鎖定準星方向附近的敵人'];
+    // 功能：處理「setAA」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function setAA(v) {
       AA=v;
       tgLast=null;
@@ -5957,6 +6098,7 @@
         if (q!==null&&+q>=0&&+q<=2)v0=+q
       } catch (e) {}setAA(v0)
     }
+    // 功能：繪製或建立「drawSlots」所需的畫面元素。
     function drawSlots() {
       if (state!=='play')return;
       const u=HU;
@@ -6070,6 +6212,7 @@
     // 扇形/圓形範圍：除了等角取樣，還對每個牆角多射兩條射線(角度±1e-4)，輪廓才會貼合牆面轉角、不會有縫
     const FANC=new Map();
     let FANT=-1;
+    // 功能：處理「fanPts」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function fanPts(x, y, a0, a1, R, pu) {
       if (FANT!==time) {
         FANC.clear();
@@ -6080,6 +6223,7 @@
       const A=[], n=Math.max(8, Math.ceil((a1-a0)/.06));
       for (let i=0; i<=n; i++)A.push(a0+(a1-a0)*i/n);
       if (pu!==2) {
+        // 功能：處理「solid」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const solid=(i, j)=>{
           const v=cell(i, j);
           return pu===1?v<0:v!==0
@@ -6108,6 +6252,7 @@
       FANC.set(key, P);
       return P
     }
+    // 功能：處理「fanG」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function fanG(x, y, a0, a1, R, pu, fill, stroke) {
       const full=a1-a0>=TAU-.01, P=fanPts(x, y, a0, a1, R, pu);
       cx.beginPath();
@@ -6141,6 +6286,7 @@
       }
       return{p:P, b}
     }
+    // 功能：處理「aimBullet」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function aimBullet(w, a, c, pu, Rt) {
       const x=pl.x, y=pl.y, half=w.n1>1?w.sp/2+c:c, cone=w.ad==='c'||!!w.fl, L=rayK(x, y, a, Rt, pu), ex=x+Math.cos(a)*L, ey=y+Math.sin(a)*L;
       cx.lineCap='round';
@@ -6246,6 +6392,7 @@
         cx.setLineDash([])
       }
     }
+    // 功能：繪製或建立「drawAim」所需的畫面元素。
     function drawAim() {
       const w=WP[pl.w];
       let a=pl.aim;
@@ -6373,7 +6520,9 @@
       }
       for (let j=Math.floor((b.y-R)/T); j<=Math.floor((b.y+R)/T); j++)for (let i=Math.floor((b.x-R)/T); i<=Math.floor((b.x+R)/T); i++)if (Math.hypot((i+.5)*T-b.x, (j+.5)*T-b.y)<R+8)hitCell(i, j, Math.floor(b.wd))
     }
+    // 功能：處理「angD」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const angD=(a, b)=>Math.abs(Math.atan2(Math.sin(a-b), Math.cos(a-b)));
+    // 功能：處理「quickT」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function quickT() {
       if (!AA)return null;
       let b=null, bd=9999;
@@ -6443,7 +6592,9 @@
       if (!w)return;
       w.um=Math.min(100, (w.um||0)+amt*(CHR.sc||1)*(UE[w.id]??1))
     }
+    // 功能：處理「BMR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const BMR=b=>17*(b.ult?2.5:1.7);
+    // 功能：處理「boom」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function boom(b, dt) {
       if (!b.spd0)b.spd0=Math.hypot(b.vx, b.vy)||1;
       if (!b.t2&&b.age>b.l0*.35) {
@@ -6464,6 +6615,7 @@
         }
       }
     }
+    // 功能：處理「homeP」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function homeP(b, dt) {
       const dx=pl.x-b.x, dy=pl.y-b.y, sp=Math.hypot(b.vx, b.vy), a=Math.atan2(b.vy, b.vx);
       let df=Math.atan2(dy, dx)-a;
@@ -6472,6 +6624,7 @@
       b.vx=Math.cos(na)*sp;
       b.vy=Math.sin(na)*sp
     }
+    // 功能：處理「home」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function home(b, dt) {
       const sp=Math.hypot(b.vx, b.vy);
       if (sp<1)return;
@@ -6527,6 +6680,7 @@
         const {
           grid, n, sx, sy
         }=e.data;
+        // 功能：處理「wide」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const wide=(x, y)=>{
           for (let dx=-1; dx<=1; dx++)for (let dy=-1; dy<=1; dy++) {
             const a=x+dx, b=y+dy;
@@ -6534,6 +6688,7 @@
           }
           return true
         };
+        // 功能：處理「run」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
         const run=w=>{
           const F=new Int16Array(n*n).fill(-1), q=new Int32Array(n*n);
           let h=0, t=0;
@@ -6586,6 +6741,7 @@
     }
     // 敵人尋路：有視線直接追，否則沿路徑場下降方向走
     function nav(e, a, d) {
+      // 功能：處理「vis」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
       const vis=(x, y)=>{
         const L=Math.hypot(x-e.x, y-e.y);
         if (L<4)return true;
@@ -6630,11 +6786,13 @@
       if (tx===null)return a;
       return Math.atan2(ty-e.y, tx-e.x)
     }
+    // 功能：處理「flk」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function flk(e, a, d) {
       if (e.fo===undefined)e.fo=(Math.random()-.5)*1.2;
       return a+e.fo*Math.max(0, Math.min(1, (d-70)/260))
     }
     const LEAD={1:[400, null, 1], 2:[235, null, 1], 4:[300, null, 1], 7:[1e5, null, .6], 3:[1e5, .55, 1], 13:[1e5, .5, 1], 5:[1e5, .5, 1], 29:[1e5, .5, 1]};
+    // 功能：處理「leadAt」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function leadAt(e, sp, td, acc) {
       const vx=pl.avx||0, vy=pl.avy||0;
       if (vx*vx+vy*vy<100)return[pl.x, pl.y];
@@ -6662,12 +6820,14 @@
       }
       return[tx, ty]
     }
+    // 功能：處理「bLead」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bLead(e, a) {
       const P=leadAt(e, 420*BS, .25, .55);
       let df=Math.atan2(P[1]-e.y, P[0]-e.x)-a;
       df=Math.atan2(Math.sin(df), Math.cos(df));
       return a+Math.max(-.3, Math.min(.3, df))*Math.min(1, .4+wave*.02)
     }
+    // 功能：處理「aiExtra」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function aiExtra(e, dt) {
       if (isB(e)||e.t>=30||dt<=0)return;
       if (e.iq===undefined)e.iq=Math.random();
@@ -6746,24 +6906,29 @@
       e.dgn=(e.dgn||0)+1
     }
     let HF=0, HC='#ff1e3c', chp=[], FL=null, bti=0, bcol='#ff4d4d', bossIn=0, bossT=0, ptxt=0, phn=1;
+    // 功能：處理「flash」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function flash(col, t, a) {
       FL={col, t, max:t, a}
     }
     let TSt=0, TSv=1;
+    // 功能：處理「slowmo」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function slowmo(v, t) {
       if (TSt<=0)TSv=1;
       TSv=Math.min(TSv, v);
       TSt=Math.max(TSt, t)
     }
+    // 功能：處理「bossRays」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossRays(x, y, col, t, n, len) {
       fxs.push({k:'rays', x, y, col, t, max:t, n, len, rot:Math.random()*TAU})
     }
+    // 功能：處理「bossBolts」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossBolts(x, y, col, n) {
       for (let k=0; k<n; k++) {
         const t=.35+Math.random()*.25;
         fxs.push({k:'bolt', x:x+(Math.random()-.5)*300, y:y+(Math.random()-.5)*40, y0:y-760, col, t, max:t, seed:Math.random()*90+3})
       }
     }
+    // 功能：處理「bossIntro」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossIntro(e) {
       for (let k=0; k<3; k++)fxs.push({k:'cring', x:e.x, y:e.y, r:560-k*130, t:.9+k*.25, max:.9+k*.25, col:k?e.col:'#ffffff'});
       bossBolts(e.x, e.y, e.col, 5);
@@ -6771,6 +6936,7 @@
       burst(e.x, e.y, e.col, 60, 380, 4, 1);
       slowmo(.45, .6)
     }
+    // 功能：處理「bossDeath」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossDeath(e) {
       slowmo(.25, .9);
       bossRays(e.x, e.y, '#ffffff', 1.2, 20, 920);
@@ -6792,6 +6958,7 @@
       }
       })
     }
+    // 功能：處理「bossAura」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossAura(e) {
       const f=Math.max(0, e.hp/e.mhp), pu=.5+.5*Math.sin(time*3), rg=cx.createRadialGradient(e.x, e.y, e.r*.6, e.x, e.y, e.r*(2.4+.3*pu));
       cx.save();
@@ -6826,6 +6993,7 @@
       }
       cx.restore()
     }
+    // 功能：處理「phaseFx」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function phaseFx(e, ph) {
       slowmo(.3, .5);
       bl=bl.filter(b=>b.own);
@@ -6837,6 +7005,7 @@
       ptxt=1.6;
       phn=ph+1
     }
+    // 功能：繪製或建立「drawWarn」所需的畫面元素。
     function drawWarn() {
       const u=HU;
       if (bossIn>0) {
@@ -6887,6 +7056,7 @@
         cx.restore()
       }
     }
+    // 功能：繪製或建立「drawAtmos」所需的畫面元素。
     function drawAtmos() {
       cx.setTransform(DPR, 0, 0, DPR, 0, 0);
       if (bti>.01) {
@@ -6928,6 +7098,7 @@
     }
     const BN=['哨兵', '巨像', '棱鏡', '核心', '雷霆', '蜂后', '虛空', '終焉'], isB=e=>e.t>=14&&e.t<26, EXT={18:[30, 1800, 150, '#ffe14a', 4500, 3], 19:[40, 2200, 95, '#9dff3d', 5000, 4], 20:[36, 2400, 85, '#7a7aff', 5500, 4], 21:[44, 3500, 65, '#ff2a8a', 9000, 6], 30:[26, 1, 0, '#4dffd8', 0, 3], 31:[18, 300, 0, '#d070ff', 200, 9], 26:[12, 28, 210, '#ff9f2a', 140, 1], 27:[13, 45, 70, '#e04dff', 230, 1], 28:[14, 60, 60, '#6dffb0', 260, 1], 29:[14, 55, 65, '#c0a060', 240, 1]}, BK=[3, 3, 2, 4, 3, 3, 3, 4], BPF=[130, 130, 260, 0, 200, 150, 0, 180];
     let MVF=0;
+    // 功能：處理「pRing」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const pRing=(e, n, sp, d, o)=>{
       for (let k=0; k<n; k++)eb(e, (o||0)+k/n*TAU, sp, d)
     }, pFan=(e, a, c, sp, d, s)=>{
@@ -6946,15 +7117,18 @@
     }, lat=(e, t, fn)=>later(t, ()=>{
       if (e.hp>0&&state==='play')fn()
     });
+    // 功能：處理「dm」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function dm(e, d, ang) {
       if (e.inv>0)return 0;
       if (e.frz>0)d*=1.5;
       return isB(e)?bd(e, d, ang):d
     }
+    // 功能：處理「bInv」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const bInv=e=>{
       const i=e.t-14;
       return e.inv>0||(i===3&&en.some(n=>n.t===31&&n.hp>0))||(i===5&&en.some(n=>n.bee&&n.hp>0))||((i===2||(i===7&&e.ph===2))&&en.some(n=>n.t===30&&n.hp>0))
     };
+    // 功能：處理「bd」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bd(e, d, ang) {
       const i=e.t-14;
       if (e.inv>0)return 0;
@@ -6988,6 +7162,7 @@
       }
       return r
     }
+    // 功能：處理「frz」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function frz(e) {
       e.fv=0;
       if (isB(e)) {
@@ -6998,6 +7173,7 @@
       e.frz=2;
       burst(e.x, e.y, '#9ae6ff', 16, 160, 3, .5)
     }
+    // 功能：引爆電荷並結算範圍傷害、暈眩與特效。
     function detonate(e) {
       e.cg=0;
       fxs.push({k:'w', x:e.x, y:e.y, r:150, t:.35, max:.35, col:'#ffe14a'}, {k:'mx', x:e.x, y:e.y, r:150, t:.45, max:.45, col:'#ffe14a', rot:Math.random()*TAU}, {k:'rays', x:e.x, y:e.y, len:150, n:9, rot:Math.random()*TAU, t:.3, max:.3, col:'#fff4a6'});
@@ -7025,6 +7201,7 @@
         }
       }
     }
+    // 功能：處理「tiles」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tiles(e, ph) {
       const x0=Math.round(pl.x/70)*70-175, y0=Math.round(pl.y/70)*70-175, Wv=ph>1?3:2;
       for (let wv=0; wv<Wv; wv++) {
@@ -7043,6 +7220,7 @@
         })
       }
     }
+    // 功能：處理「rocks」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function rocks(e, n) {
       const cs=[];
       for (let j=0; j<N; j++)for (let i=0; i<N; i++)if (grid[j*N+i]>0) {
@@ -7058,6 +7236,7 @@
       }
       return cs.length
     }
+    // 功能：處理「emptyNear」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function emptyNear(e, a, b) {
       for (let k=0; k<150; k++) {
         const an=Math.random()*TAU, d=a+Math.random()*(b-a), x=e.x+Math.cos(an)*d, y=e.y+Math.sin(an)*d;
@@ -7065,6 +7244,7 @@
       }
       return null
     }
+    // 功能：處理「beeWave」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function beeWave(e) {
       for (let q=0; q<6; q++) {
         if (en.length>=34)break;
@@ -7075,12 +7255,14 @@
         en.push(m)
       }
     }
+    // 功能：處理「poison」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function poison(e) {
       for (let q=0; q<3+(e.ph||0); q++) {
         const ax=Math.random()*TAU, o=q?60+Math.random()*100:0;
         zones.push(thr({k:'slowz', x:pl.x+Math.cos(ax)*o, y:pl.y+Math.sin(ax)*o, r:55, t:13, max:13, col:e.col, grow:11, dps:3}, e.x, e.y, .5))
       }
     }
+    // 功能：處理「portals」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function portals(e) {
       zones=zones.filter(z=>z.k!=='portal');
       const ang=Math.random()*TAU, a={k:'portal', x:pl.x+Math.cos(ang)*190, y:pl.y+Math.sin(ang)*190, r:30, t:14, max:14, col:'#ffb040'}, b={k:'portal', x:pl.x-Math.cos(ang)*190, y:pl.y-Math.sin(ang)*190, r:30, t:14, max:14, col:'#4dffd8'};
@@ -7089,6 +7271,7 @@
       b.o=a;
       zones.push(a, b)
     }
+    // 功能：處理「bossPhase」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossPhase(e, ph, i) {
       if (i===2||(i===7&&ph===2)) {
         for (const c of en)if (c.t===30)c.hp=0;
@@ -7121,6 +7304,7 @@
         poison(e)
       }
     }
+    // 功能：處理「cloneAI」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function cloneAI(e, dt) {
       const b=en.find(isB);
       if (!b||b.hp<=0) {
@@ -7132,6 +7316,7 @@
       e.y=b.y+Math.sin(e.oa)*150;
       if (e.tele>0)e.tele-=dt
     }
+    // 功能：處理「nodeAI」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function nodeAI(e, dt) {
       const b=en.find(isB);
       if (!b||b.hp<=0) {
@@ -7150,10 +7335,12 @@
         else pHom(e, 3, 140, 9)
       }
     }
+    // 功能：處理「dk」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const dk=c=>{
       const n=parseInt(c.slice(1), 16), r=(n>>16&255)*.4|0, g=(n>>8&255)*.4|0, b=(n&255)*.4|0;
       return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1)
     };
+    // 功能：繪製或建立「drawBossFx」所需的畫面元素。
     function drawBossFx(e) {
       const i=e.t-14;
       bossAura(e);
@@ -7183,6 +7370,7 @@
       }
       cx.restore()
     }
+    // 功能：處理「bossFire3」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossFire3(e, ph, a, i) {
       TS=e;
       e.rec=Math.max(.25, .5-.08*ph);
@@ -7312,6 +7500,7 @@
         if (ph===3&&k===0)poison(e)
       }
     }
+    // 功能：處理「bossAI3」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossAI3(e, dt, d, a) {
       const i=e.t-14, hf=e.hp/e.mhp, ph=hf<.25?3:hf<.5?2:hf<.75?1:0;
       if (!e.init) {
@@ -7408,6 +7597,7 @@
       }
     }
     const BN_OLD=0;
+    // 功能：處理「mvB」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function mvB(e, x, y) {
       const r=e.r;
       e.r=16;
@@ -7419,6 +7609,7 @@
       }
       return b
     }
+    // 功能：處理「beam」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function beam(e, ang, rf) {
       const L=ray(e.x, e.y, ang, 800), c=Math.cos(ang), s=Math.sin(ang), dx=pl.x-e.x, dy=pl.y-e.y, u=dx*c+dy*s;
       for (let q=0; q<L; q+=14)burst(e.x+c*q, e.y+s*q, e.col, 1, 40, 3, .3);
@@ -7436,26 +7627,32 @@
         beam({x:px, y:py, col:e.col}, Math.atan2(s2, c2))
       }
     }
+    // 功能：處理「tLine」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tLine(x, y, a, L) {
       const l=Math.min(L, ray(x, y, a, L));
       cx.moveTo(x, y);
       cx.lineTo(x+Math.cos(a)*l, y+Math.sin(a)*l)
     }
+    // 功能：處理「tCirc」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tCirc(x, y, r) {
       cx.moveTo(x+r, y);
       cx.arc(x, y, r, 0, TAU)
     }
+    // 功能：處理「tFan」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tFan(x, y, a, n, sp, L) {
       for (let q=0; q<n; q++)tLine(x, y, a+(n>1?(q/(n-1)-.5)*sp:0), L)
     }
+    // 功能：處理「teleBeams」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function teleBeams(s, n) {
       const a=Math.atan2(pl.y-s.y, pl.x-s.x);
       for (let q=0; q<n; q++)tLine(s.x, s.y, a+(q-(n-1)/2)*.22, 800)
     }
+    // 功能：處理「tTiles」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tTiles() {
       const x0=Math.round(pl.x/70)*70-175, y0=Math.round(pl.y/70)*70-175;
       cx.rect(x0, y0, 350, 350)
     }
+    // 功能：處理「bossTele」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function bossTele(e) {
       const i=e.t-14, ph=e.ph||0, k=e.atk, A=e.aim, R=e.r;
       if (i===0) {
@@ -7526,6 +7723,7 @@
         }
       }
     }
+    // 功能：繪製或建立「drawBoss」所需的畫面元素。
     function drawBoss() {
       const e=en.find(isB);
       if (!e)return;
@@ -7575,6 +7773,7 @@
         cx.fillText('BREAK!', W/2, y+20*u)
       }
     }
+    // 功能：處理「chg」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function chg(e, dt, d, a) {
       const E=e.el;
       if (e.dash>0) {
@@ -7635,10 +7834,12 @@
       }
     }
 
+    // 功能：處理「mineBoom」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function mineBoom(z) {
       explode({x:z.x, y:z.y, ex:z.r, dmg:z.dmg, kb:z.kb||300, wd:z.wd===undefined?2:z.wd, col:z.col, soft:1, cw:z.ult?undefined:z.wi, bu:z.bu, fr:z.fr, fz4:z.fz4, lk:z.lk, ch:z.ch});
       z.t=0
     }
+    // 功能：處理「zoneParticle」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function zoneParticle(z, k, col) {
       if (pt.length>=700)return;
       const n=k==='ice'?5+(Math.random()*5|0):1+(Math.random()*2|0);
@@ -7647,6 +7848,7 @@
         pt.push({x:z.x+Math.cos(a)*r, y:z.y+Math.sin(a)*r, vx:ice?(Math.random()-.5)*12:(Math.random()-.5)*22, vy:ice?-18-Math.random()*34:(Math.random()-.5)*22, life, max:life, age:0, col, sz:ice?1.5+Math.random()*4:1.15+Math.random()*1.15, f:2, k, rot:Math.random()*TAU, vr:ice?(Math.random()-.5)*1.4:(Math.random()-.5)*5, seed:Math.random()*1000})
       }
     }
+    // 功能：處理「thr」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function thr(z, x0, y0, d) {
       if (z.k==='bomb') {
         z.t=Math.max(.3, z.t-d);
@@ -8868,6 +9070,18 @@
           pp(f.pts, f.w, f.col, .8);
           cx.shadowBlur=6;
           pp(f.pts, f.w*.4, '#ffffff', 1)
+        } else if (f.k==='txt') {
+          // 浮動戰鬥文字隨時間上移並淡出，提示清楚但不長時間遮擋畫面。
+          cx.globalAlpha=Math.max(0, 1-p*1.25);
+          cx.textAlign='center';
+          cx.textBaseline='middle';
+          cx.font=`bold ${Math.max(10, f.size||12)}px ui-monospace,monospace`;
+          cx.lineJoin='round';
+          cx.lineWidth=4;
+          cx.strokeStyle='#101018';
+          cx.strokeText(f.text, f.x, f.y-p*24);
+          cx.fillStyle=f.col;
+          cx.fillText(f.text, f.x, f.y-p*24);
         } else if (f.k==='bolt') {
           cx.globalCompositeOperation='lighter';
           cx.globalAlpha=Math.max(0, 1-p*1.2);
@@ -9108,6 +9322,7 @@
           cx.save();
           cx.globalCompositeOperation='source-over';
           cx.shadowBlur=0;
+          // 功能：處理「hex」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
           const hex=(r)=>{
             cx.beginPath();
             for (let i=0; i<6; i++) {
@@ -9300,6 +9515,7 @@
       drawAtmos();
       hud()
     }
+    // 功能：處理「row」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function row(i, t, col, f, txt) {
       const u=HU, y=safeT+16*u+i*25*u, x=12;
       cx.save();
@@ -9436,6 +9652,7 @@
     $('go').onclick=start;
     const fsB=$('fs'), fsOK=document.fullscreenEnabled||document.webkitFullscreenEnabled;
     if (!fsOK)fsB.style.display='none';
+    // 功能：處理「toggleFS」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function toggleFS() {
       if (!fsOK)return;
       const d=document, r=d.documentElement;
@@ -9498,6 +9715,7 @@
       }
     });
     cv.addEventListener('contextmenu', e=>e.preventDefault());
+    // 功能：處理「setTouch」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function setTouch() {
       if (!touchOn) {
         touchOn=true;
@@ -9539,6 +9757,7 @@
         }
       }
     }, {passive:false});
+    // 功能：處理「tend」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const tend=e=>{
       e.preventDefault();
       for (const t of e.changedTouches) {
@@ -9638,11 +9857,13 @@
     if (matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0)setTouch();
     /* ===== 兌換碼：解密後改寫存檔（金幣 / 碎片 / 晶核 / 關卡進度）===== */
     const RK='2595dfeff027a3760fa9425b0664a2a5';
+    // 功能：處理「rdHex」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function rdHex(s) {
       const a=new Uint8Array(s.length/2);
       for (let i=0; i<a.length; i++)a[i]=parseInt(s.substr(i*2, 2), 16);
       return a
     }
+    // 功能：處理「sha256」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function sha256(m) {
       const P=[];
       for (let c=2; P.length<64; c++) {
@@ -9692,6 +9913,7 @@
       h.forEach((v, i)=>ov.setUint32(i*4, v>>>0));
       return out
     }
+    // 功能：處理「hmac」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function hmac(k, m) {
       const ip=new Uint8Array(64+m.length), op=new Uint8Array(96);
       for (let i=0; i<64; i++) {
@@ -9704,6 +9926,7 @@
       return sha256(op)
     }
     const RB32='0123456789ABCDEFGHJKMNPQRSTVWXYZ', rdTxt=s=>Uint8Array.from(s, c=>c.charCodeAt(0));
+    // 功能：處理「rdB32」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function rdB32(s) {
       let bits=0, v=0;
       const out=[];
@@ -9720,6 +9943,7 @@
       }
       return Uint8Array.from(out)
     }
+    // 功能：處理「rdDecode」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function rdDecode(code) {
       const s=String(code).toUpperCase().replace(/O/g, '0').replace(/[IL]/g, '1').replace(/[^0-9A-Z]/g, '');
       if (s.length!==32)return{e:'格式不正確，請確認有輸入完整的 32 個字元'};
@@ -9734,6 +9958,7 @@
       const dv=new DataView(pt.buffer);
       return{add:!!(pt[0]&128), stages:pt[0]&127, gold:dv.getUint32(1), shards:dv.getUint32(5), cores:dv.getUint32(9), id:[...mac].map(x=>x.toString(16).padStart(2, '0')).join('')+[...nonce].map(x=>x.toString(16).padStart(2, '0')).join('')}
     }
+    // 功能：處理「redeem」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function redeem(code) {
       const r=rdDecode(code);
       if (r.e)return{ok:false, msg:r.e};
@@ -9763,6 +9988,7 @@
       if (window.upd)window.upd();
       return{ok:true, msg:(r.add?'已增加':'已設定為')+'：金幣 '+r.gold.toLocaleString()+'、碎片 '+r.shards.toLocaleString()+'、晶核 '+r.cores.toLocaleString()+(u>0?'；解鎖關卡 '+u+' 關（'+(r.add?'取較高者':'依兌換碼設定')+'）':'；關卡進度不變')}
     }
+    // 功能：處理「rdOpen」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function rdOpen() {
       let el=$('rd');
       if (!el) {
@@ -9830,16 +10056,20 @@
     try {
       tutorialSeen=localStorage.getItem(TUT_KEY)==='1'
     } catch (e) {}
+    // 功能：保存教學已完成的狀態。
     function markTutorialDone() {
       tutorialSeen=true;
       try {
         localStorage.setItem(TUT_KEY, '1')
       } catch (e) {}
     }
+    // 功能：處理「tutCount」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const tutCount=(k, n=1)=>{
       if (TUT.on)TUT.st[k]=(TUT.st[k]||0)+n
     };
+    // 功能：處理「tutNew」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const tutNew=()=>({moved:0, aimed:0, shots:0, auto:0, switches:0, dashes:0, walls:0, kills:0, supers:0, pauses:0, emptied:0});
+    // 功能：計算玩家面向方向上指定距離的座標。
     const tutAhead=d=>({x:pl.x+Math.cos(pl.aim)*d, y:pl.y+Math.sin(pl.aim)*d}); // 玩家面向前方 d 像素處
 
     /** 生成教學敵人；frozen=靜止靶（不會移動），位置被牆擋住時改找空地 */
@@ -9851,6 +10081,7 @@
       en.push(e);
       burst(p.x, p.y, '#ffffff', 8, 120, 2, .5);
     }
+    // 功能：處理「tutDummies」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     const tutDummies=n=>{
       for (let k=0; k<n; k++) {
         const a=tutAhead(190);
@@ -9951,6 +10182,7 @@
     p:()=>Math.max(0, (pl.hp-40)/25)}
     ];
 
+    // 功能：處理「tutEnter」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutEnter(i) {
       TUT.step=i;
       TUT.adv=0;
@@ -9966,6 +10198,7 @@
       if (st.setup)st.setup();
       tutUI();
     }
+    // 功能：處理「tutAdvance」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutAdvance() {
       if (!TUT.on||TUT.done)return;
       if (TUT.step>=TUT_STEPS.length-1) {
@@ -9979,6 +10212,7 @@
       }
       tutEnter(TUT.step+1);
     }
+    // 功能：處理「tutBack」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutBack() {
       if (TUT.on&&!TUT.done&&TUT.step>0)tutEnter(TUT.step-1);
       else if (TUT.on&&TUT.done) {
@@ -9986,6 +10220,7 @@
         tutEnter(TUT.step)
       }
     }
+    // 功能：處理「tutTick」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutTick(dt) {
       if (!TUT.on||state!=='play'||TUT.done)return;
       pkT=999;
@@ -10012,6 +10247,7 @@
       } // 達標：顯示 ✓ 後再進下一步
       if (st.keep)st.keep();
     }
+    // 功能：初始化並啟動教學流程。
     function startTutorial() {
       applyLO();
       setup();
@@ -10029,6 +10265,7 @@
       setState('play');
       tutUI();
     }
+    // 功能：處理「exitTutorial」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function exitTutorial() {
       markTutorialDone();
       TUT.on=false;
@@ -10039,6 +10276,7 @@
       setState('menu');
       showOv(0);
     }
+    // 功能：處理「tutToBattle」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutToBattle() {
       markTutorialDone();
       TUT.on=false;
@@ -10107,6 +10345,7 @@
     };
     }
 
+    // 功能：處理「wrapTut」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function wrapTut(text, maxW) {
       const out=[];
       let line='';
@@ -10119,6 +10358,7 @@
       out.push(line);
       return out;
     }
+    // 功能：繪製或建立「drawTutPanel」所需的畫面元素。
     function drawTutPanel() {
       if (!TUT.on||state!=='play')return;
       cx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -10155,6 +10395,7 @@
 
     /* 教學控制鈕（鍵盤：N 跳過 / B 上一步 / X 離開 / Enter 開始戰鬥；觸控用畫面按鈕）。主頁入口在 xLobby 的按鈕列 */
     let tutBox=null, tutBackBtn=null, tutSkipBtn=null, tutStartBtn=null;
+    // 功能：處理「tutUI」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutUI() {
       if (!tutBox)return;
       tutBox.style.display=TUT.on?'flex':'none';
@@ -10162,9 +10403,11 @@
       tutSkipBtn.style.display=TUT.on&&!TUT.done?'block':'none';
       tutStartBtn.style.display=TUT.on&&TUT.done?'block':'none';
     }
+    // 功能：處理「tutorialButton」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
     function tutorialButton() {
       tutBox=document.createElement('div');
       tutBox.style.cssText='position:fixed;z-index:25;left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 54px);display:none;flex-direction:column;gap:6px';
+      // 功能：建立或生成「mk」所需的遊戲資料。
       const mk=(t, fn)=>{
         const b=document.createElement('button');
         b.className='sb';
