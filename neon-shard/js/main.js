@@ -43,18 +43,77 @@ const STATE_HOOKS = {
   enter: { play() {}, pause() {}, shop() {}, over() {}, menu() {} },
   exit: {},
 };
+// 擴充點：新增狀態、轉移邊、進出狀態回呼與轉移守門條件，不必改動 setState 本體。
+const STATE_EXTENSION_HOOKS = { enter: new Map(), exit: new Map() };
+const STATE_TRANSITION_GUARDS = new Set();
+
 let STATE_STRICT = false; // true：非法轉移直接拒絕；false：只在 console 警告
+
+// 註冊或移除狀態轉移；回傳取消註冊函式，方便模組卸載。
+function registerStateTransition(from, to, allowed = true) {
+  if (!STATE_GRAPH[from]) STATE_GRAPH[from] = {};
+  if (!STATE_GRAPH[to]) STATE_GRAPH[to] = {};
+  const previous = STATE_GRAPH[from][to];
+  STATE_GRAPH[from][to] = allowed ? 1 : 0;
+  return () => {
+    if (previous === undefined) delete STATE_GRAPH[from][to];
+    else STATE_GRAPH[from][to] = previous;
+  };
+}
+
+// 註冊狀態進入／離開回呼；同一狀態可由多個模組分別擴充。
+function registerStateHook(stateName, phase, callback) {
+  if (phase !== "enter" && phase !== "exit")
+    throw new TypeError('phase 必須是 "enter" 或 "exit"');
+  if (typeof callback !== "function")
+    throw new TypeError("callback 必須是函式");
+  if (!STATE_GRAPH[stateName]) STATE_GRAPH[stateName] = {};
+  const hooks = STATE_EXTENSION_HOOKS[phase];
+  if (!hooks.has(stateName)) hooks.set(stateName, new Set());
+  hooks.get(stateName).add(callback);
+  return () => hooks.get(stateName)?.delete(callback);
+}
+
+// 守門函式回傳 false 即拒絕轉移；可用來集中管理教學、過場等限制。
+function registerStateGuard(guard) {
+  if (typeof guard !== "function") throw new TypeError("guard 必須是函式");
+  STATE_TRANSITION_GUARDS.add(guard);
+  return () => STATE_TRANSITION_GUARDS.delete(guard);
+}
+
+function runStateHooks(phase, stateName, ...args) {
+  const legacyHook = STATE_HOOKS[phase][stateName];
+  if (legacyHook) legacyHook(...args);
+  for (const callback of STATE_EXTENSION_HOOKS[phase].get(stateName) || []) {
+    try {
+      callback(...args);
+    } catch (error) {
+      console.error(`[state] ${phase} hook failed for "${stateName}"`, error);
+    }
+  }
+}
+
 // 功能：驗證並執行狀態轉移，觸發離開與進入狀態的鉤子。
 function setState(next) {
   if (state === next) return true;
-  if (!(STATE_GRAPH[state] && STATE_GRAPH[state][next])) {
-    console.warn("[state] 非法轉移 " + state + " -> " + next);
+  const previous = state;
+  for (const guard of STATE_TRANSITION_GUARDS) {
+    try {
+      if (guard(previous, next) === false) return false;
+    } catch (error) {
+      console.error("[state] transition guard failed", error);
+      return false;
+    }
+  }
+  const transition = STATE_GRAPH[previous]?.[next];
+  if (transition === 0) return false;
+  if (!transition) {
+    console.warn("[state] 非法轉移 " + previous + " -> " + next);
     if (STATE_STRICT) return false;
   }
-  if (STATE_HOOKS.exit[state]) STATE_HOOKS.exit[state](next);
-  const prev = state;
+  runStateHooks("exit", previous, next);
   state = next;
-  if (STATE_HOOKS.enter[next]) STATE_HOOKS.enter[next](prev);
+  runStateHooks("enter", next, previous);
   return true;
 }
 const N = 44,
@@ -114,111 +173,111 @@ function legend() {
 let CZ = 24;
 const ALLW = [
   {
-    n: "手槍",
-    c: "#22e6ff",
-    n1: 1,
-    sp: 0,
-    dmg: 24,
-    v: 680,
-    life: 0.75,
-    cd: 0.16,
-    cost: 1,
-    kb: 220,
-    r: 4,
+    name: "手槍",
+    color: "#22e6ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 24,
+    projectileSpeed: 680,
+    projectileLifetime: 0.75,
+    fireCooldown: 0.16,
+    ammoCost: 1,
+    knockback: 220,
+    projectileRadius: 4,
   },
   {
-    n: "霰彈",
-    c: "#ffb03d",
-    n1: 5,
-    sp: 0.45,
-    dmg: 15,
-    v: 600,
-    life: 0.38,
-    cd: 0.55,
-    cost: 2,
-    kb: 200,
-    r: 3.5,
+    name: "霰彈",
+    color: "#ffb03d",
+    projectilesPerShot: 5,
+    spreadAngle: 0.45,
+    damage: 15,
+    projectileSpeed: 600,
+    projectileLifetime: 0.38,
+    fireCooldown: 0.55,
+    ammoCost: 2,
+    knockback: 200,
+    projectileRadius: 3.5,
   },
   {
-    n: "狙擊",
-    c: "#ff5fd0",
-    n1: 1,
-    sp: 0,
-    dmg: 70,
-    v: 1150,
-    life: 0.9,
-    cd: 0.8,
-    cost: 2,
-    kb: 700,
-    r: 4,
-    pierce: 1,
+    name: "狙擊",
+    color: "#ff5fd0",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 70,
+    projectileSpeed: 1150,
+    projectileLifetime: 0.9,
+    fireCooldown: 0.8,
+    ammoCost: 2,
+    knockback: 700,
+    projectileRadius: 4,
+    pierceCount: 1,
   },
   {
-    n: "衝鋒",
-    c: "#9dff3d",
-    n1: 1,
-    sp: 0.14,
-    dmg: 11,
-    v: 720,
-    life: 0.6,
-    cd: 0.075,
-    cost: 0.45,
-    kb: 90,
-    r: 3,
+    name: "衝鋒",
+    color: "#9dff3d",
+    projectilesPerShot: 1,
+    spreadAngle: 0.14,
+    damage: 11,
+    projectileSpeed: 720,
+    projectileLifetime: 0.6,
+    fireCooldown: 0.075,
+    ammoCost: 0.45,
+    knockback: 90,
+    projectileRadius: 3,
   },
   {
-    n: "噴火",
-    c: "#ff7a3d",
-    n1: 1,
-    sp: 0.22,
-    dmg: 5,
-    v: 260,
-    life: 0.7,
-    cd: 0.06,
-    cost: 0.35,
-    kb: 35,
-    r: 6,
-    pierce: 1,
+    name: "噴火",
+    color: "#ff7a3d",
+    projectilesPerShot: 1,
+    spreadAngle: 0.22,
+    damage: 5,
+    projectileSpeed: 260,
+    projectileLifetime: 0.7,
+    fireCooldown: 0.06,
+    ammoCost: 0.35,
+    knockback: 35,
+    projectileRadius: 6,
+    pierceCount: 1,
   },
   {
-    n: "重炮",
-    c: "#b45cff",
-    n1: 1,
-    sp: 0,
-    dmg: 78,
-    v: 420,
-    life: 1,
-    cd: 0.9,
-    cost: 2.5,
-    kb: 650,
-    r: 8,
+    name: "重炮",
+    color: "#b45cff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 78,
+    projectileSpeed: 420,
+    projectileLifetime: 1,
+    fireCooldown: 0.9,
+    ammoCost: 2.5,
+    knockback: 650,
+    projectileRadius: 8,
   },
   {
-    n: "導引",
-    c: "#4dffd8",
-    n1: 1,
-    sp: 0.3,
-    dmg: 20,
-    v: 440,
-    life: 1.2,
-    cd: 0.35,
-    cost: 1,
-    kb: 120,
-    r: 4,
-    hm: 1,
+    name: "導引",
+    color: "#4dffd8",
+    projectilesPerShot: 1,
+    spreadAngle: 0.3,
+    damage: 20,
+    projectileSpeed: 440,
+    projectileLifetime: 1.2,
+    fireCooldown: 0.35,
+    ammoCost: 1,
+    knockback: 120,
+    projectileRadius: 4,
+    homingEnabled: 1,
   },
   {
-    n: "環爆",
-    c: "#ffe14a",
-    n1: 10,
-    sp: 5.65,
-    dmg: 9,
-    v: 400,
-    life: 0.5,
-    cd: 0.8,
-    cost: 2.5,
-    kb: 130,
-    r: 3.5,
+    name: "環爆",
+    color: "#ffe14a",
+    projectilesPerShot: 10,
+    spreadAngle: 5.65,
+    damage: 9,
+    projectileSpeed: 400,
+    projectileLifetime: 0.5,
+    fireCooldown: 0.8,
+    ammoCost: 2.5,
+    knockback: 130,
+    projectileRadius: 3.5,
   },
 ];
 const WP = [],
@@ -234,242 +293,242 @@ const WP = [],
   ];
 ALLW.push(
   {
-    n: "光線",
-    c: "#7af0ff",
-    n1: 1,
-    sp: 0,
-    dmg: 8,
-    v: 1100,
-    life: 0.5,
-    cd: 0.09,
-    cost: 0.45,
-    kb: 30,
-    r: 2.5,
-    pierce: 1,
-    acc: 0.015,
-    mp: 0.045,
-    wd: 0.3,
-    auto: 1,
-    ad: "l",
-    laser: 1,
+    name: "光線",
+    color: "#7af0ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 8,
+    projectileSpeed: 1100,
+    projectileLifetime: 0.5,
+    fireCooldown: 0.09,
+    ammoCost: 0.45,
+    knockback: 30,
+    projectileRadius: 2.5,
+    pierceCount: 1,
+    accuracySpread: 0.015,
+    muzzleParameter: 0.045,
+    wallDamage: 0.3,
+    automaticFire: 1,
+    aimPreviewMode: "l",
+    laserMode: 1,
   },
   {
-    n: "雙槍",
-    c: "#ff9ad5",
-    n1: 2,
-    sp: 0.12,
-    dmg: 14,
-    v: 700,
-    life: 0.7,
-    cd: 0.2,
-    cost: 1.2,
-    kb: 90,
-    r: 3.5,
-    acc: 0.03,
-    mp: 0.075,
-    wd: 0.8,
-    auto: 1,
-    ad: "c",
+    name: "雙槍",
+    color: "#ff9ad5",
+    projectilesPerShot: 2,
+    spreadAngle: 0.12,
+    damage: 14,
+    projectileSpeed: 700,
+    projectileLifetime: 0.7,
+    fireCooldown: 0.2,
+    ammoCost: 1.2,
+    knockback: 90,
+    projectileRadius: 3.5,
+    accuracySpread: 0.03,
+    muzzleParameter: 0.075,
+    wallDamage: 0.8,
+    automaticFire: 1,
+    aimPreviewMode: "c",
   },
   {
-    n: "榴彈",
-    c: "#ffd23a",
-    n1: 1,
-    sp: 0,
-    dmg: 32,
-    v: 380,
-    life: 0.9,
-    cd: 0.9,
-    cost: 2.5,
-    kb: 300,
-    r: 6,
-    ex: 70,
-    acc: 0.015,
-    mp: 0.045,
-    wd: 2,
-    auto: 0,
-    ad: "l",
+    name: "榴彈",
+    color: "#ffd23a",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 32,
+    projectileSpeed: 380,
+    projectileLifetime: 0.9,
+    fireCooldown: 0.9,
+    ammoCost: 2.5,
+    knockback: 300,
+    projectileRadius: 6,
+    explosionRadius: 70,
+    accuracySpread: 0.015,
+    muzzleParameter: 0.045,
+    wallDamage: 2,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
-    n: "穿甲",
-    c: "#e0e0ff",
-    n1: 1,
-    sp: 0,
-    dmg: 32,
-    v: 900,
-    life: 0.7,
-    cd: 0.35,
-    cost: 1.2,
-    kb: 150,
-    r: 4,
-    pa: 1,
-    acc: 0.015,
-    mp: 0.045,
-    wd: 2,
-    auto: 0,
-    ad: "l",
+    name: "穿甲",
+    color: "#e0e0ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 32,
+    projectileSpeed: 900,
+    projectileLifetime: 0.7,
+    fireCooldown: 0.35,
+    ammoCost: 1.2,
+    knockback: 150,
+    projectileRadius: 4,
+    pierceWalls: 1,
+    accuracySpread: 0.015,
+    muzzleParameter: 0.045,
+    wallDamage: 2,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
 );
 const XW = [
-  { acc: 0.025, mp: 0.06, wd: 1, auto: 0, ad: "l" },
-  { sp: 0.26, acc: 0.015, mp: 0.045, wd: 0.6, auto: 0, ad: "c" },
-  { acc: 0, mp: 0.09, wd: 2, auto: 0, ad: "s" },
-  { sp: 0, acc: 0.04, mp: 0.075, rcg: 0.018, wd: 0.5, auto: 1, ad: "l" },
-  { fl: 1, acc: 0.015, mp: 0.03, wd: 0.07, auto: 1, ad: "c" },
-  { acc: 0.015, mp: 0.04, wd: 3, auto: 0, ad: "l" },
-  { sp: 0.08, acc: 0.03, mp: 0.04, wd: 0.5, auto: 1, ad: "l" },
-  { acc: 0, mp: 0, wd: 0.5, auto: 0, ad: "r" },
+  { accuracySpread: 0.025, muzzleParameter: 0.06, wallDamage: 1, automaticFire: 0, aimPreviewMode: "l" },
+  { spreadAngle: 0.26, accuracySpread: 0.015, muzzleParameter: 0.045, wallDamage: 0.6, automaticFire: 0, aimPreviewMode: "c" },
+  { accuracySpread: 0, muzzleParameter: 0.09, wallDamage: 2, automaticFire: 0, aimPreviewMode: "s" },
+  { spreadAngle: 0, accuracySpread: 0.04, muzzleParameter: 0.075, legacyRcg: 0.018, wallDamage: 0.5, automaticFire: 1, aimPreviewMode: "l" },
+  { flameMode: 1, accuracySpread: 0.015, muzzleParameter: 0.03, wallDamage: 0.07, automaticFire: 1, aimPreviewMode: "c" },
+  { accuracySpread: 0.015, muzzleParameter: 0.04, wallDamage: 3, automaticFire: 0, aimPreviewMode: "l" },
+  { spreadAngle: 0.08, accuracySpread: 0.03, muzzleParameter: 0.04, wallDamage: 0.5, automaticFire: 1, aimPreviewMode: "l" },
+  { accuracySpread: 0, muzzleParameter: 0, wallDamage: 0.5, automaticFire: 0, aimPreviewMode: "r" },
 ];
 ALLW.forEach((w, i) => {
   if (XW[i]) Object.assign(w, XW[i]);
 });
 ALLW.push(
   {
-    n: "彈跳",
-    c: "#8dff7a",
-    n1: 1,
-    sp: 0,
-    dmg: 17,
-    v: 600,
-    life: 1.5,
-    cd: 0.18,
-    kb: 100,
-    r: 4,
-    bn: 3,
-    acc: 0.02,
-    mp: 0.05,
-    wd: 0.8,
-    auto: 1,
-    ad: "l",
+    name: "彈跳",
+    color: "#8dff7a",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 17,
+    projectileSpeed: 600,
+    projectileLifetime: 1.5,
+    fireCooldown: 0.18,
+    knockback: 100,
+    projectileRadius: 4,
+    bounceCount: 3,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.05,
+    wallDamage: 0.8,
+    automaticFire: 1,
+    aimPreviewMode: "l",
   },
   {
-    n: "電弧",
-    c: "#7ab8ff",
-    n1: 1,
-    sp: 0,
-    dmg: 10,
-    v: 850,
-    life: 0.55,
-    cd: 0.12,
-    kb: 40,
-    r: 3,
-    ch: 1,
-    acc: 0.015,
-    mp: 0.04,
-    wd: 0.3,
-    auto: 1,
-    ad: "l",
+    name: "電弧",
+    color: "#7ab8ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 10,
+    projectileSpeed: 850,
+    projectileLifetime: 0.55,
+    fireCooldown: 0.12,
+    knockback: 40,
+    projectileRadius: 3,
+    chainLightningEnabled: 1,
+    accuracySpread: 0.015,
+    muzzleParameter: 0.04,
+    wallDamage: 0.3,
+    automaticFire: 1,
+    aimPreviewMode: "l",
   },
   {
-    n: "地雷",
-    c: "#ff8a5c",
-    n1: 1,
-    sp: 0,
-    dmg: 70,
-    v: 0,
-    life: 0.1,
-    cd: 0.5,
-    kb: 300,
-    r: 5,
-    mine: 1,
-    acc: 0,
-    mp: 0,
-    wd: 2,
-    auto: 0,
-    ad: "l",
+    name: "地雷",
+    color: "#ff8a5c",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 70,
+    projectileSpeed: 0,
+    projectileLifetime: 0.1,
+    fireCooldown: 0.5,
+    knockback: 300,
+    projectileRadius: 5,
+    mineMode: 1,
+    accuracySpread: 0,
+    muzzleParameter: 0,
+    wallDamage: 2,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
-    n: "迴旋",
-    c: "#ffb3e6",
-    n1: 1,
-    sp: 0,
-    dmg: 34,
-    v: 520,
-    life: 1.3,
-    cd: 0.45,
-    kb: 200,
-    r: 6,
-    bm: 1,
-    pierce: 1,
-    acc: 0.02,
-    mp: 0.05,
-    wd: 1,
-    auto: 0,
-    ad: "l",
+    name: "迴旋",
+    color: "#ffb3e6",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 34,
+    projectileSpeed: 520,
+    projectileLifetime: 1.3,
+    fireCooldown: 0.45,
+    knockback: 200,
+    projectileRadius: 6,
+    boomerangEnabled: 1,
+    pierceCount: 1,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.05,
+    wallDamage: 1,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
 );
 ALLW.push(
   {
-    n: "寒霜",
-    c: "#9ae6ff",
-    n1: 1,
-    sp: 0.28,
-    dmg: 5,
-    v: 480,
-    life: 0.45,
-    cd: 0.07,
-    kb: 15,
-    r: 5,
-    fz4: 1,
-    acc: 0.02,
-    mp: 0.04,
-    wd: 0.1,
-    auto: 1,
-    ad: "c",
+    name: "寒霜",
+    color: "#9ae6ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0.28,
+    damage: 5,
+    projectileSpeed: 480,
+    projectileLifetime: 0.45,
+    fireCooldown: 0.07,
+    knockback: 15,
+    projectileRadius: 5,
+    freezeOnHit: 1,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.04,
+    wallDamage: 0.1,
+    automaticFire: 1,
+    aimPreviewMode: "c",
   },
   {
-    n: "重力",
-    c: "#b0a0ff",
-    n1: 1,
-    sp: 0,
-    dmg: 26,
-    v: 420,
-    life: 0.9,
-    cd: 0.7,
-    kb: 0,
-    r: 7,
-    gp: 1,
-    acc: 0.02,
-    mp: 0.05,
-    wd: 0.5,
-    auto: 0,
-    ad: "l",
+    name: "重力",
+    color: "#b0a0ff",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 26,
+    projectileSpeed: 420,
+    projectileLifetime: 0.9,
+    fireCooldown: 0.7,
+    knockback: 0,
+    projectileRadius: 7,
+    gravityFieldEnabled: 1,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.05,
+    wallDamage: 0.5,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
-    n: "電荷",
-    c: "#ffe14a",
-    n1: 1,
-    sp: 0,
-    dmg: 18,
-    v: 900,
-    life: 0.6,
-    cd: 0.4,
-    kb: 20,
-    r: 4,
-    cg: 1,
-    acc: 0.01,
-    mp: 0.04,
-    wd: 0.3,
-    auto: 0,
-    ad: "l",
+    name: "電荷",
+    color: "#ffe14a",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 18,
+    projectileSpeed: 900,
+    projectileLifetime: 0.6,
+    fireCooldown: 0.4,
+    knockback: 20,
+    projectileRadius: 4,
+    chargeStackEnabled: 1,
+    accuracySpread: 0.01,
+    muzzleParameter: 0.04,
+    wallDamage: 0.3,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
-    n: "蛛網",
-    c: "#c0a060",
-    n1: 1,
-    sp: 0,
-    dmg: 0,
-    v: 0,
-    life: 0.1,
-    cd: 0.6,
-    kb: 0,
-    r: 5,
-    web: 1,
-    acc: 0,
-    mp: 0,
-    wd: 0,
-    auto: 0,
-    ad: "l",
+    name: "蛛網",
+    color: "#c0a060",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 0,
+    projectileSpeed: 0,
+    projectileLifetime: 0.1,
+    fireCooldown: 0.6,
+    knockback: 0,
+    projectileRadius: 5,
+    webMode: 1,
+    accuracySpread: 0,
+    muzzleParameter: 0,
+    wallDamage: 0,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
 );
 const AM = [
@@ -496,84 +555,84 @@ const AM = [
 ];
 ALLW.forEach((w, i) => {
   w.id = i;
-  w.ms0 = AM[i][0];
-  w.ms = w.ms0;
-  w.rs = AM[i][1];
+  w.magazineCapacity = AM[i][0];
+  w.ammoInMagazine = w.magazineCapacity;
+  w.reloadDuration = AM[i][1];
 });
 ALLW.push(
   {
-    n: "砲塔",
-    c: "#7affc0",
-    n1: 1,
-    sp: 0,
-    dmg: 9,
-    v: 700,
-    life: 0.55,
-    cd: 0.45,
-    kb: 40,
-    r: 3,
-    acc: 0.02,
-    mp: 0.03,
-    wd: 0.3,
-    auto: 0,
-    ad: "l",
-    tur: 1,
+    name: "砲塔",
+    color: "#7affc0",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 9,
+    projectileSpeed: 700,
+    projectileLifetime: 0.55,
+    fireCooldown: 0.45,
+    knockback: 40,
+    projectileRadius: 3,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.03,
+    wallDamage: 0.3,
+    automaticFire: 0,
+    aimPreviewMode: "l",
+    turretMode: 1,
   },
   {
-    n: "毒罐",
-    c: "#8dff3d",
-    n1: 1,
-    sp: 0,
-    dmg: 80,
-    v: 380,
-    life: 0.9,
-    cd: 0.6,
-    kb: 0,
-    r: 5,
-    acc: 0,
-    mp: 0,
-    wd: 0,
-    auto: 0,
-    ad: "l",
-    tox: 1,
+    name: "毒罐",
+    color: "#8dff3d",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 80,
+    projectileSpeed: 380,
+    projectileLifetime: 0.9,
+    fireCooldown: 0.6,
+    knockback: 0,
+    projectileRadius: 5,
+    accuracySpread: 0,
+    muzzleParameter: 0,
+    wallDamage: 0,
+    automaticFire: 0,
+    aimPreviewMode: "l",
+    poisonCloudMode: 1,
   },
   {
-    n: "斬擊",
-    c: "#ff9a4d",
-    n1: 1,
-    sp: 0,
-    dmg: 40,
-    v: 1000,
-    life: 0.1,
-    cd: 0.4,
-    kb: 900,
-    r: 4,
-    acc: 0,
-    mp: 0,
-    wd: 0.6,
-    auto: 0,
-    ad: "l",
-    slash: 1,
-    rg: 102,
-    sw: 2.1,
+    name: "斬擊",
+    color: "#ff9a4d",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 40,
+    projectileSpeed: 1000,
+    projectileLifetime: 0.1,
+    fireCooldown: 0.4,
+    knockback: 900,
+    projectileRadius: 4,
+    accuracySpread: 0,
+    muzzleParameter: 0,
+    wallDamage: 0.6,
+    automaticFire: 0,
+    aimPreviewMode: "l",
+    meleeArcEnabled: 1,
+    meleeRange: 102,
+    meleeSweepAngle: 2.1,
   },
   {
-    n: "集束彈",
-    c: "#ffb84d",
-    n1: 1,
-    sp: 0,
-    dmg: 22,
-    v: 520,
-    life: 0.55,
-    cd: 0.5,
-    kb: 120,
-    r: 10,
-    acc: 0.02,
-    mp: 0.04,
-    wd: 0.5,
-    auto: 0,
-    ad: "l",
-    cs: 1,
+    name: "集束彈",
+    color: "#ffb84d",
+    projectilesPerShot: 1,
+    spreadAngle: 0,
+    damage: 22,
+    projectileSpeed: 520,
+    projectileLifetime: 0.55,
+    fireCooldown: 0.5,
+    knockback: 120,
+    projectileRadius: 10,
+    accuracySpread: 0.02,
+    muzzleParameter: 0.04,
+    wallDamage: 0.5,
+    automaticFire: 0,
+    aimPreviewMode: "l",
+    clusterShotEnabled: 1,
   },
 );
 {
@@ -586,22 +645,22 @@ ALLW.push(
   for (let i = 20; i < 24; i++) {
     const w = ALLW[i];
     w.id = i;
-    w.ms0 = NM[i - 20][0];
-    w.ms = w.ms0;
-    w.rs = NM[i - 20][1];
+    w.magazineCapacity = NM[i - 20][0];
+    w.ammoInMagazine = w.magazineCapacity;
+    w.reloadDuration = NM[i - 20][1];
   }
 }
 const BAL = {
-  10: { gren: 1, dmg: 58 },
-  4: { dmg: 6 },
-  6: { dmg: 24 },
-  8: { dmg: 7 },
-  11: { dmg: 36 },
-  17: { dmg: 30, rs: 1.5 },
+  10: { grenadeMode: 1, damage: 58 },
+  4: { damage: 6 },
+  6: { damage: 24 },
+  8: { damage: 7 },
+  11: { damage: 36 },
+  17: { damage: 30, reloadDuration: 1.5 },
 };
 for (const k in BAL) Object.assign(ALLW[k], BAL[k]);
-ALLW[20].ms0 = 2;
-ALLW[20].ms = 2;
+ALLW[20].magazineCapacity = 2;
+ALLW[20].ammoInMagazine = 2;
 WD.splice(
   0,
   WD.length,
@@ -631,6 +690,70 @@ WD.push(
   "手動·近戰由左向右揮砍，大範圍強擊退，同時擊落範圍內的敵方子彈",
   "手動·飛行一段距離或命中後爆開成碎片",
 );
+
+// 武器設定採用可讀性較高的正名；舊欄位以 getter/setter 暫時相容既有戰鬥程式。
+const WEAPON_PROPERTY_ALIASES = Object.freeze({
+  "n": "name",
+  "c": "color",
+  "n1": "projectilesPerShot",
+  "sp": "spreadAngle",
+  "dmg": "damage",
+  "v": "projectileSpeed",
+  "life": "projectileLifetime",
+  "cd": "fireCooldown",
+  "cost": "ammoCost",
+  "kb": "knockback",
+  "r": "projectileRadius",
+  "pierce": "pierceCount",
+  "hm": "homingEnabled",
+  "acc": "accuracySpread",
+  "mp": "muzzleParameter",
+  "wd": "wallDamage",
+  "auto": "automaticFire",
+  "ad": "aimPreviewMode",
+  "laser": "laserMode",
+  "ex": "explosionRadius",
+  "pa": "pierceWalls",
+  "bn": "bounceCount",
+  "bm": "boomerangEnabled",
+  "ch": "chainLightningEnabled",
+  "mine": "mineMode",
+  "fz4": "freezeOnHit",
+  "gp": "gravityFieldEnabled",
+  "cg": "chargeStackEnabled",
+  "web": "webMode",
+  "tur": "turretMode",
+  "tox": "poisonCloudMode",
+  "slash": "meleeArcEnabled",
+  "rg": "meleeRange",
+  "sw": "meleeSweepAngle",
+  "cs": "clusterShotEnabled",
+  "gren": "grenadeMode",
+  "fl": "flameMode",
+  "rcg": "legacyRcg",
+  "ms0": "magazineCapacity",
+  "ms": "ammoInMagazine",
+  "rs": "reloadDuration"
+});
+function normalizeWeaponProperties(weapon) {
+  for (const [legacyName, canonicalName] of Object.entries(WEAPON_PROPERTY_ALIASES)) {
+    if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+      if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
+      delete weapon[legacyName];
+    }
+    if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+      Object.defineProperty(weapon, legacyName, {
+        configurable: true,
+        enumerable: false,
+        get() { return this[canonicalName]; },
+        set(value) { this[canonicalName] = value; },
+      });
+    }
+  }
+  return weapon;
+}
+const WEAPON_DEFINITIONS = ALLW;
+for (const weaponDefinition of WEAPON_DEFINITIONS) normalizeWeaponProperties(weaponDefinition);
 let LO = [0, 1, 2];
 try {
   const s = JSON.parse(localStorage.getItem("neonShardLO"));
@@ -4555,7 +4678,7 @@ function chipWhere(i) {
 }
 // 功能：將芯片效果合併至武器數值。
 function chipApply(w, list) {
-  const o = Object.assign({}, w);
+  const o = normalizeWeaponProperties(Object.assign({}, w));
   for (const c of list) if (CH[c]) CH[c].fn(o);
   const e = (o.dmg * o.n1) / (w.dmg * w.n1 || 1);
   if (e > 2) o.dmg *= (2 + (e - 2) * 0.5) / e;
@@ -7907,7 +8030,7 @@ function aimBullet(w, a, c, pu, Rt) {
   }
 }
 // 功能：繪製或建立「drawAim」所需的畫面元素。
-function drawAim() {
+function drawAimLegacy() {
   const w = WP[pl.w];
   let a = pl.aim;
   if (w.slash) {
@@ -8011,6 +8134,70 @@ function drawAim() {
   }
   cx.restore();
 }
+
+/*
+ * 瞄準線擴充註冊表：
+ * - before：先畫額外提示，不取代預設瞄準線
+ * - override：符合條件且 render 回傳 true 時，取代預設瞄準線
+ * - after：在預設瞄準線之後畫額外提示
+ * 新武器只需註冊 renderer，不必再往 drawAim 的條件鏈塞 if/else。
+ */
+const AIM_LINE_EXTENSIONS = new Map();
+function registerAimLineExtension({
+  id,
+  phase = "override",
+  priority = 0,
+  supports = () => true,
+  render,
+}) {
+  if (!id || typeof id !== "string") throw new TypeError("瞄準線擴充需要字串 id");
+  if (!["before", "override", "after"].includes(phase))
+    throw new TypeError('phase 必須是 "before"、"override" 或 "after"');
+  if (typeof supports !== "function" || typeof render !== "function")
+    throw new TypeError("supports 與 render 必須是函式");
+  AIM_LINE_EXTENSIONS.set(id, { id, phase, priority, supports, render });
+  return () => AIM_LINE_EXTENSIONS.delete(id);
+}
+
+function drawAim() {
+  const weapon = WP[pl?.w];
+  if (!weapon || !pl) return;
+  const context = {
+    weapon,
+    player: pl,
+    canvas: cx,
+    state,
+    helpers: { ray, rayK, fanG, bouncePath, turLand, cone, aimT },
+    drawDefault: drawAimLegacy,
+  };
+  const extensions = [...AIM_LINE_EXTENSIONS.values()].sort(
+    (a, b) => b.priority - a.priority || a.id.localeCompare(b.id),
+  );
+  const runPhase = (phase) => {
+    for (const extension of extensions) {
+      if (extension.phase !== phase) continue;
+      try {
+        if (!extension.supports(context)) continue;
+        cx.save();
+        let handled;
+        try {
+          handled = extension.render(context);
+        } finally {
+          cx.restore();
+        }
+        if (phase === "override" && handled === true) return true;
+      } catch (error) {
+        console.error(`[aim] extension "${extension.id}" failed`, error);
+      }
+    }
+    return false;
+  };
+  runPhase("before");
+  const overridden = runPhase("override");
+  if (!overridden) drawAimLegacy();
+  runPhase("after");
+}
+
 // 範圍爆炸：傷害敵人並破壞範圍內方塊
 function explode(b) {
   const R = b.ex,
@@ -13395,3 +13582,20 @@ addEventListener("keydown", (e) => {
 });
 tutorialButton(); // 放在檔尾：所有 let/const 都已初始化（避免暫時性死區）
 if (!tutorialSeen) startTutorial(); // 第一次遊玩：自動進入教學
+
+/*
+ * NEON SHARD 擴充 API。
+ * 其他模組載入完成後可透過 window.NEON_SHARD_API 註冊狀態與瞄準線擴充。
+ * getWeaponDefinitions() 回傳原始設定陣列；請在正式玩法規則中加入必要的伺服器端驗證。
+ */
+Object.defineProperty(window, "NEON_SHARD_API", {
+  configurable: true,
+  value: Object.freeze({
+    registerStateTransition,
+    registerStateHook,
+    registerStateGuard,
+    registerAimLineExtension,
+    getState: () => state,
+    getWeaponDefinitions: () => WEAPON_DEFINITIONS,
+  }),
+});
