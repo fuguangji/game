@@ -1810,6 +1810,7 @@
      *   - 教學模式：文末 TUT 區塊；localStorage 判斷首次遊玩並自動進入，主頁「教學模式」按鈕可再次開啟
      * 命名縮寫：pl=玩家 en=敵人陣列 bl=子彈 pk=掉落物 pt=粒子 zones=地面區域 T=格寬 N=格數
      * ===================================================================== */
+    /** 取得 DOM 元素並初始化主畫布與 2D 繪圖環境。 */
     const $=id=>document.getElementById(id), cv=$('g'), cx=cv.getContext('2d');
     /* 狀態機：menu(主頁) -> play(戰鬥) <-> pause / shop；play -> over(結算) -> play / menu */
     const STATE_GRAPH={menu:{play:1}, play:{pause:1, shop:1, over:1, menu:1}, pause:{play:1, over:1}, shop:{play:1, over:1}, over:{play:1, menu:1}};
@@ -1846,6 +1847,7 @@
       safeT=$('sa').offsetHeight
     }
     addEventListener('resize', resize);
+    /** 將指定的點或座標依遊戲畫面轉換規則投影。 */
     const P=(c, p)=>{
       c.moveTo(p[0][0], p[0][1]);
       for (let i=1; i<p.length; i++)c.lineTo(p[i][0], p[i][1]);
@@ -2134,8 +2136,10 @@
     } catch (e) {}
     const keys={}, mouse={x:0, y:0, down:false, has:false}, tm={id:null, sx:0, sy:0, x:0, y:0}, ta={id:null, sx:0, sy:0, x:0, y:0, a:0, act:false};
     let touchOn=false;
+    /** 讀取地圖格子的類型；越界座標回傳阻擋值。 */
     const cell=(i, j)=>i<0||j<0||i>=N||j>=N?-1:grid[j*N+i];
     const solidAt=(x, y)=>cell(Math.floor(x/T), Math.floor(y/T))!==0;
+    /** 檢查指定半徑的實體是否會與牆面碰撞。 */
     const blocked=(x, y, r)=>solidAt(x-r, y-r)||solidAt(x+r, y-r)||solidAt(x-r, y+r)||solidAt(x+r, y+r);
     /** 計算角色移動後的可落地位置並處理碰撞。 */
     function turLand(x, y, r, m) {
@@ -2166,6 +2170,7 @@
       while (l<m&&!solidAt(x+c*l, y+s*l))l+=8;
       return l
     }
+    /** 依牆面類型產生對應色相與透明度。 */
     const hc=(v, a)=>`hsla(${(v-1)*36},85%,46%,${a})`;
     // 隨機產生地圖：外框不可破、中央安全區、其餘依關卡密度放可破壞牆
     function genMap() {
@@ -2454,6 +2459,7 @@
     function ultMods() {
       const c=WP[pl.w], b=c&&ALLW[c.id];
       if (!b)return null;
+      /** 安全計算兩個數值的比值，避免除以非正值。 */
       const g=(x, y)=>y>0?x/y:1, fl=k=>c[k]&&!b[k]?1:0;
       return{dm:1+(g(c.dmg*(c.n1||1), b.dmg*(b.n1||1))-1)*.6, kb:g(c.kb, b.kb), wd:(c.wd||0)-(b.wd||0), r:g(c.r, b.r), v:g(c.v, b.v), life:g(c.life, b.life), xb:fl('xb'), ch:fl('ch'), bu:fl('bu'), fr:fl('fr'), fz4:fl('fz4'), lk:fl('lk'), hm:fl('hm'), bn:(c.bn||0)-(b.bn||0), cr:(c.cr||0)-(b.cr||0), cm:c.cm||1}
     }
@@ -2586,6 +2592,7 @@
     }
     const SQ=[];
     let fxs=[];
+    /** 將回呼排入延遲任務佇列，供後續更新時執行。 */
     const later=(t, fn)=>SQ.push({t, fn}), line=(a, len, t, col)=>fxs.push({k:'l', x:pl.x, y:pl.y, a, len, t, max:t, col}), spot=(x, y, r, t, col)=>fxs.push({k:'c', x, y, r, t, max:t, col}), LR=q=>q*330;
     const ULTS={
     0(a) {
@@ -3890,6 +3897,7 @@
     try {
       Object.assign(SV, JSON.parse(localStorage.getItem('neonShardSave'))||{})
     } catch (e) {}
+    /** 將目前遊戲進度與配置寫入本機存檔。 */
     const save=()=>{
       try {
         localStorage.setItem('neonShardSave', JSON.stringify(SV))
@@ -4016,6 +4024,7 @@
     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2].forEach((r, i)=>{
       CH[i].r=r
     });
+    /** 解析或整理指定字串／資料的分段內容。 */
     const spl=(o, k, f)=>{
       if (o.mine||o.web||o.gren||o.tox) {
         o.r*=1+.12*k;
@@ -4283,6 +4292,7 @@
         return d
       };
       if (MWI<0||!own.includes(MWI))MWI=LO[0]!==undefined?LO[0]:own[0];
+      /** 取得遊戲模式相關的設定或狀態。 */
       const gm=i=>{
         const m=(SV.mods[i]||[]).slice();
         while (m.length<2)m.push(-1);
@@ -4364,6 +4374,7 @@
       }
       el.append(sl);
       const base=ALLW[MWI], cur=chipApply(base, m.filter(has));
+      /** 彙整武器目前的傷害、射速、彈匣與 DPS 統計。 */
       const stat=o=>{
         const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
         return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
@@ -4421,6 +4432,7 @@
     /** 計算術式／技能欄位的顯示或命中區域。 */
     function csR(el) {
       el.innerHTML='';
+      /** 建立或取得新版選單中的數值顯示元素。 */
       const dv=(c, h)=>{
         const d=document.createElement('div');
         d.className=c;
@@ -4547,6 +4559,7 @@
 
     const ITM={heal:{n:'治療針', d:'回復 50% 最大血量', c:'#3dff8f', ic:'heal', p:120}, shield:{n:'護盾卡', d:'護盾 +40（上限 60）', c:'#4d9bff', ic:'shield', p:100}, ammo:{n:'彈藥包', d:'所有出戰槍補滿彈藥', c:'#ffe14a', ic:'ammo', p:150}, ult:{n:'能量電池', d:'SUPER 立刻充滿', c:'#ff9a3d', ic:'ult', p:200}, bomb:{n:'震波彈', d:'身邊大範圍爆炸，傷害並擊退敵人', c:'#ff5a7a', ic:'pull', p:180}, speed:{n:'加速劑', d:'移動速度 +40%，持續 10 秒', c:'#ffffff', ic:'speed', p:100}}, ITK=Object.keys(ITM);
     let itCd=0;
+    /** 集中保存背包與裝備相關的欄位／配置資料。 */
     const BAG=()=>(SV.bagSel||[]).filter(k=>ITM[k]).slice(0, 3);
     /** 使用目前選取的消耗品並套用其效果。 */
     function useItem(k) {
@@ -4670,16 +4683,19 @@
       for (const c of XCAT)if (c[1].includes(i))return c[0];
       return'其他'
     };
+    /** 回傳指定武器的操作模式描述。 */
     const wMode=i=>(WD[i]||'').split('·')[0];
     const wNote=i=>(WD[i]||'').split('·').slice(1).join('·');
     const XS={t:'h', lc:'全部', ws:0, sl:0, sh:'up', sc:'全部', rf:-1, cx:'i', over:0, fresh:0};
     const CI={coins:'coin', sh:'shard', co:'core'};
+    /** 建立新版選單使用的 HTML 元素並設定內容。 */
     const xh=(c, t, tag)=>{
       const d=document.createElement(tag||'div');
       if (c)d.className=c;
       if (t!==undefined)d.innerHTML=t;
       return d
     };
+    /** 建立新版選單中的按鈕元件。 */
     const xbt=(c, t, f, dis)=>{
       const b=xh(c, t, 'button');
       b.type='button';
@@ -4687,16 +4703,19 @@
       if (dis)b.disabled=true;
       return b
     };
+    /** 建立新版選單中的圖示元件。 */
     const xic=(t, c, s)=>{
       const w=xh('x-ic');
       w.append(mkIcon(t, c, s||24));
       return w
     };
+    /** 儲存目前裝備欄位順序。 */
     const xSaveLO=()=>{
       try {
         localStorage.setItem('neonShardLO', JSON.stringify(LO))
       } catch (e) {}
     };
+    /** 處理新版選單的出戰操作。 */
     const xGo=t=>{
       if (t!==XS.t) {
         XS.t=t;
@@ -4704,25 +4723,30 @@
       }
       window.upd()
     };
+    /** 建立新版選單中的次要文字或說明區塊。 */
     const xSub=(k, v)=>{
       XS[k]=v;
       XS.fresh=1;
       window.upd()
     };
+    /** 建立新版選單中的篩選控制項。 */
     const xFlt=(list, cur, fn)=>{
       const f=xh('x-flt');
       for (const n of list)f.append(xbt('x-f'+(cur===n?' on':''), n, ()=>fn(n)));
       return f
     };
+    /** 格式化並呈現武器屬性統計。 */
     const wStat=o=>{
       const pel=(o.mine||o.web)?1:o.n1, crit=1+(o.cr||0)*((o.cm||1)-1), ms=Math.round(o.ms0*(1+.1*UL('mag'))), shot=o.dmg*pel*crit*(1+.06*UL('dmg'));
       return{dmg:shot, rate:1/o.cd, ms, burst:shot*ms, dps:shot*(1+.08*UL('reg'))/o.rs}
     };
     let XM=null;
+    /** 計算選單數值或範圍的上限。 */
     const xmax=()=>XM||(XM=(()=>{
       const a=ALLW.map(w=>wStat(w)), mx=k=>Math.max(...a.map(s=>s[k]))||1;
       return{dmg:mx('dmg'), rate:mx('rate'), ms:mx('ms'), dps:mx('dps')}
     })());
+    /** 將數值格式化為介面顯示文字。 */
     const xfmt=(v, dp)=>dp?v.toFixed(v<100?1:0):String(Math.round(v));
     /** 將指定裝備放入目前裝備欄位。 */
     function xEquip(i, sl) {
@@ -4748,6 +4772,7 @@
       xSaveLO();
       window.upd()
     }
+    /** 建立或更新新版選單的側邊資訊。 */
     const xSide=(c, f)=>{
       const s=xh('x-side'), i=xh('x-sc');
       i.dataset.sc='r';
@@ -4756,6 +4781,7 @@
       if (f)s.append(f);
       return s
     };
+    /** 計算目前晶片配置提供的總效果。 */
     const xChipTotal=()=>Object.values(SV.chips).reduce((a, b)=>a+b, 0);
 
     /** 處理裝備嵌入晶片或附加效果的操作。 */
@@ -5106,6 +5132,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
+      /** 計算指定項目的資源成本。 */
       const cost=(K, c, can, fn, txt)=>{
         const b=xbt('x-btn sm '+(can?'pri':''), `${c} ${CN[K]}`, fn, !can);
         b.prepend(mkIcon(CI[K], can?'#04101a':CC[K], 14));
@@ -5278,6 +5305,7 @@
       w.append(xh('', '<h3>召喚 '+name+'　選擇型態</h3>'));
       const tri='<svg width="18" height="18" viewBox="-4 -4 22 22" style="vertical-align:-4px;overflow:visible;filter:drop-shadow(0 0 3px #ffb21a) drop-shadow(0 0 7px #ffb21a)"><polygon points="7,2.5 12,11.5 2,11.5" fill="#ffc83a" stroke="#ffb21a" stroke-width="1.2" stroke-linejoin="round"/></svg>';
       const g=xh('x-elg'), E=ELITE[i];
+      /** 建立訓練或選單需要的介面元件。 */
       const mk=(el)=>{
         const c=xh('x-elc'+(el?' el':''), '', 'button');
         c.style.cssText='text-align:left;color:inherit;font:inherit;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start';
@@ -5310,6 +5338,7 @@
       v.append(fl);
       const box=xh('x-doc');
       v.append(box);
+      /** 將項目陣列轉換成清單介面內容。 */
       const ul=a=>`<ul class="x-ul">${a.map(t=>`<li>${t}</li>`).join('')}</ul>`;
       if (XS.cx==='i') {
         box.append(xh('x-lead', '在霓虹方塊構成的戰場上，一邊瞄準、一邊閃避。清光每一波敵人，擊敗關底 Boss，再把戰利品帶回來強化自己。'));
@@ -5437,6 +5466,7 @@
       const fb=$('xfs');
       if (!fsOK)fb.style.display='none';
       else fb.onclick=toggleFS;
+      /** 同步遊戲狀態與對應的介面顯示。 */
       const sync=()=>document.body.classList.toggle('inmenu', !$('ov').classList.contains('h'));
       new MutationObserver(sync).observe($('ov'), {attributes:true, attributeFilter:['class']});
       sync();
@@ -5481,6 +5511,7 @@
       const el=$('tr');
       if (el.children.length)return;
       let rowEl;
+      /** 建立介面中的分區標題。 */
       const sec=t=>{
         rowEl=document.createElement('div');
         rowEl.className='tr-row';
@@ -5525,6 +5556,7 @@
           el.style.left=Math.max(0, Math.min(innerWidth-w, e.clientX-o.dx))+'px';
           el.style.top=Math.max(0, Math.min(innerHeight-Math.min(h, 60), e.clientY-o.dy))+'px'
         });
+        /** 處理升級操作並套用升級結果。 */
         const up=e=>{
           if (o&&e.pointerId===o.id)o=null
         };
@@ -5543,6 +5575,7 @@
       sec('敵人');
       g=grid();
       EN.forEach((n, i)=>btn(g, 'e'+i, ECOL[i], n, ()=>{
+        /** 執行目前選單的主要操作。 */
         const go=el=>{
           const a=pl.aim;
           let p={x:pl.x+Math.cos(a)*220, y:pl.y+Math.sin(a)*220};
@@ -5601,6 +5634,7 @@
         trHd.textContent='訓練 ≡';
         tg.className='tr-b';
         tb.append(trHd, tg);
+        /** 顯示指定提示或介面內容。 */
         const show=k=>{
           window._trTab=k;
           rows.forEach((r, i)=>r.style.display=i===k?'flex':'none');
@@ -5754,6 +5788,7 @@
       cx.lineWidth=2;
       cx.lineCap='round';
       cx.lineJoin='round';
+      /** 建立一段具有指定方向、長度與寬度的範圍判定。 */
       const band=(aa, len, wd, pu)=>{
         const l=rayK(ox, oy, aa, len, pu), ex=ox+Math.cos(aa)*l, ey=oy+Math.sin(aa)*l;
         cx.save();
@@ -6181,6 +6216,7 @@
       const A=[], n=Math.max(8, Math.ceil((a1-a0)/.06));
       for (let i=0; i<=n; i++)A.push(a0+(a1-a0)*i/n);
       if (pu!==2) {
+        /** 判斷指定座標或物件是否被實體障礙阻擋。 */
         const solid=(i, j)=>{
           const v=cell(i, j);
           return pu===1?v<0:v!==0
@@ -6477,6 +6513,7 @@
       }
       for (let j=Math.floor((b.y-R)/T); j<=Math.floor((b.y+R)/T); j++)for (let i=Math.floor((b.x-R)/T); i<=Math.floor((b.x+R)/T); i++)if (Math.hypot((i+.5)*T-b.x, (j+.5)*T-b.y)<R+8)hitCell(i, j, Math.floor(b.wd))
     }
+    /** 計算兩個角度之間最短的角度差。 */
     const angD=(a, b)=>Math.abs(Math.atan2(Math.sin(a-b), Math.cos(a-b)));
     /** 更新快速提示或短暫計時狀態。 */
     function quickT() {
@@ -6548,6 +6585,7 @@
       if (!w)return;
       w.um=Math.min(100, (w.um||0)+amt*(CHR.sc||1)*(UE[w.id]??1))
     }
+    /** 計算 Boss 相關倍率或狀態資料。 */
     const BMR=b=>17*(b.ult?2.5:1.7);
     /** 處理爆炸攻擊或其範圍效果。 */
     function boom(b, dt) {
@@ -6635,6 +6673,7 @@
         const {
           grid, n, sx, sy
         }=e.data;
+        /** 判斷目前畫面或介面是否符合寬螢幕配置。 */
         const wide=(x, y)=>{
           for (let dx=-1; dx<=1; dx++)for (let dy=-1; dy<=1; dy++) {
             const a=x+dx, b=y+dy;
@@ -6642,6 +6681,7 @@
           }
           return true
         };
+        /** 執行延遲佇列中的單次回呼或效果。 */
         const run=w=>{
           const F=new Int16Array(n*n).fill(-1), q=new Int32Array(n*n);
           let h=0, t=0;
@@ -7050,6 +7090,7 @@
     }
     const BN=['哨兵', '巨像', '棱鏡', '核心', '雷霆', '蜂后', '虛空', '終焉'], isB=e=>e.t>=14&&e.t<26, EXT={18:[30, 1800, 150, '#ffe14a', 4500, 3], 19:[40, 2200, 95, '#9dff3d', 5000, 4], 20:[36, 2400, 85, '#7a7aff', 5500, 4], 21:[44, 3500, 65, '#ff2a8a', 9000, 6], 30:[26, 1, 0, '#4dffd8', 0, 3], 31:[18, 300, 0, '#d070ff', 200, 9], 26:[12, 28, 210, '#ff9f2a', 140, 1], 27:[13, 45, 70, '#e04dff', 230, 1], 28:[14, 60, 60, '#6dffb0', 260, 1], 29:[14, 55, 65, '#c0a060', 240, 1]}, BK=[3, 3, 2, 4, 3, 3, 3, 4], BPF=[130, 130, 260, 0, 200, 150, 0, 180];
     let MVF=0;
+    /** 建立圓環形狀的粒子或視覺效果。 */
     const pRing=(e, n, sp, d, o)=>{
       for (let k=0; k<n; k++)eb(e, (o||0)+k/n*TAU, sp, d)
     }, pFan=(e, a, c, sp, d, s)=>{
@@ -7074,6 +7115,7 @@
       if (e.frz>0)d*=1.5;
       return isB(e)?bd(e, d, ang):d
     }
+    /** 判斷敵人或子彈是否處於無敵／不可命中狀態。 */
     const bInv=e=>{
       const i=e.t-14;
       return e.inv>0||(i===3&&en.some(n=>n.t===31&&n.hp>0))||(i===5&&en.some(n=>n.bee&&n.hp>0))||((i===2||(i===7&&e.ph===2))&&en.some(n=>n.t===30&&n.hp>0))
@@ -7285,6 +7327,7 @@
         else pHom(e, 3, 140, 9)
       }
     }
+    /** 計算擊殺或敵人死亡處理所需的條件。 */
     const dk=c=>{
       const n=parseInt(c.slice(1), 16), r=(n>>16&255)*.4|0, g=(n>>8&255)*.4|0, b=(n&255)*.4|0;
       return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1)
@@ -9266,6 +9309,7 @@
           cx.save();
           cx.globalCompositeOperation='source-over';
           cx.shadowBlur=0;
+          /** 在指定位置繪製六角形圖案。 */
           const hex=(r)=>{
             cx.beginPath();
             for (let i=0; i<6; i++) {
@@ -9700,6 +9744,7 @@
         }
       }
     }, {passive:false});
+    /** 統一處理觸控結束事件並釋放相應輸入狀態。 */
     const tend=e=>{
       e.preventDefault();
       for (const t of e.changedTouches) {
@@ -9993,6 +10038,7 @@
      *   - 對應既有機制：熔斷 = 敵人硬直(rec)、中毒 = 持續傷害(psn)、反噬/代價 = 扣自身血量(hp)
      * ===================================================================== */
     const SPELL_DEF={n1:1, sp:0, dmg:12, v:500, life:1, cd:.3, kb:100, r:4, acc:.02, mp:.05, wd:1, auto:0, ad:'l', pierce:0, ex:0, hm:0, fl:0, cast:null, ms0:6, rs:1};
+    /** 建立範圍爆發型術式的設定資料。 */
     const B=(R, dmg, o)=>Object.assign({k:'burst', R, dmg}, o); // 爆發：以自身或前方 d 處為中心的範圍傷害
     const SPELLS=[
     {n:'青羽鎩', c:'#ff7a3d', field:{n:'電子軌域', k:'cut', R:230, dur:6}, sk:[
@@ -10048,15 +10094,18 @@
     ['影遁', '瞬間位移並短暫無敵', {ms0:2, rs:4, cd:.4, cast:{k:'dash', t:.22}}],
     ['新月', '前後各一道穿透的回旋斬', {ms0:2, rs:4, cd:.5, cast:{k:'ring', ao:1, n:2, v:600, dmg:45, life:.9, pierce:1, r:6}}]]}
     ];
+    /** 依術式設定計算玩家前方的施放中心點。 */
     const cp=(c, a)=>c.d?{x:pl.x+Math.cos(a)*c.d, y:pl.y+Math.sin(a)*c.d}:{
       x:pl.x, y:pl.y
     };
+    /** 取得指定位置半徑內仍存活的敵人。 */
     const near=(p, R)=>en.filter(e=>e.hp>0&&Math.hypot(e.x-p.x, e.y-p.y)<R+e.r);
     const hitE=(e, d)=>{
       e.hp-=d;
       e.hf=1;
       if (e.hp<=0)kill(e)
     };
+    /** 取得目前武器術式的特效顏色。 */
     const SCOL=()=>(WP[pl.w]&&WP[pl.w].c)||'#ffffff';
     const CASTS={
     burst(c, a) {
@@ -10139,6 +10188,7 @@
         for (const s of c.list)castSkill(s, a);
         return
       }
+      /** 執行延遲佇列中的單次回呼或效果。 */
       const run=()=>CASTS[c.k](c, a);
       if (c.delay) {
         const p=cp(c, a);
@@ -10364,9 +10414,11 @@
         localStorage.setItem(TUT_KEY, '1')
       } catch (e) {}
     }
+    /** 累計教學模式中的指定操作次數或距離。 */
     const tutCount=(k, n=1)=>{
       if (TUT.on)TUT.st[k]=(TUT.st[k]||0)+n
     };
+    /** 建立一份已歸零的新手教學操作統計資料。 */
     const tutNew=()=>({moved:0, aimed:0, shots:0, switches:0, dashes:0, walls:0, kills:0, supers:0});
     /** 在教學場景指定位置生成教學用敵人。 */
     function tutEnemy(t, dx, dy, frozen) {
@@ -10590,6 +10642,7 @@
     function tutorialButton() {
       tutBox=document.createElement('div');
       tutBox.style.cssText='position:fixed;z-index:25;left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 54px);display:none;flex-direction:column;gap:6px';
+      /** 建立訓練或選單需要的介面元件。 */
       const mk=(t, fn)=>{
         const b=document.createElement('button');
         b.className='sb';
