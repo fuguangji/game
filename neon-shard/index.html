@@ -1806,13 +1806,12 @@
      * 架構：輸入(keys/mouse/touch) -> setState 狀態機 -> update(dt) -> render()
      *   - 狀態機：menu / play / pause / shop / over（見 STATE_GRAPH）
      *   - 執行緒：路徑場 BFS 在 Web Worker 計算（flowWorkerMain），主執行緒只負責模擬與繪圖
-     *   - 術式系統：10 套術式取代所有槍械（SPELLS / CASTS / FIELDS）
-     *   - 教學模式：文末 TUT 區塊；localStorage 判斷首次遊玩並自動進入，主頁「教學模式」按鈕可再次開啟
+     *   - 教學模式：文末 TUT 區塊（15 步，可跳過/上一步）；localStorage 判斷首次遊玩並自動進入，主頁「教學模式」按鈕可再次開啟
      * 命名縮寫：pl=玩家 en=敵人陣列 bl=子彈 pk=掉落物 pt=粒子 zones=地面區域 T=格寬 N=格數
      * ===================================================================== */
     const $=id=>document.getElementById(id), cv=$('g'), cx=cv.getContext('2d');
-    /* 狀態機：menu(主頁) -> play(戰鬥) <-> pause / shop；play -> over(結算) -> play / menu */
-    const STATE_GRAPH={menu:{play:1}, play:{pause:1, shop:1, over:1, menu:1}, pause:{play:1, over:1}, shop:{play:1, over:1}, over:{play:1, menu:1}};
+    /* 狀態機：menu(主頁) -> play(戰鬥) <-> pause / shop；play -> over(結算) -> play / menu；pause -> menu(教學中離開) */
+    const STATE_GRAPH={menu:{play:1}, play:{pause:1, shop:1, over:1, menu:1}, pause:{play:1, over:1, menu:1}, shop:{play:1, over:1}, over:{play:1, menu:1}};
     const STATE_HOOKS={
     enter:{play() {}, pause() {}, shop() {}, over() {}, menu() {}},
     exit:{}
@@ -9820,369 +9819,13 @@
     requestAnimationFrame(loop);
 
     /* =====================================================================
-     * 術式系統：10 套術式（每套 = 多個術式 + 1 個術式場）取代原本所有槍械
-     *   - 每套術式佔一個槍欄，E 鍵（觸控：再點一次目前槍欄）切換該套的術式
-     *   - 「普攻」= 目前選擇的術式；SUPER = 術式場（持續一段時間的區域效果）
-     *   - 術式以資料驅動：shot 類沿用原本子彈引擎；cast 類由 CASTS 表執行
-     *   - 對應既有機制：熔斷 = 敵人硬直(rec)、中毒 = 持續傷害(psn)、反噬/代價 = 扣自身血量(hp)
-     * ===================================================================== */
-    const SPELL_DEF={n1:1, sp:0, dmg:12, v:500, life:1, cd:.3, kb:100, r:4, acc:.02, mp:.05, wd:1, auto:0, ad:'l', pierce:0, ex:0, hm:0, fl:0, cast:null, ms0:6, rs:1};
-    const B=(R, dmg, o)=>Object.assign({k:'burst', R, dmg}, o); // 爆發：以自身或前方 d 處為中心的範圍傷害
-    const SPELLS=[
-    {n:'青羽鎩', c:'#ff7a3d', field:{n:'電子軌域', k:'cut', R:230, dur:6}, sk:[
-    ['琉璃焰', '擊碎空間造成的大範圍高溫攻擊', {ms0:3, rs:2.2, cd:.7, cast:B(130, 90, {d:150, kb:500, wd:3})}],
-    ['衰變', '劍身迅速升溫，提升攻擊力與速度', {ms0:2, rs:5, cd:.4, cast:{k:'self', boost:6, dmgUp:5, upT:8}}],
-    ['托克馬克', '蓄能後釋放，爆炸相當於氫彈', {ms0:1, rs:12, cd:1, cast:B(250, 300, {kb:900, wd:3, delay:1.6})}],
-    ['轉能', '熱能轉為動能，無法閃避的重型攻擊', {ms0:2, rs:5, cd:.8, cast:{k:'beam', tele:.35, dmg:220, r:14, len:700}}],
-    ['中子射線流', '瞬間貫穿路徑上一切實體', {ms0:2, rs:4, cd:.6, cast:{k:'beam', tele:.05, dmg:160, r:9, wd:6, len:900}}]]},
-    {n:'未雨鎩', c:'#4d9bff', field:{n:'絕對霜域', k:'freeze', R:260, dur:6}, sk:[
-    ['時柳', '預支能量：回血、護盾並加速', {ms0:1, rs:14, cd:.5, cast:{k:'self', heal:60, shield:30, boost:6}}],
-    ['渦流', '快速自旋攻擊，高擊退', {ms0:4, rs:1.4, cd:.3, cast:B(110, 45, {kb:700})}],
-    ['脈衝', '瞬間貫穿數百公尺，要求精準', {ms0:3, rs:3, cd:.7, cast:{k:'beam', tele:.12, dmg:130, r:5, len:800}}],
-    ['璃', '空間冰面般碎裂，靠近者被扭曲定住', {ms0:2, rs:4, cd:.6, cast:{k:'seal', R:150, dur:1.8, dmg:30, d:120}}],
-    ['負片', '狀態逆流回滿能量（回滿血）', {ms0:1, rs:20, cd:.6, cast:{k:'self', heal:999, shield:40}}]]},
-    {n:'幻日虹', c:'#ffe14a', field:{n:'朗', k:'seal', R:300, dur:4, hp:.25, dps:30}, sk:[
-    ['霓', '長時間的空間斬擊', {ms0:2, rs:4, cd:.9, cast:{k:'fan', n:22, spread:1.2, t:.9, v:1300, dmg:34, life:.45}}],
-    ['溢射', '大範圍攻擊，同時具有防禦功能', {ms0:2, rs:4, cd:.6, cast:{k:'ring', n:24, v:300, dmg:22, sh:25}}],
-    ['日全蝕', '範圍術式熔斷（含自身，付出少量血量）', {ms0:1, rs:12, cd:.6, cast:{k:'seal', R:200, dur:2.5, hp:.1}}],
-    ['冕', '瞬間空間斬擊脈衝，具擊退', {ms0:4, rs:2, cd:.3, cast:B(120, 55, {kb:650})}],
-    ['二極體', '半徑近距實體術式熔斷', {ms0:3, rs:3, cd:.4, cast:{k:'seal', R:100, dur:2}}],
-    ['霞', '範圍瞬間術式反噬', {ms0:2, rs:5, cd:.6, cast:{k:'seal', R:180, dur:.8, dmg:80}}]]},
-    {n:'塵流懸液', c:'#b45cff', field:{n:'塵流懸圖', k:'orbit', R:270, dur:8}, sk:[
-    ['簡筆', '擊退範圍內實體', {ms0:4, rs:1.5, cd:.3, cast:{k:'push', R:150, f:900, dmg:15}}],
-    ['裂解', '範圍內實體的能量被快速消耗', {ms0:2, rs:5, cd:.6, cast:{k:'poison', R:200, dur:4, dps:18}}]]},
-    {n:'噐體熔融', c:'#c0c8ff', field:{n:'爐心熔毀', k:'seal', R:280, dur:3, hp:.99, dps:60, open:B(280, 400, {kb:900, wd:3})}, sk:[
-    ['基本熔斷', '範圍術式熔斷', {ms0:2, rs:4, cd:.5, cast:{k:'seal', R:200, dur:3}}],
-    ['塑·熔', '範圍塑性靈魂熔斷，無法操縱還掉能量', {ms0:1, rs:8, cd:.6, cast:{k:'multi', list:[{k:'seal', R:200, dur:3}, {k:'poison', R:200, dur:5, dps:14}]}}],
-    ['汽焊', '短時間自身所有熔斷無效（無敵）', {ms0:1, rs:14, cd:.5, cast:{k:'self', inv:6}}],
-    ['助焊劑', '被擊中者反噬增加（持續灼傷）', {ms0:2, rs:5, cd:.5, cast:{k:'multi', list:[B(60, 40, {d:180}), {k:'poison', R:80, d:180, dur:5, dps:25}]}}]]},
-    {n:'銘骨衍枝曲', c:'#3dff8f', field:{n:'百花齊放', k:'bloom', R:280, dur:7}, sk:[
-    ['鐫刻', '中毒效果', {ms0:3, rs:3, cd:.4, cast:{k:'poison', R:70, d:180, dur:5, dps:14}}],
-    ['竹綻', '以一半血量為代價，範圍中毒並召喚 2 個竹式神', {ms0:1, rs:10, cd:.6, cast:{k:'multi', hp:.5, list:[{k:'poison', R:250, dur:5, dps:16}, {k:'ring', n:2, v:150, life:6, hm:1, dmg:20, r:8, pierce:1}]}}],
-    ['柳', '脈衝式射擊', {ms0:14, rs:.5, cd:.12, auto:1, dmg:30, v:950, life:.8, r:4, pierce:1, kb:60, acc:.03, mp:.05}],
-    ['白楊', '護盾並加速，短時間無視反噬', {ms0:2, rs:6, cd:.5, cast:{k:'self', shield:50, boost:8}}]]},
-    {n:'驥隱流楓', c:'#ff4d2e', field:{n:'霜雪風域', k:'void', R:260, dur:8}, sk:[
-    ['紊流隱舞曲', '實體瞬間離心運動並造成傷害，可連續觸發', {ms0:4, rs:1.5, cd:.3, cast:{k:'multi', list:[B(140, 40, {kb:600}), {k:'self', shield:15}]}}],
-    ['鏡川殘卷', '映射他人術式（弱化），代價極高', {ms0:1, rs:15, cd:.6, cast:{k:'ring', hp:.2, n:8, v:380, dmg:30, hm:1, life:2}}],
-    ['鳶尾天平', '攻擊力與剩餘血量平方成反比', {ms0:2, rs:4, cd:.6, cast:{k:'beam', tele:.2, dmgFn:()=>40+260*Math.pow(1-pl.hp/pl.mhp, 2), r:8, len:800}}],
-    ['瑟颯峽村', '隱身並留下橘紅落葉（短暫無敵）', {ms0:1, rs:10, cd:.5, cast:{k:'self', inv:3, boost:3}}]]},
-    {n:'斷霧鈞', c:'#22e6ff', field:{n:'引力井', k:'well', R:250, dur:6}, sk:[
-    ['牽絲', '把範圍內實體拉近', {ms0:3, rs:3, cd:.4, cast:{k:'push', R:280, f:900, pull:1}}],
-    ['墜星', '延遲後單點重擊', {ms0:2, rs:4, cd:.6, cast:B(70, 160, {d:200, kb:900, delay:.6})}],
-    ['潮汐', '先拉近再推開', {ms0:2, rs:5, cd:.6, cast:{k:'multi', list:[{k:'push', R:260, f:700, pull:1}, {k:'push', R:260, f:900, dmg:20, delay:.8}]}}],
-    ['無垠', '範圍時空凝滯', {ms0:2, rs:5, cd:.5, cast:{k:'seal', R:240, dur:1.5}}]]},
-    {n:'雷鳴簪', c:'#7a7aff', field:{n:'雷暴穹頂', k:'storm', R:300, dur:6}, sk:[
-    ['蟄鳴', '追蹤閃電扇形射出', {ms0:4, rs:2, cd:.35, cast:{k:'fan', n:5, spread:.5, v:700, dmg:26, hm:1, life:1}}],
-    ['驟雨', '多段落雷轟擊敵人', {ms0:2, rs:5, cd:.6, cast:{k:'rain', n:7, R:60, dmg:55}}],
-    ['導體', '範圍帶電灼傷', {ms0:2, rs:5, cd:.5, cast:{k:'poison', R:200, dur:5, dps:12}}],
-    ['穿雲', '直線貫穿雷射', {ms0:2, rs:4, cd:.6, cast:{k:'beam', tele:.15, dmg:150, r:8, len:900}}]]},
-    {n:'蝕月鐮', c:'#ff3d9a', field:{n:'永夜', k:'night', R:280, dur:7}, sk:[
-    ['月蝕', '半月形穿透斬擊', {ms0:3, rs:2.5, cd:.45, cast:{k:'fan', n:9, spread:1.6, v:520, dmg:40, life:.3, r:6, pierce:1}}],
-    ['噬', '範圍斬擊並吸取生命', {ms0:3, rs:3, cd:.5, cast:{k:'multi', list:[B(110, 50, {kb:300}), {k:'self', heal:20}]}}],
-    ['影遁', '瞬間位移並短暫無敵', {ms0:2, rs:4, cd:.4, cast:{k:'dash', t:.22}}],
-    ['新月', '前後各一道穿透的回旋斬', {ms0:2, rs:4, cd:.5, cast:{k:'ring', ao:1, n:2, v:600, dmg:45, life:.9, pierce:1, r:6}}]]}
-    ];
-    const cp=(c, a)=>c.d?{x:pl.x+Math.cos(a)*c.d, y:pl.y+Math.sin(a)*c.d}:{
-      x:pl.x, y:pl.y
-    };
-    const near=(p, R)=>en.filter(e=>e.hp>0&&Math.hypot(e.x-p.x, e.y-p.y)<R+e.r);
-    const hitE=(e, d)=>{
-      e.hp-=d;
-      e.hf=1;
-      if (e.hp<=0)kill(e)
-    };
-    const SCOL=()=>(WP[pl.w]&&WP[pl.w].c)||'#ffffff';
-    const CASTS={
-    burst(c, a) {
-      const p=cp(c, a);
-      explode({x:p.x, y:p.y, ex:c.R, dmg:c.dmg, kb:c.kb||300, wd:c.wd||2, col:SCOL()})
-    },
-    ring(c, a) {
-      const o=c.ao?a:0;
-      for (let k=0; k<c.n; k++)ub(o+k/c.n*TAU, c.v, {dmg:c.dmg, r:c.r||4, life:(c.life||1)/BS, pierce:c.pierce, hm:c.hm, col:SCOL()});
-      if (c.sh)pl.sh=Math.min(60, pl.sh+c.sh)
-    },
-    fan(c, a) {
-      for (let k=0; k<c.n; k++)later(k*(c.t||0)/c.n, ()=>ub(a+(c.n>1?k/(c.n-1)-.5:0)*c.spread, c.v, {dmg:c.dmg, r:c.r||3, life:(c.life||.5)/BS, pierce:c.pierce, hm:c.hm, col:SCOL()}))
-    },
-    beam(c, a) {
-      const px=pl.x, py=pl.y, t=c.tele||.1, col=SCOL();
-      line(a, c.len||700, t, col);
-      later(t, ()=>{
-        ub(a, 1500, {x:px, y:py, dmg:c.dmgFn?c.dmgFn():c.dmg, r:c.r||8, life:.6/BS, pierce:1, wd:c.wd||3, kb:c.kb||700, col});
-        shake=Math.max(shake, 10)
-      })
-    },
-    seal(c, a) {
-      const p=cp(c, a);
-      spot(p.x, p.y, c.R, .5, SCOL());
-      for (const e of near(p, c.R)) {
-        e.rec=Math.max(e.rec||0, c.dur);
-        if (c.dmg)hitE(e, c.dmg)
-      }
-    },
-    poison(c, a) {
-      const p=cp(c, a);
-      spot(p.x, p.y, c.R, .5, SCOL());
-      for (const e of near(p, c.R)) {
-        e.psn=c.dur;
-        e.psd=c.dps
-      }
-    },
-    push(c, a) {
-      const p=cp(c, a);
-      spot(p.x, p.y, c.R, .4, SCOL());
-      for (const e of near(p, c.R)) {
-        const dx=e.x-p.x, dy=e.y-p.y, d=Math.hypot(dx, dy)||1, s=(c.pull?-1:1)*c.f/e.m;
-        e.kx+=dx/d*s;
-        e.ky+=dy/d*s;
-        if (c.dmg)hitE(e, c.dmg)
-      }
-    },
-    self(c) {
-      if (c.heal)pl.hp=Math.min(pl.mhp, pl.hp+c.heal);
-      if (c.shield)pl.sh=Math.min(60, pl.sh+c.shield);
-      if (c.boost)pl.boost=Math.max(pl.boost, c.boost);
-      if (c.inv)pl.invT=c.inv;
-      if (c.dmgUp) {
-        const r=RUN;
-        r.dmg+=c.dmgUp;
-        later(c.upT||8, ()=>{
-          r.dmg-=c.dmgUp
-        })
-      }
-      burst(pl.x, pl.y, SCOL(), 24, 220, 3, .6)
-    },
-    dash(c, a) {
-      pl.dashT=c.t||.2;
-      pl.dx=Math.cos(a);
-      pl.dy=Math.sin(a)
-    },
-    rain(c) {
-      const T0=en.filter(e=>e.hp>0);
-      for (let k=0; k<c.n; k++)later(k*.12, ()=>{
-        const e=T0[(Math.random()*T0.length)|0], x=e?e.x:pl.x+(Math.random()-.5)*300, y=e?e.y:pl.y+(Math.random()-.5)*300;
-        explode({x, y, ex:c.R, dmg:c.dmg, kb:250, wd:2, col:SCOL()})
-      })
-    }
-    };
-    /** 施放術式；c.hp = 反噬/代價（按最大血量比例，最多扣到剩 1 血）；c.delay = 延遲生效 */
-    function castSkill(c, a) {
-      if (c.hp)pl.hp-=Math.min(pl.hp-1, pl.mhp*c.hp);
-      if (c.k==='multi') {
-        for (const s of c.list)castSkill(s, a);
-        return
-      }
-      const run=()=>CASTS[c.k](c, a);
-      if (c.delay) {
-        const p=cp(c, a);
-        spot(p.x, p.y, c.R||60, c.delay, SCOL());
-        later(c.delay, run)
-      } else run();
-    }
-    function applySkill(w) {
-      const s=w.set.sk[w.si], p=Object.assign({}, SPELL_DEF, s[2]);
-      for (const k in SPELL_DEF)w[k]=p[k];
-      w.skn=s[0]
-    }
-    /** 切換目前槍欄的術式；每個術式各自保留彈藥 */
-    function cycleSkill() {
-      if (state!=='play')return;
-      const o=WP[pl.w];
-      if (!o||!o.set)return;
-      const base=ALLW[o.id];
-      base.set.sk[base.si].am=o.am;
-      base.si=(base.si+1)%base.set.sk.length;
-      applySkill(base);
-      const n=modW(base), sa=base.set.sk[base.si].am;
-      n.ms=Math.round(n.ms0*(1+.1*UL('mag')));
-      n.am=sa===undefined?n.ms:Math.min(n.ms, sa);
-      n.um=o.um;
-      WP[pl.w]=n;
-      burst(pl.x, pl.y, n.c, 16, 200, 2.5, .4);
-      if (typeof tutCount==='function')tutCount('switches');
-    }
-    /** 術式場（SUPER）：持續一段時間的區域效果 */
-    const FIELDS=[];
-    function openField(F, w) {
-      if (F.hp)pl.hp-=Math.min(pl.hp-1, pl.mhp*F.hp);
-      FIELDS.push({F, x:pl.x, y:pl.y, t:F.dur, tk:0, c:w.c});
-      if (F.open)castSkill(F.open, 0);
-      shake=14;
-      burst(pl.x, pl.y, w.c, 40, 320, 3, .7);
-    }
-    function spellTick(dt) {
-      pl.invT=(pl.invT||0)-dt;
-      for (const e of en)if (e.psn>0) {
-        e.psn-=dt;
-        e.hp-=e.psd*dt;
-        if (e.hp<=0)kill(e)
-      }
-      for (const f of FIELDS) {
-        f.t-=dt;
-        f.tk-=dt;
-        const F=f.F, k=F.k, es=near(f, F.R), tick=f.tk<=0;
-        if (tick)f.tk=.2;
-        for (const e of es) {
-          const dx=e.x-f.x, dy=e.y-f.y, d=Math.hypot(dx, dy)||1;
-          if (k==='cut') {
-            if (tick)hitE(e, 18);
-            e.kx+=dx/d*400*dt/e.m;
-            e.ky+=dy/d*400*dt/e.m
-          } // 電子軌道切割：持續傷害並向外彈開
-          else if (k==='freeze') {
-            e.rec=Math.max(e.rec||0, .3);
-            if (tick)hitE(e, 6)
-          }
-          else if (k==='seal') {
-            e.rec=Math.max(e.rec||0, .3);
-            if (tick)hitE(e, (F.dps||30)*.2)
-          }
-          else if (k==='orbit') {
-            const w=1.1*dt, c=Math.cos(w), s=Math.sin(w);
-            mv(e, dx*c-dy*s-dx, dx*s+dy*c-dy)
-          } // 同心圓旋轉：實體連帶移動
-          else if (k==='bloom') {
-            e.psn=.5;
-            e.psd=22
-          }
-          else if (k==='void') {
-            e.rec=Math.max(e.rec||0, .3)
-          }
-          else if (k==='well') {
-            e.kx-=dx/d*500*dt/e.m;
-            e.ky-=dy/d*500*dt/e.m;
-            if (tick)hitE(e, 5)
-          }
-          else if (k==='night') {
-            if (tick)hitE(e, 8)
-          }
-        }
-        if (k==='storm'&&tick&&es.length) {
-          const e=es[(Math.random()*es.length)|0];
-          explode({x:e.x, y:e.y, ex:55, dmg:70, kb:300, wd:2, col:f.c})
-        }
-        const pd=Math.hypot(pl.x-f.x, pl.y-f.y);
-        if (k==='void'&&pd>F.R-10) {
-          const a=Math.atan2(f.y-pl.y, f.x-pl.x), s=pd-(F.R-10);
-          mv(pl, Math.cos(a)*s, Math.sin(a)*s)
-        } // 施術者不得離開術式場
-        if ((k==='bloom'||k==='night')&&pd<F.R)pl.hp=Math.min(pl.mhp, pl.hp+(k==='night'?4:2)*dt);
-      }
-      for (let i=FIELDS.length-1; i>=0; i--)if (FIELDS[i].t<=0)FIELDS.splice(i, 1);
-    }
-    function drawFields() {
-      cx.save();
-      cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      for (const f of FIELDS) {
-        const x=(f.x-camx)*S, y=(f.y-camy)*S, R=f.F.R*S, a=Math.min(1, f.t*2);
-        cx.globalAlpha=.55*a;
-        cx.strokeStyle=cx.fillStyle=f.c;
-        cx.lineWidth=2;
-        cx.shadowColor=f.c;
-        cx.shadowBlur=12;
-        cx.beginPath();
-        cx.arc(x, y, R, 0, TAU);
-        cx.stroke();
-        cx.globalAlpha=.1*a;
-        cx.fill();
-        if (f.F.k==='orbit') {
-          cx.globalAlpha=.4*a;
-          for (let i=1; i<9; i++) {
-            cx.beginPath();
-            cx.arc(x, y, R*i/9, 0, TAU);
-            cx.stroke()
-          }
-        }
-      }
-      cx.restore();
-    }
-    function drawSkillLabel() {
-      if (state!=='play'||!WP[pl.w]||!WP[pl.w].set)return;
-      const w=WP[pl.w], u=HU, r=slotR(0);
-      cx.save();
-      cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      cx.font='bold '+(12*u)+'px system-ui,"Noto Sans TC",sans-serif';
-      cx.textAlign='center';
-      cx.textBaseline='middle';
-      cx.fillStyle=w.c;
-      cx.fillText(w.n+'·'+w.skn+'　['+(ALLW[w.id].si+1)+'/'+w.set.sk.length+'] E 切換術式', W/2, r.y-46*u);
-      cx.restore();
-    }
-
-    /* 安裝：取代所有槍械與對應資料表，並把舊存檔的槍械編號重置 */
-    {
-    if (SV.spellVer!==1) {
-      SV.spellVer=1;
-      SV.own=[0, 1, 2];
-      SV.mods={};
-      SV.chips={};
-      LO.splice(0, LO.length, 0, 1, 2);
-      try {
-        localStorage.removeItem('neonShardLO')
-      } catch (e) {}save()
-    }
-    ALLW.length=0;
-    SPELLS.forEach((s, i)=>{
-      const w={id:i, n:s.n, c:s.c, set:s, si:0};
-      ALLW.push(w);
-      applySkill(w)
-    });
-    WD.splice(0, WD.length, ...SPELLS.map(s=>s.sk.map(k=>k[0]).join('·')+' ／ 術式場：'+s.field.n));
-    UE.splice(0, UE.length, ...SPELLS.map(()=>1));
-    ULN.splice(0, ULN.length, ...SPELLS.map(s=>s.field.n));
-    WPR.splice(0, WPR.length, 0, 0, 0, 300, 400, 60, 80, 100, 10, 14);
-    WPC.splice(0, WPC.length, 'coins', 'coins', 'coins', 'coins', 'coins', 'sh', 'sh', 'sh', 'co', 'co');
-    for (const k in ULTS)delete ULTS[k];
-    SPELLS.forEach((s, i)=>{
-      ULTS[i]=()=>openField(s.field, WP[pl.w]||ALLW[i])
-    });
-    const _setup=setup; setup=function() {
-      _setup.apply(this, arguments);
-      FIELDS.length=0;
-      pl.invT=0;
-      for (const s of SPELLS)for (const k of s.sk)k.am=undefined
-    };
-    const _shoot=shoot; shoot=function(f, qk) {
-      const w=WP[pl.w];
-      if (!(w&&w.cast))return _shoot.apply(this, arguments);
-      if (state!=='play'||pl.sc>0||w.am<1)return;
-      w.am-=1;
-      pl.sc=w.cd;
-      const t=w.cast.k==='self'?null:aimT();
-      if (t)pl.aim=Math.atan2(t.y-pl.y, t.x-pl.x);
-      castSkill(w.cast, pl.aim);
-    };
-    const _hurt=hurt; hurt=function(d) {
-      if (pl.invT>0)return;
-      return _hurt.call(this, d)
-    };
-    const _su=slotUp; slotUp=function(x, y) {
-      const d=drag;
-      if (d&&slotAt(x, y)===d.from&&d.from===pl.w)cycleSkill();
-      return _su.apply(this, arguments)
-    };
-    const _hud=hud; hud=function() {
-      drawFields();
-      _hud();
-      drawSkillLabel()
-    };
-    const _upd=update; update=function(dt) {
-      _upd(dt);
-      if (state==='play')spellTick(dt)
-    };
-    addEventListener('keydown', e=>{
-      if (e.code==='KeyE'&&!e.repeat)cycleSkill()
-    });
-    applyLO(); setup(); if (window.upd)window.upd(); showOv(0);
-    }
-
-    /* =====================================================================
-     * 教學模式：逐步引導 + 以 localStorage 判斷是否第一次遊玩（首次自動進入）
-     * 每一步的完成條件由「操作統計」自動判定，不需要玩家額外按確認
+     * 教學模式：15 步引導，完成條件由「操作統計」自動判定
+     *   - localStorage 鍵 neonShardTutorialDone：沒有就是第一次遊玩，載入後自動進入教學
+     *   - 每一步可有 setup（佈置場景）、keep（資源被消耗時補回）、p（進度 0~1）
+     *   - 可 跳過 / 上一步 / 離開；教學中血量不會歸零、不會結算獎勵、不會出現隨機波次
      * ===================================================================== */
     const TUT_KEY='neonShardTutorialDone';
-    const TUT={on:false, done:false, step:0, adv:0, st:{}, px:0, py:0, aim:0, w:0};
+    const TUT={on:false, done:false, step:0, adv:0, st:{}, walls:[], px:0, py:0, aim:0, w:0};
     let tutorialSeen=false;
     try {
       tutorialSeen=localStorage.getItem(TUT_KEY)==='1'
@@ -10196,46 +9839,118 @@
     const tutCount=(k, n=1)=>{
       if (TUT.on)TUT.st[k]=(TUT.st[k]||0)+n
     };
-    const tutNew=()=>({moved:0, aimed:0, shots:0, switches:0, dashes:0, walls:0, kills:0, supers:0});
-    function tutEnemy(t, dx, dy, frozen) {
-      const x=pl.x+dx, y=pl.y+dy, e=mkEn(t, x, y);
-      if (frozen)e.sp=0; // 靜止靶：不會移動
+    const tutNew=()=>({moved:0, aimed:0, shots:0, auto:0, switches:0, dashes:0, walls:0, kills:0, supers:0, pauses:0, emptied:0});
+    const tutAhead=d=>({x:pl.x+Math.cos(pl.aim)*d, y:pl.y+Math.sin(pl.aim)*d}); // 玩家面向前方 d 像素處
+
+    /** 生成教學敵人；frozen=靜止靶（不會移動），位置被牆擋住時改找空地 */
+    function tutEnemy(t, x, y, frozen) {
+      let p={x, y};
+      if (blocked(p.x, p.y, 18))p=empty(150, pl)||p;
+      const e=mkEn(t, p.x, p.y);
+      if (frozen)e.sp=0;
       en.push(e);
-      burst(x, y, '#ffffff', 8, 120, 2, .5);
+      burst(p.x, p.y, '#ffffff', 8, 120, 2, .5);
     }
+    const tutDummies=n=>{
+      for (let k=0; k<n; k++) {
+        const a=tutAhead(190);
+        tutEnemy(0, a.x, a.y+(k-(n-1)/2)*70, true)
+      }
+    };
+    /** 敵人被清光但條件未達成時補怪（以 kills 為目標） */
+    const tutRespawn=(type, need, frozen)=>()=>{
+      if (en.length===0&&(TUT.st.kills||0)<need) {
+        const a=tutAhead(240);
+        tutEnemy(type, a.x, a.y, frozen)
+      }
+    };
+
     const TUT_STEPS=[
-    {title:'移動', text:'按 W A S D 移動（手機：左半邊搖桿），走一小段路。', p:s=>s.moved/200},
-    {title:'瞄準', text:'移動滑鼠讓箭頭轉動（手機：右半邊拖曳），轉約一圈。', p:s=>s.aimed/6},
-    {title:'射擊', text:'按滑鼠左鍵射擊 6 次（手機：右半邊放開發射）。彈藥會隨時間自動回復。', p:s=>s.shots/6},
-    {title:'換槍與術式', text:'按 1 / 2 / 3、Q 或滾輪換術式槍欄；按 E 切換該套的術式（手機：再點一次目前槍欄）。共切換 3 次。', p:s=>s.switches/3},
-    {title:'衝刺', text:'按 Shift 衝刺（手機：DASH 鈕）2 次。衝刺期間完全無敵，但有冷卻。', p:s=>s.dashes/2},
-    {title:'破牆', text:'彩色方塊能被子彈打碎，顏色越暖代表越脆弱。打碎 3 塊牆。',
+    {title:'移動', text:'按 W A S D 在場地中移動，走一小段路。', mb:'用左半邊螢幕的虛擬搖桿移動，走一小段路。', p:s=>s.moved/200},
+    {title:'瞄準', text:'移動滑鼠，讓角色前方的三角形箭頭跟著轉，轉約一圈。', mb:'在右半邊螢幕拖曳手指，箭頭會朝拖曳方向轉動，轉約一圈。', p:s=>s.aimed/6},
+    {title:'射擊', text:'按滑鼠左鍵射擊 5 次（按住可連射的槍會持續開火）。', mb:'在右半邊螢幕拖曳瞄準，放開手指就會發射，射擊 5 次。', p:s=>s.shots/5},
+    {title:'彈藥', text:'每次射擊都會消耗彈藥（畫面下方右側的彈藥條）。把目前彈匣打光，再等它自動回復一發。',
     setup() {
-      const pi=Math.floor(pl.x/T), pj=Math.floor(pl.y/T);
-      for (let d=-1; d<=1; d++)if (cell(pi+3, pj+d)===0)grid[(pj+d)*N+pi+3]=2
+      const w=WP[pl.w];
+      w.am=w.ms
+    }, noRefill:true,
+    p:s=>s.emptied?(WP[pl.w].am>=1?1:.7):Math.min(.6, s.shots/WP[pl.w].ms*.6)},
+    {title:'換槍', text:'按 1 / 2 / 3、Q 或滑鼠滾輪切換武器，切換 2 次。每把槍的射速、彈匣與擊退都不同（只裝備 1 把槍會自動略過）。',
+    mb:'點畫面下方的槍欄切換武器（可拖曳互換位置），切換 2 次。', p:s=>WP.length<2?1:s.switches/2},
+    {title:'自動瞄準', text:'角色周圍的虛線圈內，會自動瞄準最近的敵人（黃色圈標示）。大致朝靶射擊 3 次；按 R 可開關自動瞄準。',
+    setup() {
+      AA=true;
+      const a=tutAhead(130);
+      tutEnemy(0, a.x, a.y, true)
+    }, keep:tutRespawn(0, 99, true), p:s=>s.auto/3},
+    {title:'衝刺', text:'按 Shift 衝刺 2 次。衝刺期間完全無敵，能直接穿過子彈，但有冷卻時間。', mb:'點右下角 DASH 鈕衝刺 2 次（按住並拖曳可指定方向）。', p:s=>s.dashes/2},
+    {title:'破牆', text:'彩色方塊能被子彈打碎，顏色越暖越脆弱；紫色叉叉牆打不壞。打碎前方 3 塊牆。',
+    setup() {
+      const a=tutAhead(T*3), ci=Math.floor(a.x/T), cj=Math.floor(a.y/T), horiz=Math.abs(Math.cos(pl.aim))<Math.abs(Math.sin(pl.aim));
+      TUT.walls=[];
+      for (let d=-1; d<=1; d++) {
+        const i=ci+(horiz?d:0), j=cj+(horiz?0:d);
+        if (cell(i, j)===0) {
+          grid[i+j*N]=2;
+          TUT.walls.push(i+j*N)
+        }
+      }
+      while (TUT.walls.length<3) {
+        const q=empty(150, pl);
+        if (!q)break;
+        const i=Math.floor(q.x/T), j=Math.floor(q.y/T);
+        grid[i+j*N]=2;
+        TUT.walls.push(i+j*N)
+      } // 前方被擋時改放別處
+    }, p:s=>s.walls/3},
+    {title:'擊敗敵人', text:'擊敗 2 個靜止的追擊靶。命中會把敵人擊退，擊退力強的武器更容易拉開距離。', setup() {
+      tutDummies(2)
     },
-    p:s=>s.walls/3},
-    {title:'擊敗敵人', text:'擊敗 2 個靜止的追擊靶。命中會擊退敵人，擊退力強的武器更能拉開距離。',
-    setup() {
-      tutEnemy(0, 200, -60, true);
-      tutEnemy(0, 200, 60, true)
+    keep:()=>{
+      if (en.length===0&&(TUT.st.kills||0)<2)tutDummies(2-(TUT.st.kills||0))
     }, p:s=>s.kills/2},
-    {title:'閃避預警', text:'狙擊敵人開火前會出現紅色虛線。看到就側移或衝刺閃開，再把它擊倒。',
+    {title:'閃避狙擊', text:'狙擊敵人開火前會出現紅色虛線（約 0.45 秒）。看到就側移或衝刺閃開，再把它擊倒。',
     setup() {
-      tutEnemy(1, 260, 0, false)
-    }, p:s=>s.kills},
-    {title:'SUPER 大招', text:'命中敵人會累積 SUPER 能量，蓄滿可一次轟出強力攻擊。這次已幫你蓄滿，按空白鍵（手機：SUPER 鈕）施放。',
+      const a=tutAhead(260);
+      tutEnemy(1, a.x, a.y, false)
+    }, keep:tutRespawn(1, 1, false), p:s=>s.kills},
+    {title:'閃避散射', text:'散射敵人一次射出 5 發扇形子彈，紅色虛線就是彈道。往彈道之間的縫隙移動，或衝刺穿過去，再擊倒它。',
     setup() {
-      pl.ult=100;
-      tutEnemy(0, 200, -60, true);
-      tutEnemy(0, 200, 60, true)
+      const a=tutAhead(260);
+      tutEnemy(2, a.x, a.y, false)
+    }, keep:tutRespawn(2, 1, false), p:s=>s.kills},
+    {title:'地面炸彈', text:'投擲敵人會在你腳下丟出紅色圓圈炸彈，圈填滿就爆炸，也會炸毀方塊。看到圈就離開，再擊倒它。',
+    setup() {
+      const a=tutAhead(260);
+      tutEnemy(3, a.x, a.y, false)
+    }, keep:tutRespawn(3, 1, false), p:s=>s.kills},
+    {title:'SUPER 大招', text:'命中敵人會累積 SUPER 能量，每把槍各自累積，蓄滿後可一次轟出強力攻擊。這次已幫你蓄滿，按空白鍵施放。',
+    mb:'這次已幫你蓄滿 SUPER。點 SUPER 鈕施放（按住拖曳可指定方向）。',
+    setup() {
+      tutDummies(2);
+      pl.ult=100
+    },
+    keep:()=>{
+      if ((TUT.st.supers||0)<1&&pl.ult<100)pl.ult=100;
+      if (en.length===0&&(TUT.st.supers||0)<1)tutDummies(2)
     }, p:s=>s.supers},
-    {title:'補血', text:'血量被降低了。走到綠色十字上回復血量。',
+    {title:'暫停', text:'按 P 或 Esc 暫停，再按一次繼續。暫停選單可放棄本局。這一步請暫停後繼續遊戲。',
+    mb:'點左上角的暫停鈕，再按「繼續」。', p:s=>s.pauses},
+    {title:'補血', text:'血量被降低了。走到綠色十字上回復血量，撿取物掉在地上一段時間後會消失。',
     setup() {
       pl.hp=40;
-      pk.push({x:pl.x+110, y:pl.y, t:'heal', life:90})
-    }, p:()=>Math.max(0, (pl.hp-40)/25)}
+      const a=tutAhead(110);
+      pk.push({x:a.x, y:a.y, t:'heal', life:90})
+    },
+    keep:()=>{
+      if (pl.hp<65&&!pk.some(q=>q.t==='heal')) {
+        const a=tutAhead(110);
+        pk.push({x:a.x, y:a.y, t:'heal', life:90})
+      }
+    },
+    p:()=>Math.max(0, (pl.hp-40)/25)}
     ];
+
     function tutEnter(i) {
       TUT.step=i;
       TUT.adv=0;
@@ -10243,23 +9958,40 @@
       en.length=0;
       bl.length=0;
       zones.length=0;
-      if (TUT_STEPS[i].setup)TUT_STEPS[i].setup();
+      pk.length=0;
+      SQ.length=0;
+      for (let j=1; j<N-1; j++)for (let k=1; k<N-1; k++)grid[k+j*N]=0; // 每步都從乾淨場地開始（上一步也能重來）
+      pl.hp=Math.max(pl.hp, pl.mhp*.6);
+      const st=TUT_STEPS[i];
+      if (st.setup)st.setup();
+      tutUI();
     }
     function tutAdvance() {
       if (!TUT.on||TUT.done)return;
       if (TUT.step>=TUT_STEPS.length-1) {
         TUT.done=true;
         en.length=0;
+        bl.length=0;
+        pk.length=0;
         markTutorialDone();
+        tutUI();
         return
       }
       tutEnter(TUT.step+1);
     }
+    function tutBack() {
+      if (TUT.on&&!TUT.done&&TUT.step>0)tutEnter(TUT.step-1);
+      else if (TUT.on&&TUT.done) {
+        TUT.done=false;
+        tutEnter(TUT.step)
+      }
+    }
     function tutTick(dt) {
-      if (!TUT.on||state!=='play')return;
-      pkT=999; // 教學中不隨機掉補給
-      for (const w of WP)w.am=w.ms; // 教學中彈藥補滿
-      if (TUT.done)return;
+      if (!TUT.on||state!=='play'||TUT.done)return;
+      pkT=999;
+      const st=TUT_STEPS[TUT.step];
+      if (!st.noRefill)for (const w of WP)w.am=w.ms; // 教學中彈藥補滿（彈藥那一步除外）
+      else if (WP[pl.w].am<1)TUT.st.emptied=1;
       tutCount('moved', Math.hypot(pl.x-TUT.px, pl.y-TUT.py));
       let da=pl.aim-TUT.aim;
       da=Math.atan2(Math.sin(da), Math.cos(da));
@@ -10274,24 +10006,24 @@
         if (TUT.adv<=0)tutAdvance();
         return
       }
-      if (TUT_STEPS[TUT.step].p(TUT.st)>=1)TUT.adv=.8; // 達標後停 0.8 秒再進下一步
+      if (st.p(TUT.st)>=1) {
+        TUT.adv=.9;
+        return
+      } // 達標：顯示 ✓ 後再進下一步
+      if (st.keep)st.keep();
     }
     function startTutorial() {
       applyLO();
       setup();
-      en.length=0;
-      pk.length=0;
-      bl.length=0;
-      zones.length=0;
-      for (let j=1; j<N-1; j++)for (let i=1; i<N-1; i++)grid[i+j*N]=0; // 清空場地
-      wave=1;
-      banner=0;
-      pkT=999;
+      AA=true;
       Object.assign(TUT, {on:true, done:false});
       TUT.px=pl.x;
       TUT.py=pl.y;
       TUT.aim=pl.aim;
       TUT.w=pl.w;
+      wave=1;
+      banner=0;
+      pkT=999;
       tutEnter(0);
       $('ov').classList.add('h');
       setState('play');
@@ -10302,6 +10034,7 @@
       TUT.on=false;
       en.length=0;
       bl.length=0;
+      pk.length=0;
       tutUI();
       setState('menu');
       showOv(0);
@@ -10316,9 +10049,12 @@
     /* 操作統計：包裝既有函式，不改動原本邏輯 */
     {
     const _shoot=shoot; shoot=function() {
-      const w=WP[pl.w], a=w.am;
+      const w=WP[pl.w], a=w.am, t=TUT.on&&AA&&aimT();
       const r=_shoot.apply(this, arguments);
-      if (w.am<a)tutCount('shots');
+      if (w.am<a) {
+        tutCount('shots');
+        if (t)tutCount('auto')
+      }
       return r
     };
     const _dash=dash; dash=function() {
@@ -10347,7 +10083,20 @@
         d=Math.min(d, (pl.hp-1)/1.2)
       }
       return _hurt.call(this, d)
-    }; // 教學中傷害會被封頂，不會死亡
+    }; // 教學中傷害封頂，不會死亡
+    const _resume=resume; resume=function() {
+      const was=state==='pause';
+      _resume.apply(this, arguments);
+      if (was)tutCount('pauses')
+    };
+    const _quit=quit; quit=function() {
+      if (TUT.on) {
+        $('ps').classList.add('h');
+        exitTutorial();
+        return
+      }
+      return _quit.apply(this, arguments)
+    }; // 暫停選單的「放棄」＝離開教學
     const _hud=hud; hud=function() {
       _hud();
       drawTutPanel()
@@ -10373,23 +10122,27 @@
     function drawTutPanel() {
       if (!TUT.on||state!=='play')return;
       cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      const u=HU, st=TUT_STEPS[TUT.step], w=Math.min(W-24, 380*u), x=W/2-w/2, y=safeT+10;
+      const u=HU, n=TUT_STEPS.length, st=TUT_STEPS[TUT.step], w=Math.min(W-24, 400*u), x=W/2-w/2, y=safeT+10, F='system-ui,"Noto Sans TC",sans-serif';
       cx.save();
-      cx.font=(13*u)+'px system-ui,"Noto Sans TC",sans-serif';
-      const lines=wrapTut(TUT.done?'你已學會所有基本操作！按「開始戰鬥」進入正式遊戲，或離開教學回主頁。':st.text, w-24*u);
-      const h=(36+lines.length*19+(TUT.done?4:18))*u;
+      cx.font=(13*u)+'px '+F;
+      const body=TUT.done?'你已學會所有基本操作！正式戰鬥小提醒：每波結束會進補給站，用戰利品強化；金幣可到商城永久升級；想自由試槍、練習打各種敵人，可到「訓練場」。':(touchOn&&st.mb?st.mb:st.text);
+      const lines=wrapTut(body, w-24*u), h=(46+lines.length*19+(TUT.done?4:18))*u;
       cx.fillStyle='#05060ddd';
       cx.fillRect(x, y, w, h);
       cx.strokeStyle='#ffe14a88';
       cx.strokeRect(x+.5, y+.5, w-1, h-1);
       cx.textAlign='left';
       cx.textBaseline='top';
-      cx.fillStyle='#ffe14a';
-      cx.font='bold '+(14*u)+'px system-ui,"Noto Sans TC",sans-serif';
-      cx.fillText(TUT.done?'教學完成！':'教學 '+(TUT.step+1)+'/'+TUT_STEPS.length+' · '+st.title, x+12*u, y+9*u);
+      cx.fillStyle=TUT.adv>0?'#3dff8f':'#ffe14a';
+      cx.font='bold '+(14*u)+'px '+F;
+      cx.fillText(TUT.done?'教學完成！':'教學 '+(TUT.step+1)+'/'+n+' · '+st.title+(TUT.adv>0?'  ✓':''), x+12*u, y+8*u);
+      for (let i=0; i<n; i++) {
+        cx.fillStyle=TUT.done||i<TUT.step?'#3dff8f':i===TUT.step?'#ffe14a':'#ffffff33';
+        cx.fillRect(x+12*u+i*((w-24*u)/n), y+28*u, (w-24*u)/n-3*u, 3*u)
+      }
       cx.fillStyle='#d8f4ff';
-      cx.font=(13*u)+'px system-ui,"Noto Sans TC",sans-serif';
-      lines.forEach((l, i)=>cx.fillText(l, x+12*u, y+(32+i*19)*u));
+      cx.font=(13*u)+'px '+F;
+      lines.forEach((l, i)=>cx.fillText(l, x+12*u, y+38*u+i*19*u));
       if (!TUT.done) {
         const f=Math.max(0, Math.min(1, st.p(TUT.st))), by=y+h-14*u;
         cx.fillStyle='#ffffff22';
@@ -10400,11 +10153,13 @@
       cx.restore();
     }
 
-    /* 教學控制鈕（鍵盤：N 跳過 / X 離開 / Enter 開始戰鬥；觸控用畫面按鈕） */
-    let tutBox=null, tutStartBtn=null;
+    /* 教學控制鈕（鍵盤：N 跳過 / B 上一步 / X 離開 / Enter 開始戰鬥；觸控用畫面按鈕）。主頁入口在 xLobby 的按鈕列 */
+    let tutBox=null, tutBackBtn=null, tutSkipBtn=null, tutStartBtn=null;
     function tutUI() {
       if (!tutBox)return;
       tutBox.style.display=TUT.on?'flex':'none';
+      tutBackBtn.style.display=TUT.on&&(TUT.step>0||TUT.done)?'block':'none';
+      tutSkipBtn.style.display=TUT.on&&!TUT.done?'block':'none';
       tutStartBtn.style.display=TUT.on&&TUT.done?'block':'none';
     }
     function tutorialButton() {
@@ -10418,15 +10173,17 @@
         tutBox.append(b);
         return b
       };
-      mk('跳過此步 (N)', tutAdvance);
+      tutBackBtn=mk('上一步 (B)', tutBack);
+      tutSkipBtn=mk('跳過此步 (N)', tutAdvance);
       mk('離開教學 (X)', exitTutorial);
       tutStartBtn=mk('開始戰鬥 (Enter)', tutToBattle);
       document.body.append(tutBox);
       tutUI();
     }
     addEventListener('keydown', e=>{
-      if (!TUT.on)return;
+      if (!TUT.on||e.repeat)return;
       if (e.code==='KeyN')tutAdvance();
+      else if (e.code==='KeyB')tutBack();
       else if (e.code==='KeyX')exitTutorial();
       else if (e.code==='Enter'&&TUT.done)tutToBattle();
     });
