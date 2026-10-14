@@ -848,6 +848,31 @@ export function render() {
     cx.arc(0, 0, p.r, 0, TAU);
     cx.fill();
     cx.stroke();
+    // Draw the locally saved freehand skin clipped to the player's body.
+    try {
+      const skin = JSON.parse(localStorage.getItem("neon-shard.custom-skin.v1") || "[]");
+      if (Array.isArray(skin) && skin.length) {
+        cx.save();
+        cx.beginPath();
+        cx.arc(0, 0, p.r - 1, 0, TAU);
+        cx.clip();
+        for (const stroke of skin.slice(0, 200)) {
+          if (!Array.isArray(stroke.points) || stroke.points.length < 1) continue;
+          cx.beginPath();
+          cx.strokeStyle = /^#[0-9a-f]{6}$/i.test(stroke.color) ? stroke.color : "#22e6ff";
+          cx.lineWidth = Math.max(1, Math.min(16, Number(stroke.width) || 3)) * Math.max(0.25, p.r / 18);
+          cx.lineCap = "round";
+          cx.lineJoin = "round";
+          stroke.points.slice(0, 1000).forEach((point, index) => {
+            const x = (Math.max(0, Math.min(1, Number(point.x) || 0)) * 2 - 1) * (p.r - 2);
+            const y = (Math.max(0, Math.min(1, Number(point.y) || 0)) * 2 - 1) * (p.r - 2);
+            if (index === 0) cx.moveTo(x, y); else cx.lineTo(x, y);
+          });
+          cx.stroke();
+        }
+        cx.restore();
+      }
+    } catch { /* malformed local cosmetic data must never break rendering */ }
     cx.rotate(p.aim);
     cx.beginPath();
     cx.moveTo(p.r + 9, 0);
