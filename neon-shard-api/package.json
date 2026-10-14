@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/security.js && node --check src/validation.js && node --check ../neon-shard/js/cloud-crypto.js && node --check ../neon-shard/js/cloud-account.js && node --check ../neon-shard/js/cloud-config.js",
+    "check": "node --check src/server.js && node --check src/security.js && node --check src/validation.js && node --check src/display-name.js && node --check ../neon-shard/js/account/cloud-crypto.js && node --check ../neon-shard/js/account/api-client.js && node --check ../neon-shard/js/account/account-service.js",
     "test": "node --test"
   },
   "dependencies": {

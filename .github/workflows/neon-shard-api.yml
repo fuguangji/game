@@ -7,11 +7,12 @@ on:
       - "feature/neon-shard-*"
     paths:
       - "neon-shard-api/**"
-      - "neon-shard/js/**"
+      - "neon-shard/**"
       - ".github/workflows/neon-shard-api.yml"
   pull_request:
     paths:
       - "neon-shard-api/**"
+      - "neon-shard/**"
       - ".github/workflows/neon-shard-api.yml"
 
 permissions:
@@ -36,3 +37,20 @@ jobs:
         run: npm run check
       - name: Unit tests
         run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: neon-shard
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check every module
+        run: find js -name "*.js" -print0 | xargs -0 -n1 node --check
+      - name: Account / state / save unit tests and game behavior tests
+        run: node --import ./test/stubs.mjs --test test/*.test.mjs

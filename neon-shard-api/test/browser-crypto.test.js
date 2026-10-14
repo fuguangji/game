@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { verifyP256Signature } from "../src/security.js";
 
-const { canonicalJson, encryptSave, decryptSave, signSaveRequest } = await import("../../neon-shard/js/cloud-crypto.js");
+const { canonicalJson, encryptSave, decryptSave, signSaveRequest } = await import("../../neon-shard/js/account/cloud-crypto.js");
 
 test("browser ECDH + HKDF + AES-GCM envelope round-trips and detects tampering", async () => {
   const pair = await crypto.subtle.generateKey(

@@ -1,11 +1,8 @@
 import { z } from "zod";
+import { hasUnsupportedDisplayNameChars } from "./display-name.js";
 
 const base64url = z.string().min(1).max(16_384).regex(/^[A-Za-z0-9_-]+$/);
 const keyId = z.string().trim().min(1).max(128);
-const hasUnsupportedDisplayNameChars = (value) => [...value].some((character) => {
-  const code = character.charCodeAt(0);
-  return code < 32 || code === 127 || character === "%" || character === "_";
-});
 const displayName = z.string().trim().min(1).max(24).refine(
   (value) => !hasUnsupportedDisplayNameChars(value),
   "Display name contains unsupported characters",
