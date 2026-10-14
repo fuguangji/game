@@ -74,12 +74,22 @@ export function attachRealtime(server, { admin, allowedOrigins = [] } = {}) {
         }
       } else if (msg.type === "attack" && Date.now() - player.lastAttack >= 450) {
         player.lastAttack = Date.now();
+        let hitPlayer = null;
+        if (room.mode === "arena") {
+          const opponents = [...room.players.values()].filter((other) => other.id !== player.id && other.hp > 0);
+          hitPlayer = opponents
+            .map((other) => ({ other, distance: Math.hypot(other.x - player.x, other.y - player.y) }))
+            .filter((entry) => entry.distance <= 0.12)
+            .sort((a, b) => a.distance - b.distance)[0]?.other ?? null;
+        }
         if (room.mode === "boss") room.bossHp = Math.max(0, room.bossHp - 20);
+        else if (hitPlayer) hitPlayer.hp = Math.max(0, hitPlayer.hp - 20);
         else if (Array.isArray(room.mobs)) {
           const target = room.mobs.find((mob) => mob.hp > 0);
           if (target) target.hp = Math.max(0, target.hp - 10);
         }
-        broadcast(room, { type: "combat", bossHp: room.bossHp, mobs: room.mobs });
+        broadcast(room, { type: "combat", bossHp: room.bossHp, mobs: room.mobs,
+          players: [...room.players.values()].map(({ id, name, x, y, hp }) => ({ id, name, x, y, hp })) });
       }
     });
     function leaveRoom(p) {
