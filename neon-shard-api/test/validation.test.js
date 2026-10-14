@@ -32,7 +32,7 @@ test("save schema requires a P-256 envelope and matching key IDs", () => {
       },
       iv: "AAAAAAAAAAAAAAAA",
       ciphertext: "Y2lwaGVy",
-      tag: "dGFn",
+      tag: "AAAAAAAAAAAAAAAAAAAAAA",
     },
     keyId: "key-1",
     signedAt: Date.now(),
