@@ -351,7 +351,11 @@ app.put("/api/player-data", requireUser, updateSave);
 app.get("/api/profiles/:displayName", async (req, res, next) => {
   try {
     const name = req.params.displayName.trim();
-    if (!name || name.length > 24 || /[%_\\u0000-\\u001f\\u007f]/u.test(name)) {
+    const hasUnsupportedChars = [...name].some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127 || character === "%" || character === "_";
+    });
+    if (!name || name.length > 24 || hasUnsupportedChars) {
       throw new HttpError(400, "INVALID_DISPLAY_NAME", "Display name is invalid.");
     }
     const { data, error } = await admin.from("profiles")
