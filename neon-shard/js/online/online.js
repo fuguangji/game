@@ -1,5 +1,5 @@
 const STORAGE_KEY = "neon-shard.custom-skin.v1";
-const API = window.NEON_SHARD_API_URL || "https://neon-shard-api.onrender.com";
+const API = window.NEON_SHARD_API_BASE || "https://neon-shard-api.onrender.com";
 const style = document.createElement("style");
 style.textContent = `
 #ns-tools{position:fixed;z-index:10001;right:12px;top:max(12px,env(safe-area-inset-top));display:flex;gap:6px}
@@ -10,7 +10,7 @@ style.textContent = `
 .ns-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.ns-status{color:#9fb6c9;white-space:pre-wrap}
 `;
 document.head.append(style);
-const tools=document.createElement("div");tools.id="ns-tools";
+let activeSocket=null;let lastMoveAt=0;\ndocument.addEventListener("pointermove",e=>{if(!activeSocket||activeSocket.readyState!==1||Date.now()-lastMoveAt<80)return;const canvas=document.querySelector("#g");if(!canvas)return;const r=canvas.getBoundingClientRect();if(!r.width||!r.height)return;lastMoveAt=Date.now();activeSocket.send(JSON.stringify({type:"move",x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}));},{passive:true});\nconst tools=document.createElement("div");tools.id="ns-tools";
 tools.innerHTML='<button class="ns-btn" id="ns-online">線上模式</button><button class="ns-btn" id="ns-skin">自訂外觀</button>';
 document.body.append(tools);
 const panel=document.createElement("section");panel.id="ns-panel";
@@ -19,13 +19,13 @@ document.body.append(panel);
 const $=id=>document.getElementById(id);
 const show=(title,html)=>{$("ns-title").textContent=title;$("ns-content").innerHTML=html;panel.style.display="block";};
 $("ns-close").onclick=()=>{panel.style.display="none";};
-function getToken(){try{return JSON.parse(localStorage.getItem("neon-shard.session")||"{}").access_token||JSON.parse(localStorage.getItem("ns_session")||"{}").access_token||""}catch{return ""}}
+function getToken(){try{return JSON.parse(sessionStorage.getItem("neonShardAuthSession")||"{}").accessToken||""}catch{return ""}}
 $("ns-online").onclick=()=>{
 show("線上模式",'<p>先選擇玩法與房間代碼（4–8 位英數字）。需登入帳號。</p><div class="ns-row"><select id="ns-mode"><option value="arena">競技場：弱敵人 + PvP</option><option value="boss">合作 Boss 討伐</option></select><input id="ns-code" maxlength="8" placeholder="房間代碼" value="NEON01"></div><div class="ns-row"><button class="ns-btn" id="ns-connect">連線並加入</button><button class="ns-btn" id="ns-hit">攻擊</button></div><div id="ns-status" class="ns-status">尚未連線</div><div id="ns-room"></div>');
 let ws=null;
 $("ns-connect").onclick=()=>{
 const token=getToken();if(!token){$("ns-status").textContent="找不到登入 Token。請先登入遊戲帳號，再重試。";return}
-const endpoint=API.replace(/^http/,"ws")+"/api/realtime";ws=new WebSocket(endpoint);
+const endpoint=API.replace(/^http/,"ws")+"/api/realtime";ws=new WebSocket(endpoint);activeSocket=ws;
 ws.onopen=()=>ws.send(JSON.stringify({type:"auth",token}));
 ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.type==="authenticated")ws.send(JSON.stringify({type:"join",mode:$("ns-mode").value,code:$("ns-code").value.trim()}));if(d.type==="error")$("ns-status").textContent=d.message;if(d.type==="room"){$("ns-status").textContent="已連線 · "+d.code+" · "+(d.mode==="boss"?"合作 Boss":"競技場");$("ns-room").textContent="玩家："+d.players.map(p=>p.name+" ("+Math.round(p.x*100)+","+Math.round(p.y*100)+")").join("、")+"\nBoss HP："+d.bossHp+"\n敵人："+(d.mobs||[]).map(m=>m.hp).join(" / ")}if(d.type==="move")$("ns-status").textContent="玩家移動同步中 · "+d.id.slice(0,8);if(d.type==="combat")$("ns-room").textContent="Boss HP："+d.bossHp+"\n敵人："+(d.mobs||[]).map(m=>m.hp).join(" / ")};
 ws.onerror=()=>{$("ns-status").textContent="連線失敗：確認 API 網址、Render 服務與登入狀態。"};ws.onclose=e=>$("ns-status").textContent="連線已關閉 ("+e.code+")";
