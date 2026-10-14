@@ -6741,6 +6741,8 @@ function xCodex(v) {
     box.append(g);
   }
 }
+/* ---------- 帳號頁面 -------------------- */
+function xAccount(v){}
 
 /* ---------- 結算 / 暫停 / 補給 ---------- */
 function xResult(over) {
@@ -6809,7 +6811,7 @@ function xRender() {
   $("go").textContent = XS.over ? "再次出戰" : "出戰";
   v.replaceChildren();
   v.className = "x-view" + (XFIT[t] ? " fit" : "");
-  ({ h: xLobby, b: xLoad, i: xBag, k: xStage, m: xShop, c: xCodex })[t](v);
+  ({ h: xLobby, b: xLoad, i: xBag, k: xStage, m: xShop, c: xCodex ,a: xAccount})[t](v);
   if (!fresh) {
     v.scrollTop = tp;
     v.querySelectorAll("[data-sc]").forEach((e) => {
