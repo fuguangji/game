@@ -134,6 +134,7 @@ async function unlockOrCreateKeys(userId, password) {
 
 async function loadProfile() {
   activeProfile = await api("/api/profile/me");
+  if (session && !session.userId) storeSession({ ...session, userId: activeProfile.userId });
   return activeProfile;
 }
 
