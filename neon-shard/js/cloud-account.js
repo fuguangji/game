@@ -144,7 +144,9 @@ export function renderCloudAccount(container, { getSave, applySave, setName }) {
   statusLine.dataset.nsStatus = "1";
   statusLine.setAttribute("role", "status");
   statusLine.setAttribute("aria-live", "polite");
-  panel.append(statusLine);
+  const style = node("style");
+  style.textContent = ".ns-account{display:grid;gap:12px;max-width:620px}.ns-account h2{margin:0;color:var(--t)}.ns-field{display:grid;gap:6px;color:var(--t);font-size:14px}.ns-input{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #ffffff30;border-radius:10px;background:#101923;color:var(--t);font:inherit}.ns-account button:disabled{opacity:.55;cursor:wait}";
+  panel.append(style, statusLine);
 
   if (!session) {
     panel.append(node("h2", "", "雲端帳號"));
@@ -164,7 +166,7 @@ export function renderCloudAccount(container, { getSave, applySave, setName }) {
           status(panel, "帳號已建立。請先完成電子郵件驗證，再回到這裡登入。");
           return;
         }
-        storeSession(result.session);
+        storeSession({ ...result.session, userId: result.user.id });
         await unlockOrCreateKeys(result.user.id, password.input.value);
         await loadProfile();
         setName(activeProfile.displayName);
