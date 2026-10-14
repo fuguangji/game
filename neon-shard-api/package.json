@@ -1,0 +1,23 @@
+{
+  "name": "neon-shard-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Render API for Neon-shard backed by Supabase Auth and PostgreSQL",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/security.js && node --check src/validation.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.4",
+    "cors": "2.8.5",
+    "express": "5.1.0",
+    "express-rate-limit": "8.1.0",
+    "helmet": "8.1.0",
+    "zod": "4.1.5"
+  }
+}
