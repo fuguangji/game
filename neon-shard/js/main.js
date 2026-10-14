@@ -6741,8 +6741,72 @@ function xCodex(v) {
     box.append(g);
   }
 }
-/* ---------- 帳號頁面 -------------------- */
-function xAccount(v){}
+
+/* ---------- 帳號頁面 ---------- */
+function xAccount(v) {
+  // 1. 玩家資料
+  const profile = xh("x-pn");
+  profile.append(
+    xh("x-h", "玩家資料"),
+  );
+
+  const name = xh("x-tx");
+  const nameTitle = xh("", "玩家名稱");
+  const nameValue = xh("", "");
+  nameValue.textContent = accoutInfo.name || "未設定名稱";
+  nameValue.style.fontSize = "1.5rem";
+  nameValue.style.fontWeight = "bold";
+  name.append(nameTitle, nameValue);
+
+  const status = xh(
+    "x-tag",
+    "本機存檔 · 尚未連結線上帳號",
+  );
+
+  profile.append(name, status);
+  v.append(profile);
+
+  // 2. 遊戲進度
+  const completed = SV.clr.filter(Boolean).length;
+  const stats = xh("x-pn");
+  stats.append(xh("x-h", "遊戲進度"));
+
+  const grid = xh("x-kv4");
+
+  [
+    ["已通關", `${completed} / ${STG.length}`],
+    ["最高分", String(best)],
+    ["已解鎖槍械", `${SV.own.length} / ${ALLW.length}`],
+    ["已解鎖角色", `${SV.chars.length} / ${CHS.length}`],
+  ].forEach(([label, value]) => {
+    const item = xh("");
+    item.append(xh("span", label));
+
+    const number = xh("b");
+    number.textContent = value;
+    item.append(number);
+
+    grid.append(item);
+  });
+
+  stats.append(grid);
+  v.append(stats);
+
+  // 3. 帳號操作
+  const actions = xh("x-pn");
+  actions.append(xh("x-h", "帳號操作"));
+
+  const buttons = xh("x-two");
+
+  buttons.append(
+    xbt("x-btn", "前往備戰", () => xGo("b")),
+    xbt("x-btn", "返回大廳", () => xGo("h")),
+  );
+
+  actions.append(buttons);
+  v.append(actions);
+}
+
 
 /* ---------- 結算 / 暫停 / 補給 ---------- */
 function xResult(over) {
