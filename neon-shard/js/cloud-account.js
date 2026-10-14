@@ -141,6 +141,7 @@ async function loadProfile() {
 export function renderCloudAccount(container, { getSave, applySave, setName }) {
   container.replaceChildren();
   const panel = node("section", "ns-account");
+  container.append(panel);
   const statusLine = node("p", "x-sub");
   statusLine.dataset.nsStatus = "1";
   statusLine.setAttribute("role", "status");
@@ -263,5 +264,4 @@ export function renderCloudAccount(container, { getSave, applySave, setName }) {
     );
   }
   panel.append(node("p", "x-hint", "安全提醒：忘記密碼且沒有舊密碼或其他恢復方式時，可能無法解密敏感存檔。不要在共用裝置上保持登入。"));
-  container.append(panel);
 }
