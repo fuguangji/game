@@ -1,9 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { webcrypto } from "node:crypto";
 import { verifyP256Signature } from "../src/security.js";
-
-globalThis.crypto = webcrypto;
 
 const { canonicalJson, encryptSave, decryptSave, signSaveRequest } = await import("../../neon-shard/js/cloud-crypto.js");
 
