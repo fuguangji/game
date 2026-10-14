@@ -1,4 +1,6 @@
+import { createServer } from "node:http";
 import express from "express";
+import { attachRealtime } from "./realtime.js";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -155,6 +157,12 @@ function parseEnvelope(text) {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "neon-shard-api", time: new Date().toISOString() });
+});
+
+app.get("/api/ready", async (_req, res) => {
+  const { error } = await admin.from("profiles").select("user_id").limit(1);
+  if (error) return res.status(503).json({ status: "not_ready", service: "neon-shard-api" });
+  return res.json({ status: "ready", service: "neon-shard-api", time: new Date().toISOString() });
 });
 
 app.post("/api/auth/signup", authLimiter, async (req, res, next) => {
@@ -437,6 +445,8 @@ app.use((error, _req, res, _next) => {
 });
 
 const port = Number(process.env.PORT ?? 10000);
-app.listen(port, "0.0.0.0", () => {
+const httpServer = createServer(app);
+attachRealtime(httpServer, { admin, allowedOrigins });
+httpServer.listen(port, "0.0.0.0", () => {
   console.log(`Neon-shard API listening on port ${port}`);
 });
