@@ -18,6 +18,9 @@ import { drawAim } from "./aim.js";
 import { drawBars, drawLast, drawSlots } from "./hud.js";
 import { XS, xResult } from "./menu.js";
 
+let customSkinRaw = null;
+let customSkinCache = [];
+
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
   cx.setTransform(G.DPR, 0, 0, G.DPR, 0, 0);
@@ -850,8 +853,14 @@ export function render() {
     cx.stroke();
     // Draw the locally saved freehand skin clipped to the player's body.
     try {
-      const skin = JSON.parse(localStorage.getItem("neon-shard.custom-skin.v1") || "[]");
-      if (Array.isArray(skin) && skin.length) {
+      const rawSkin = localStorage.getItem("neon-shard.custom-skin.v1") || "[]";
+      if (rawSkin !== customSkinRaw) {
+        customSkinRaw = rawSkin;
+        const parsed = JSON.parse(rawSkin);
+        customSkinCache = Array.isArray(parsed) ? parsed.slice(0, 200) : [];
+      }
+      const skin = customSkinCache;
+      if (skin.length) {
         cx.save();
         cx.beginPath();
         cx.arc(0, 0, p.r - 1, 0, TAU);
