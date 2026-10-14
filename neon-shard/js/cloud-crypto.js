@@ -1,5 +1,3 @@
-import { argon2id } from "https://esm.sh/@noble/hashes@1.8.0/argon2";
-
 const encoder = new TextEncoder();
 const KDF = Object.freeze({ version: 1, t: 2, m: 19456, p: 1, dkLen: 32 });
 const CRYPTO_VERSION = 1;
@@ -38,6 +36,7 @@ function randomId() {
 
 async function derivePasswordKey(password, salt) {
   if (typeof password !== "string" || password.length === 0) throw new Error("請輸入密碼。");
+  const { argon2id } = await import("https://esm.sh/@noble/hashes@1.8.0/argon2");
   const derived = argon2id(encoder.encode(password), salt, {
     t: KDF.t,
     m: KDF.m,
@@ -116,7 +115,7 @@ async function importPrivateKey(pkcs8, algorithm, usages) {
     "pkcs8",
     fromBase64Url(pkcs8),
     algorithm,
-    true,
+    false,
     usages,
   );
 }
