@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/security.js && node --check src/validation.js",
+    "check": "node --check src/server.js && node --check src/security.js && node --check src/validation.js && node --check ../neon-shard/js/cloud-crypto.js && node --check ../neon-shard/js/cloud-account.js && node --check ../neon-shard/js/cloud-config.js",
     "test": "node --test"
   },
   "dependencies": {
