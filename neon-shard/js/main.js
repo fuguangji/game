@@ -19,6 +19,7 @@ import {
   TL,
 } from "./game-config.js";
 import { eIcon, icon, mkEIcon, mkIcon } from "./icons.js";
+import { renderCloudAccount } from "./cloud-account.js";
 
 /* =====================================================================
  * NEON SHARD — 整理版
@@ -766,7 +767,7 @@ function applyLO() {
   if (!LO.length) LO = [SV.own[0]];
   WP.splice(0, WP.length, ...LO.map((i) => modW(ALLW[i])));
 }
-const accoutInfo={name:"test"}
+const accoutInfo = { name: "訪客" };
 let fd = new Int16Array(N * N),
   fT = 0,
   zones = [],
@@ -6769,6 +6770,26 @@ function xPause() {
       : `第 ${wave} 波 · 分數 ${score} · 本局金幣 ${coins}`;
 }
 
+/* ---------- 雲端帳號 ---------- */
+function xAccount(container) {
+  renderCloudAccount(container, {
+    getSave: () => JSON.parse(JSON.stringify(SV)),
+    applySave: (remoteSave) => {
+      for (const key of Object.keys(SV)) delete SV[key];
+      Object.assign(SV, remoteSave);
+      save();
+    },
+    setName: (name) => {
+      accoutInfo.name = name || "訪客";
+      const title = $("xT");
+      if (title && XS.t === "a") {
+        const small = title.querySelector("small");
+        if (small) small.textContent = `歡迎回來，${accoutInfo.name}`;
+      }
+    },
+  });
+}
+
 /* ---------- 版面總管 ---------- */
 const XFIT = { h: 1, b: 1, i: 1, k: 1 };
 // 功能：處理介面系統「xRender」相關的資料、互動或顯示。
@@ -6809,7 +6830,7 @@ function xRender() {
   $("go").textContent = XS.over ? "再次出戰" : "出戰";
   v.replaceChildren();
   v.className = "x-view" + (XFIT[t] ? " fit" : "");
-  ({ h: xLobby, b: xLoad, i: xBag, k: xStage, m: xShop, c: xCodex })[t](v);
+  ({ h: xLobby, b: xLoad, i: xBag, k: xStage, m: xShop, c: xCodex, a: xAccount })[t](v);
   if (!fresh) {
     v.scrollTop = tp;
     v.querySelectorAll("[data-sc]").forEach((e) => {
