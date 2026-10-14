@@ -6743,17 +6743,21 @@ function xCodex(v) {
   }
 }
 
-/* ---------- 帳號頁面 ---------- */
+// 功能：建立玩家帳號頁面，顯示個人資料、遊戲進度與雲端同步功能。
 function xAccount(v) {
+  // 頁面容器：沿用既有 x-doc 版型，統一管理卡片排列與間距。
+  const box = xh("x-doc");
+  box.style.display = "grid";
+  box.style.gap = "12px";
+  v.append(box);
+
   // 1. 玩家資料
   const profile = xh("x-pn");
-  profile.append(
-    xh("x-h", "玩家資料"),
-  );
+  profile.append(xh("x-h", "玩家資料"));
 
   const name = xh("x-tx");
   const nameTitle = xh("", "玩家名稱");
-  const nameValue = xh("", "");
+  const nameValue = xh("");
   nameValue.textContent = accoutInfo.name || "未設定名稱";
   nameValue.style.fontSize = "1.5rem";
   nameValue.style.fontWeight = "bold";
@@ -6765,7 +6769,7 @@ function xAccount(v) {
   );
 
   profile.append(name, status);
-  v.append(profile);
+  box.append(profile);
 
   // 2. 遊戲進度
   const completed = SV.clr.filter(Boolean).length;
@@ -6791,35 +6795,41 @@ function xAccount(v) {
   });
 
   stats.append(grid);
-  v.append(stats);
+  box.append(stats);
 
   // 3. 帳號操作
   const actions = xh("x-pn");
   actions.append(xh("x-h", "帳號操作"));
 
   const buttons = xh("x-two");
-
   buttons.append(
     xbt("x-btn", "前往備戰", () => xGo("b")),
     xbt("x-btn", "返回大廳", () => xGo("h")),
   );
 
   actions.append(buttons);
-  v.append(actions);
+  box.append(actions);
 
   // 4. 雲端帳號與加密存檔
   const cloud = xh("x-pn");
   cloud.append(xh("x-h", "雲端同步"));
+
   const cloudHost = xh("");
   cloud.append(cloudHost);
-  v.append(cloud);
+  box.append(cloud);
+
   renderCloudAccount(cloudHost, {
     getSave: () => JSON.parse(JSON.stringify(SV)),
+
     applySave: (remoteSave) => {
-      for (const key of Object.keys(SV)) delete SV[key];
+      for (const key of Object.keys(SV)) {
+        delete SV[key];
+      }
+
       Object.assign(SV, remoteSave);
       save();
     },
+
     setName: (nextName) => {
       accoutInfo.name = nextName || "訪客";
       nameValue.textContent = accoutInfo.name;
