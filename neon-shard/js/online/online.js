@@ -10,7 +10,9 @@ style.textContent = `
 .ns-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.ns-status{color:#9fb6c9;white-space:pre-wrap}
 `;
 document.head.append(style);
-let activeSocket=null;let lastMoveAt=0;\ndocument.addEventListener("pointermove",e=>{if(!activeSocket||activeSocket.readyState!==1||Date.now()-lastMoveAt<80)return;const canvas=document.querySelector("#g");if(!canvas)return;const r=canvas.getBoundingClientRect();if(!r.width||!r.height)return;lastMoveAt=Date.now();activeSocket.send(JSON.stringify({type:"move",x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}));},{passive:true});\nconst tools=document.createElement("div");tools.id="ns-tools";
+let activeSocket=null;let lastMoveAt=0;
+document.addEventListener("pointermove",e=>{if(!activeSocket||activeSocket.readyState!==1||Date.now()-lastMoveAt<80)return;const canvas=document.querySelector("#g");if(!canvas)return;const r=canvas.getBoundingClientRect();if(!r.width||!r.height)return;lastMoveAt=Date.now();activeSocket.send(JSON.stringify({type:"move",x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}));},{passive:true});
+const tools=document.createElement("div");tools.id="ns-tools";
 tools.innerHTML='<button class="ns-btn" id="ns-online">線上模式</button><button class="ns-btn" id="ns-skin">自訂外觀</button>';
 document.body.append(tools);
 const panel=document.createElement("section");panel.id="ns-panel";
