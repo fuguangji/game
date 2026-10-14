@@ -244,6 +244,38 @@ app.post("/api/auth/logout", requireUser, async (req, res, next) => {
  * signed by the newly supplied P-256 signing key. Existing keys cannot be
  * silently replaced; a separately designed recovery/rotation flow is required.
  */
+app.get("/api/profile/me", requireUser, async (req, res, next) => {
+  try {
+    const profile = await getProfile(req.user.id);
+    res.set("Cache-Control", "no-store");
+    res.json({
+      userId: req.user.id,
+      displayName: profile.display_name,
+      keysRegistered: Boolean(profile.signing_public_key && profile.encryption_public_key && profile.key_id),
+    });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/keys", requireUser, async (req, res, next) => {
+  try {
+    const profile = await getProfile(req.user.id);
+    res.set("Cache-Control", "no-store");
+    if (!profile.signing_public_key || !profile.encryption_public_key || !profile.key_id) {
+      return res.json({ registered: false });
+    }
+    res.json({
+      registered: true,
+      kdfVersion: profile.kdf_version,
+      kdfSalt: profile.kdf_salt,
+      keyBundleCiphertext: profile.key_bundle_ciphertext,
+      keyBundleIv: profile.key_bundle_iv,
+      encryptionPublicKey: profile.encryption_public_key,
+      signingPublicKey: profile.signing_public_key,
+      keyId: profile.key_id,
+    });
+  } catch (error) { next(error); }
+});
+
 app.put("/api/keys", requireUser, async (req, res, next) => {
   try {
     const input = parseBody(keyRegistrationSchema, req.body);

@@ -19,6 +19,7 @@ import {
   TL,
 } from "./game-config.js";
 import { eIcon, icon, mkEIcon, mkIcon } from "./icons.js";
+import { renderCloudAccount } from "./cloud-account.js";
 
 /* =====================================================================
  * NEON SHARD — 整理版
@@ -766,7 +767,7 @@ function applyLO() {
   if (!LO.length) LO = [SV.own[0]];
   WP.splice(0, WP.length, ...LO.map((i) => modW(ALLW[i])));
 }
-const accoutInfo={name:"test"}
+const accoutInfo = { name: "訪客" };
 let fd = new Int16Array(N * N),
   fT = 0,
   zones = [],
@@ -6805,6 +6806,25 @@ function xAccount(v) {
 
   actions.append(buttons);
   v.append(actions);
+
+  // 4. 雲端帳號與加密存檔
+  const cloud = xh("x-pn");
+  cloud.append(xh("x-h", "雲端同步"));
+  const cloudHost = xh("");
+  cloud.append(cloudHost);
+  v.append(cloud);
+  renderCloudAccount(cloudHost, {
+    getSave: () => JSON.parse(JSON.stringify(SV)),
+    applySave: (remoteSave) => {
+      for (const key of Object.keys(SV)) delete SV[key];
+      Object.assign(SV, remoteSave);
+      save();
+    },
+    setName: (nextName) => {
+      accoutInfo.name = nextName || "訪客";
+      nameValue.textContent = accoutInfo.name;
+    },
+  });
 }
 
 

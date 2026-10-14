@@ -1,10 +1,18 @@
 # Neon-shard API
 
-Node.js API intended for Render. GitHub Pages is the browser frontend; browser code calls this API only. The API uses Supabase Auth for identity and a server-only Supabase service-role key for database access.
+Node.js API intended for Render. GitHub Pages remains the frontend and calls this API only. The API uses Supabase Auth for identity and a server-only Supabase service-role key for database access.
 
-## Status
+## Current implementation
 
-This is the first backend implementation pass. It includes Auth proxy routes, profile operations, key registration, save reads/writes, optimistic revisions, input limits, and signed-request verification. The frontend has not yet been integrated with this API. Do not treat this as production-ready until the cryptographic client helper and end-to-end tests are added.
+- Supabase Auth proxy: signup, password login, refresh, logout.
+- Authenticated own-profile and key-metadata endpoints.
+- First-time P-256 key registration with proof of possession.
+- Browser-side Argon2id password KDF, encrypted private-key bundle, ECDH + HKDF-SHA-256 + AES-256-GCM save encryption.
+- ECDSA P-256/SHA-256 signatures over canonical request JSON, verified by Render.
+- Save upload/download, revision-based optimistic concurrency, request validation, 64 KiB body limit, rate limits, CORS allowlist, and safe public profile lookup.
+- Unit tests for schema validation, signatures, and browser crypto round-trip.
+
+This remains a pre-deployment integration branch. Do not deploy as production-ready until all CI checks pass and manual browser tests are completed.
 
 ## Routes
 
@@ -13,29 +21,39 @@ This is the first backend implementation pass. It includes Auth proxy routes, pr
 - `POST /api/auth/login` — `{ email, password }`
 - `POST /api/auth/refresh` — `{ refreshToken }`
 - `POST /api/auth/logout` — Bearer access token
-- `PUT /api/keys` — first-time key bundle registration and proof of signing-key possession
+- `GET /api/profile/me` — current user's display name and key setup status
+- `PUT /api/profile` — update the authenticated user's own display name
+- `GET /api/profiles/:displayName` — returns public display name only
+- `GET /api/keys` — current user's encrypted key bundle and public-key metadata
+- `PUT /api/keys` — first-time key registration; key rotation is deliberately rejected pending a recovery design
 - `GET /api/player-data` — current user's save
 - `POST /api/player-data` — create a save only if absent
 - `PUT /api/player-data` — update with required `expectedRevision`
-- `GET /api/profiles/:displayName` — returns the public display name only
-- `PUT /api/profile` — update the authenticated user's own display name
 
-Protected routes derive the user ID exclusively from a validated Supabase access token. Request-body user IDs are not accepted. Saves are signed using ECDSA P-256/SHA-256 with IEEE-P1363 signatures over the canonical JSON protocol defined in `src/security.js`. The server verifies signatures and never decrypts `sensitiveEnvelope`.
+Protected routes derive the user ID from a validated Supabase access token. Request-body user IDs are not accepted.
 
-## Cryptographic wire format
+## Crypto protocol (version 1)
 
-Public keys are P-256 JWK objects with `kty`, `crv`, `x`, and `y`. The private-key bundle remains client-side encrypted; only its ciphertext and IV are stored. The client must implement Argon2id and password-derived wrapping locally. Passwords are only sent to Supabase Auth through this API and are not logged or persisted by Render.
+- Password KDF: Argon2id, `t=2`, `m=19456 KiB`, `p=1`, `dkLen=32`; random 16-byte per-account salt.
+- Long-term encryption key: ECDH P-256 key pair generated in the browser.
+- Signing key: ECDSA P-256, SHA-256.
+- Private ECDH/signing keys are exported only during first-time creation, placed in a JSON bundle, and wrapped with AES-256-GCM under the password-derived key. The server stores only the wrapped bundle, its IV, the salt, and public keys.
+- Each save uses a fresh ephemeral ECDH P-256 key pair. HKDF-SHA-256 derives a per-save AES-256-GCM key from the shared secret and context-bound info. AES-GCM uses a fresh 96-bit IV and a 128-bit authentication tag.
+- AAD binds the ciphertext to the user ID, key ID, protocol version, schema version, and ephemeral public key.
+- Browser ECDSA signatures use IEEE-P1363 `r||s` encoding. The signature binds purpose, authenticated user ID, method, path, timestamp, key ID, expected revision, ordinary JSON summary, and encrypted envelope. Signatures expire after five minutes.
+- Argon2id currently loads from a pinned ESM CDN import (`@noble/hashes@1.8.0`). The browser must be online for first-time key setup/unlock unless the dependency is later vendored and audited.
 
-For each save, `sensitiveEnvelope` contains:
-- `cryptoVersion`
-- `keyId`
-- `schemaVersion`
-- `ephemeralPublicKey` (P-256 JWK)
-- `iv` (base64url, at least 12 decoded bytes)
-- `ciphertext` (base64url)
-- `tag` (base64url)
+### Data split
 
-The frontend and API must agree on the exact canonical JSON signature input. The signature covers purpose, authenticated user ID, HTTP method, request path, signed timestamp, key ID, expected revision, plain save JSON, and encrypted envelope. Signed timestamps older/newer than five minutes are rejected. Revision checks prevent stale writes; they do not prevent a modified browser from signing fabricated gameplay state.
+The current first integration conservatively encrypts the full local `SV` save payload, because the game has not yet classified individual fields as safe to expose. `save_data` contains only a non-sensitive format marker, save timestamp, and coarse currency summary. This protects the full progression payload from being readable in the database; if you later decide specific progression fields are intentionally public, the split can be refined explicitly.
+
+### Limitations
+
+- Client signatures prove possession of the registered signing key and request integrity, not honest gameplay. A modified browser can still fabricate game state and sign it.
+- The service-role key bypasses RLS; the API must enforce ownership on every protected operation.
+- The first version does not support silent key rotation or automatic recovery. Password reset without the old password or a separately designed recovery mechanism can make sensitive saves unrecoverable.
+- Render never receives or logs a password intentionally, and never decrypts the private-key bundle or save envelope.
+- Browser-side Argon2id/ECDH/HKDF/AES-GCM must be tested on real mobile browsers before release.
 
 ## Environment variables
 
@@ -52,17 +70,8 @@ Copy `.env.example` to a local `.env` for development. Configure the values as R
 ```sh
 npm install
 cp .env.example .env
-# Fill .env with project values; never commit it.
+# Fill .env with values; never commit .env.
 npm run check
 npm test
 npm start
 ```
-
-## Important security limitations / remaining work
-
-- The service-role key bypasses RLS. Every route must enforce authorization server-side; this API uses the verified Auth user ID for data ownership.
-- Client signatures establish possession of the registered signing key, not fair play or truthful game state.
-- First-time key setup is supported. Key rotation/recovery needs a deliberate flow and is rejected by this initial version rather than silently replacing existing keys.
-- Password reset without the old password or a separately designed recovery mechanism can make sensitive saves unrecoverable.
-- Add browser-side Argon2id/ECDH/HKDF/AES-GCM implementation and integration tests before connecting the game UI.
-- Supabase table checks are reasonableness/shape checks, not comprehensive game-rule validation.

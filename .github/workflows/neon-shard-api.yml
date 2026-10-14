@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
-      - feature/neon-shard-api
+      - "feature/neon-shard-*"
     paths:
       - "neon-shard-api/**"
+      - "neon-shard/js/**"
       - ".github/workflows/neon-shard-api.yml"
   pull_request:
     paths:
