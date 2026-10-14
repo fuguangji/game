@@ -5,7 +5,7 @@ import { verifyP256Signature } from "../src/security.js";
 
 globalThis.crypto = webcrypto;
 
-const { encryptSave, decryptSave, signSaveRequest } = await import("../../neon-shard/js/cloud-crypto.js");
+const { canonicalJson, encryptSave, decryptSave, signSaveRequest } = await import("../../neon-shard/js/cloud-crypto.js");
 
 test("browser ECDH + HKDF + AES-GCM envelope round-trips and detects tampering", async () => {
   const pair = await crypto.subtle.generateKey(
@@ -56,7 +56,7 @@ test("browser ECDSA signature matches server IEEE-P1363 verification", async () 
     path: "/api/player-data",
     body,
   });
-  const message = JSON.stringify({
+  const message = canonicalJson({
     purpose: "neon-shard:save-request:v1",
     userId: "user-1",
     method: "PUT",
