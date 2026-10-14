@@ -7,6 +7,7 @@ on:
       - feature/neon-shard-api
     paths:
       - "neon-shard-api/**"
+      - "neon-shard/js/**"
       - ".github/workflows/neon-shard-api.yml"
   pull_request:
     paths:
