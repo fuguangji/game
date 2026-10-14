@@ -766,6 +766,7 @@ function applyLO() {
   if (!LO.length) LO = [SV.own[0]];
   WP.splice(0, WP.length, ...LO.map((i) => modW(ALLW[i])));
 }
+const accoutInfo={name:"test"}
 let fd = new Int16Array(N * N),
   fT = 0,
   zones = [],
@@ -6793,6 +6794,7 @@ function xRender() {
     k: ["關卡", `已通關 ${cl} / 8`],
     m: ["商城", "強化、解鎖與芯片包"],
     c: ["圖鑑", "玩法、操作與敵人資料"],
+    a: ["帳號", `歡迎回來，${accoutInfo.name}`],
   }[t];
   $("xT").innerHTML = `<b>${TI[0]}</b><small>${TI[1]}</small>`;
   const cur = $("xC");
