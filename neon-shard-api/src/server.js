@@ -256,7 +256,7 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
     if (current.signing_public_key) {
       throw new HttpError(409, "KEY_ROTATION_REQUIRES_RECOVERY", "Key replacement requires the account recovery flow.");
     }
-    const { error } = await admin.from("profiles").update({
+    const { data: updated, error } = await admin.from("profiles").update({
       kdf_version: input.kdfVersion,
       kdf_salt: input.kdfSalt,
       key_bundle_ciphertext: input.keyBundleCiphertext,
@@ -265,8 +265,10 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
       signing_public_key: JSON.stringify(input.signingPublicKey),
       key_id: input.keyId,
       updated_at: new Date().toISOString(),
-    }).eq("user_id", req.user.id);
+    }).eq("user_id", req.user.id).is("signing_public_key", null)
+      .select("user_id").maybeSingle();
     if (error) throw new HttpError(500, "KEY_SETUP_FAILED", "Could not save encryption key metadata.");
+    if (!updated) throw new HttpError(409, "KEY_ROTATION_REQUIRES_RECOVERY", "Keys were registered by another request; reload the profile.");
     res.status(204).end();
   } catch (error) { next(error); }
 });
