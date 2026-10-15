@@ -2,25 +2,37 @@ import { G } from "../core/game-state.js";
 
 const SKIN_KEY = "neon-shard.custom-skin.v1";
 const API = window.NEON_SHARD_API_BASE || "https://neon-shard-api.onrender.com";
-const CSS = `
-.ns-features{display:grid;gap:14px;margin-top:14px}
-.ns-feature-card{display:grid;gap:10px;padding:14px;border:1px solid #ffffff20;border-radius:12px;background:linear-gradient(145deg,#0d1725,#090e18)}
-.ns-feature-card h3{margin:0;color:var(--t);font-size:1.05rem}
-.ns-feature-help{margin:0;color:var(--sub,#9aaec1);font-size:.9rem;line-height:1.55}
-.ns-feature-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.ns-feature-row input,.ns-feature-row select{max-width:100%;min-width:0;padding:10px;border:1px solid #ffffff30;border-radius:8px;background:#101923;color:var(--t);font:inherit}
-.ns-feature-btn{padding:10px 13px;border:1px solid #22e6ff70;border-radius:8px;background:#101d2b;color:var(--t);font:inherit;font-weight:700}
-.ns-feature-btn.primary{background:#123548;border-color:#22e6ff}
-.ns-feature-status{margin:0;color:#a8bfd2;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}
-.ns-skin-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-.ns-skin-canvas{display:block;width:min(100%,360px);aspect-ratio:1;background:#070d18;border:1px solid #38506a;border-radius:10px;touch-action:none}
+const CSS = 
+.ns-features{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:18px 0 4px;align-items:stretch}
+.ns-feature-card{display:grid;align-content:start;gap:13px;min-width:0;padding:clamp(14px,2.2vw,22px);border:1px solid #ffffff20;border-radius:18px;background:radial-gradient(ellipse at 0 0,#14344a70,transparent 55%),linear-gradient(145deg,#0d1725,#090e18 72%);box-shadow:0 14px 35px #0003}
+.ns-feature-card h3{display:flex;align-items:center;gap:9px;margin:0;color:var(--t);font-size:1.08rem;letter-spacing:.02em}
+.ns-feature-card h3:before{content:"";width:4px;height:1.1em;border-radius:4px;background:#22e6ff;box-shadow:0 0 12px #22e6ff70}
+.ns-feature-help{margin:0;color:var(--sub,#9aaec1);font-size:.9rem;line-height:1.65}
+.ns-feature-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;min-width:0}
+.ns-feature-row input,.ns-feature-row select{max-width:100%;min-width:0;flex:1 1 150px;padding:11px 12px;border:1px solid #ffffff24;border-radius:10px;background:#101923;color:var(--t);font:inherit;outline:none}
+.ns-feature-row input:focus,.ns-feature-row select:focus{border-color:#22e6ff;box-shadow:0 0 0 3px #22e6ff20}
+.ns-feature-btn{min-height:40px;padding:10px 13px;border:1px solid #ffffff24;border-radius:10px;background:#101d2b;color:var(--t);font:inherit;font-weight:650;cursor:pointer;transition:transform .15s ease,border-color .15s ease,background .15s ease}
+.ns-feature-btn:hover{border-color:#22e6ff99;background:#142b3a}
+.ns-feature-btn:active{transform:translateY(1px)}
+.ns-feature-btn.primary{background:linear-gradient(135deg,#12445a,#123044);border-color:#22e6ff99;box-shadow:inset 0 0 18px #22e6ff0d}
+.ns-feature-status{margin:0;padding:10px 12px;border:1px solid #ffffff12;border-radius:10px;background:#060b1290;color:#b8ccda;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.88rem;line-height:1.55;min-width:0}
+.ns-skin-canvas{display:block;width:min(100%,360px);aspect-ratio:1;justify-self:center;background:radial-gradient(circle at center,#0d1b2b,#070d18 72%);border:1px solid #38506a;border-radius:14px;box-shadow:inset 0 0 28px #22e6ff08,0 8px 24px #0003;touch-action:none}
 .ns-skin-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.ns-skin-tools label{display:flex;gap:7px;align-items:center;font-size:.9rem;color:var(--t)}
-.ns-skin-tools input[type=color]{width:46px;height:38px;padding:2px;cursor:pointer}
-.ns-skin-tools input[type=range]{width:120px;padding:0}
-.ns-role-aura{display:inline-flex;align-items:center;gap:8px;font-size:.85rem;color:var(--sub,#9aaec1)}
-.ns-role-dot{width:10px;height:10px;border-radius:50%;display:inline-block;box-shadow:0 0 12px currentColor}
-@media(min-width:620px){.ns-skin-layout{grid-template-columns:minmax(0,360px) minmax(0,1fr);align-items:start}}
+.ns-skin-tools label{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--t)}
+.ns-skin-tools input[type=color]{width:48px;height:40px;padding:3px;flex:0 0 auto;cursor:pointer}
+.ns-skin-tools input[type=range]{width:120px;flex:0 1 120px;padding:0;accent-color:#22e6ff}
+.ns-role-aura{display:inline-flex;align-items:center;gap:9px;font-size:.85rem;color:var(--sub,#9aaec1)}
+.ns-role-dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-shadow:0 0 14px currentColor;flex:0 0 auto}
+.ns-feature-card:first-child .ns-role-aura,.ns-feature-card:first-child>.ns-feature-help{grid-column:1/-1}
+@media(min-width:720px){
+ .ns-features{grid-template-columns:minmax(0,1.12fr) minmax(280px,.88fr);gap:18px}
+ .ns-feature-card:first-child{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px}
+ .ns-feature-card:first-child>h3,.ns-feature-card:first-child>.ns-role-aura,.ns-feature-card:first-child>.ns-feature-help{grid-column:1/-1}
+ .ns-feature-card:first-child>.ns-skin-canvas{grid-column:1;grid-row:4/span 4;width:100%;max-width:360px}
+ .ns-feature-card:first-child>.ns-skin-tools,.ns-feature-card:first-child>.ns-feature-row,.ns-feature-card:first-child>.ns-feature-status{grid-column:2}
+ .ns-feature-card:first-child>.ns-skin-tools{align-self:end}
+}
+@media(max-width:420px){.ns-feature-card{padding:13px;border-radius:14px}.ns-feature-btn{flex:1 1 auto}.ns-feature-row input,.ns-feature-row select{flex-basis:100%}}
 `;
 function addStyle(){if(!document.getElementById("ns-account-features-css")){const s=document.createElement("style");s.id="ns-account-features-css";s.textContent=CSS;document.head.append(s)}}
 function el(tag,attrs={},text=""){const n=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==="class")n.className=v;else if(k.startsWith("on")&&typeof v==="function")n.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)n.setAttribute(k,String(v))}if(text)n.textContent=text;return n}
@@ -104,6 +116,8 @@ export function mountAccountFeatures(container){
  }
  const move=()=>{if(!socket||socket.readyState!==WebSocket.OPEN||Date.now()-lastMove<80)return;const p=G.pl;if(!p)return;lastMove=Date.now();send({type:"move",x:Math.max(0,Math.min(1,p.x/Math.max(1,G.W))),y:Math.max(0,Math.min(1,p.y/Math.max(1,G.H)))});};
  const moveTimer=setInterval(()=>{if(!container.isConnected){destroyed=true;clearInterval(moveTimer);socket?.close(1000,"account page closed");return}move()},100);
+ // Node 的測試程序不應被 UI 輪詢計時器永久吊住；瀏覽器數字型 timer 沒有 unref，完全不受影響。
+ moveTimer.unref?.();
  function refresh(){const c=roleColor();roleDot.style.color=c;roleDot.style.background=c;roleText.textContent="職業代表色粒子光環 · "+c;paint()}
  refresh();
  return {refresh,destroy(){destroyed=true;clearInterval(moveTimer);socket?.close(1000,"account page closed");container.replaceChildren()}};
