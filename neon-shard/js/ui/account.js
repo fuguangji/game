@@ -28,7 +28,7 @@ const ACCOUNT_STATUS_TEXT = (svc) => !svc.signedIn ? "本機存檔 · 尚未連�
 
 // 功能：建立玩家帳號頁面，顯示個人資料、遊戲進度與雲端同步功能。
 export function xAccount(v) {
-  const box = xh("x-doc");
+  const box = xh("x-doc ns-account-doc");
   box.style.display = "grid";
   box.style.gap = "12px";
   v.append(box);
@@ -95,8 +95,8 @@ export function xAccount(v) {
     status.textContent = ACCOUNT_STATUS_TEXT(accountService);
     const subtitle = document.querySelector("#xT small");
     if (subtitle) subtitle.textContent = `歡迎回來，${accountService.displayName}`;
-    featureHost.style.display = accountService.signedIn ? "block" : "none";
-    features.refresh();
+    featureHost.style.display = "block";
+    features.refresh(accountService.signedIn);
   };
   view.onChange(syncProfile);
   syncProfile();
