@@ -73,7 +73,7 @@ export function mountAccountFeatures(container){
  online.append(el("p",{class:"ns-feature-help"},"選擇競技場或合作 Boss，輸入相同房間代碼即可加入同一房間。需要先登入遊戲帳號。"));
  const row=el("div",{class:"ns-feature-row"});
  const mode=el("select",{"aria-label":"遊戲模式"});
- mode.append(new Option("競技場：弱敵人 + PvP","arena"),new Option("合作 Boss 討伐","boss"));
+ const arenaOption=el("option",{value:"arena"},"競技場：弱敵人 + PvP");const bossOption=el("option",{value:"boss"},"合作 Boss 討伐");mode.append(arenaOption,bossOption);
  const code=el("input",{maxlength:8,placeholder:"房間代碼（4–8 位英數字）",value:"NEON01","aria-label":"房間代碼"});
  row.append(mode,code);
  const connect=button("連線並加入",connectRoom,true),attack=button("攻擊",()=>send({type:"attack"}));
