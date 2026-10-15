@@ -90,13 +90,20 @@ export function xAccount(v) {
   const featureHost = xh("");
   box.append(featureHost);
   const features = mountAccountFeatures(featureHost);
+  let wasSignedIn = accountService.signedIn;
   const syncProfile = () => {
+    const signedIn = accountService.signedIn;
     nameValue.textContent = accountService.displayName; // textContent：暱稱不會被當成 HTML
     status.textContent = ACCOUNT_STATUS_TEXT(accountService);
     const subtitle = document.querySelector("#xT small");
     if (subtitle) subtitle.textContent = `歡迎回來，${accountService.displayName}`;
     featureHost.style.display = "block";
-    features.refresh(accountService.signedIn);
+    features.refresh(signedIn);
+    // 登入完成後留在帳號頁，並將外觀／聯機功能帶到可視範圍。
+    if (signedIn && !wasSignedIn) {
+      requestAnimationFrame(() => featureHost.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+    wasSignedIn = signedIn;
   };
   view.onChange(syncProfile);
   syncProfile();
