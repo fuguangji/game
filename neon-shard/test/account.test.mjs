@@ -26,6 +26,8 @@ test("SessionStore：損毀或缺欄位的資料視為未登入", () => {
   const s = new SessionStore(st);
   s.set(live);
   assert.equal(new SessionStore(st).current.userId, "u1");
+  // API currently returns an opaque refresh token shorter than 20 chars.
+  assert.equal(SessionStore.isValid({ accessToken: TOKEN("a"), refreshToken: "r".repeat(12), userId: "u1" }), true);
   assert.throws(() => s.set({ accessToken: "x" }), TypeError);
   s.clear();
   assert.equal(new SessionStore(st).current, null);
