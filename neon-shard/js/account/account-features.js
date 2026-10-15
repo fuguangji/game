@@ -2,7 +2,7 @@ import { G } from "../core/game-state.js";
 
 const SKIN_KEY = "neon-shard.custom-skin.v1";
 const API = window.NEON_SHARD_API_BASE || "https://neon-shard-api.onrender.com";
-const CSS = 
+const CSS = `
 .ns-features{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:18px 0 4px;align-items:stretch}
 .ns-feature-card{display:grid;align-content:start;gap:13px;min-width:0;padding:clamp(14px,2.2vw,22px);border:1px solid #ffffff20;border-radius:18px;background:radial-gradient(ellipse at 0 0,#14344a70,transparent 55%),linear-gradient(145deg,#0d1725,#090e18 72%);box-shadow:0 14px 35px #0003}
 .ns-feature-card h3{display:flex;align-items:center;gap:9px;margin:0;color:var(--t);font-size:1.08rem;letter-spacing:.02em}
