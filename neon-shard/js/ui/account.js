@@ -66,14 +66,6 @@ export function xAccount(v) {
   stats.append(grid);
   box.append(stats);
 
-  // 3. 帳號操作
-  const actions = xh("x-pn");
-  actions.append(xh("x-h", "帳號操作"));
-  const buttons = xh("x-two");
-  buttons.append(xbt("x-btn", "前往備戰", () => xGo("b")), xbt("x-btn", "返回大廳", () => xGo("h")));
-  actions.append(buttons);
-  box.append(actions);
-
   // 4. 雲端帳號與加密存檔
   const cloud = xh("x-pn");
   cloud.append(xh("x-h", "雲端同步"));
