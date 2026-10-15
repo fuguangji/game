@@ -8,7 +8,8 @@ test("帳號功能：可在測試 DOM 中掛載、刷新並清理資源", () => 
 
   assert.equal(typeof features.refresh, "function");
   assert.equal(typeof features.destroy, "function");
-  assert.doesNotThrow(() => features.refresh());
+  assert.doesNotThrow(() => features.refresh(false));
+  assert.doesNotThrow(() => features.refresh(true));
   assert.doesNotThrow(() => features.destroy());
 });
 
