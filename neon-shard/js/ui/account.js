@@ -1,5 +1,6 @@
 /** ui/account — 帳號頁面（遊戲端接合） */
 import { AccountView, accountService } from "../account/index.js";
+import { mountAccountFeatures } from "../account/account-features.js";
 import { G } from "../core/game-state.js";
 import { CHS } from "../game/chips.js";
 import { STG, SV, SV_DEFAULTS, mergeSave, save } from "../game/progress.js";
@@ -84,11 +85,18 @@ export function xAccount(v) {
     getSave: () => JSON.parse(JSON.stringify(SV)),
     applySave: applyRemoteSave,
   });
+
+  // 5. 登入後的個人功能：外觀設計與線上聯機固定放在帳號頁面，不再漂浮於遊戲畫面。
+  const featureHost = xh("");
+  box.append(featureHost);
+  const features = mountAccountFeatures(featureHost);
   const syncProfile = () => {
     nameValue.textContent = accountService.displayName; // textContent：暱稱不會被當成 HTML
     status.textContent = ACCOUNT_STATUS_TEXT(accountService);
     const subtitle = document.querySelector("#xT small");
     if (subtitle) subtitle.textContent = `歡迎回來，${accountService.displayName}`;
+    featureHost.style.display = accountService.signedIn ? "block" : "none";
+    features.refresh();
   };
   view.onChange(syncProfile);
   syncProfile();
