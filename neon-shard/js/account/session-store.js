@@ -27,7 +27,7 @@ export class SessionStore {
     return (
       v !== null && typeof v === "object" &&
       typeof v.accessToken === "string" && v.accessToken.length >= 20 && v.accessToken.length <= 8192 &&
-      typeof v.refreshToken === "string" && v.refreshToken.length >= 20 && v.refreshToken.length <= 4096 &&
+      typeof v.refreshToken === "string" && v.refreshToken.length >= 8 && v.refreshToken.length <= 4096 &&
       (v.userId === undefined || typeof v.userId === "string")
     );
   }
