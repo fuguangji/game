@@ -2,7 +2,6 @@ import { G } from "../core/game-state.js";
 
 const SKIN_KEY = "neon-shard.custom-skin.v1";
 const API = window.NEON_SHARD_API_BASE || "https://neon-shard-api.onrender.com";
-function addStyle(){if(!document.getElementById("ns-account-features-css")){const s=document.createElement("style");s.id="ns-account-features-css";s.textContent=CSS;document.head.append(s)}}
 function el(tag,attrs={},text=""){const n=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==="class")n.className=v;else if(k.startsWith("on")&&typeof v==="function")n.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)n.setAttribute(k,String(v))}if(text)n.textContent=text;return n}
 function button(label,fn,primary=false){const b=el("button",{type:"button",class:"ns-feature-btn"+(primary?" primary":"")},label);b.addEventListener("click",fn);return b}
 function roleColor(){const c=G.CHR?.c;return typeof c==="string"&&/^#[0-9a-f]{6}$/i.test(c)?c:"#22e6ff"}
@@ -11,6 +10,11 @@ function getToken(){try{const s=JSON.parse(sessionStorage.getItem("neonShardAuth
 export function mountAccountFeatures(container){
  let socket=null, strokes=[], activeStroke=null, lastMove=0, destroyed=false;
  const root=el("section",{class:"ns-features"});
+ const gate=el("section",{class:"ns-feature-card ns-feature-gate"});
+ gate.append(el("h3",{},"解鎖帳號功能"),el("p",{class:"ns-feature-help"},"登入後即可使用角色外觀設計與線上聯機。未登入時，外觀與房間操作會保持鎖定。"));
+ const gateAction=el("div",{class:"ns-feature-row"});
+ gateAction.append(el("span",{class:"ns-feature-status"},"請先在上方「雲端同步」區塊登入遊戲帳號。"));
+ gate.append(gateAction);
  const account=el("section",{class:"ns-feature-card"});
  account.append(el("h3",{},"角色外觀設計"));
  const roleLabel=el("div",{class:"ns-role-aura"});
@@ -61,7 +65,7 @@ export function mountAccountFeatures(container){
  const status=el("p",{class:"ns-feature-status"},"尚未連線");
  const room=el("p",{class:"ns-feature-status"},"");
  online.append(row,onlineActions,status,room);
- root.append(account,online);
+ root.append(gate,account,online);
  container.replaceChildren(root);
  function setStatus(s){status.textContent=s}
  function send(d){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(d));else setStatus("尚未連線。")}
@@ -85,7 +89,7 @@ export function mountAccountFeatures(container){
  const moveTimer=setInterval(()=>{if(!container.isConnected){destroyed=true;clearInterval(moveTimer);socket?.close(1000,"account page closed");return}move()},100);
  // Node 的測試程序不應被 UI 輪詢計時器永久吊住；瀏覽器數字型 timer 沒有 unref，完全不受影響。
  moveTimer.unref?.();
- function refresh(){const c=roleColor();roleDot.style.color=c;roleDot.style.background=c;roleText.textContent="職業代表色粒子光環 · "+c;paint()}
+ function refresh(signedIn=Boolean(getToken())){gate.hidden=Boolean(signedIn);account.hidden=!signedIn;online.hidden=!signedIn;const c=roleColor();roleDot.style.color=c;roleDot.style.background=c;roleText.textContent="職業代表色粒子光環 · "+c;paint()}
  refresh();
  return {refresh,destroy(){destroyed=true;clearInterval(moveTimer);socket?.close(1000,"account page closed");container.replaceChildren()}};
 }
