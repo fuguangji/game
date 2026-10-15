@@ -851,6 +851,24 @@ export function render() {
     cx.arc(0, 0, p.r, 0, TAU);
     cx.fill();
     cx.stroke();
+    // 職業代表色粒子光環：只影響視覺，不改變碰撞或戰鬥數值。
+    cx.save();
+    const auraColor = typeof G.CHR?.c === "string" && /^#[0-9a-f]{6}$/i.test(G.CHR.c) ? G.CHR.c : col;
+    cx.shadowColor = auraColor;
+    cx.shadowBlur = 10;
+    for (let i = 0; i < 12; i++) {
+      const angle = G.time * 0.9 + (i * TAU) / 12;
+      const radius = p.r + 8 + 2.5 * Math.sin(G.time * 2.4 + i * 1.7);
+      const px = Math.cos(angle) * radius;
+      const py = Math.sin(angle) * radius;
+      const particleR = 1.1 + 0.65 * (0.5 + 0.5 * Math.sin(G.time * 3 + i));
+      cx.globalAlpha = 0.42 + 0.5 * (0.5 + 0.5 * Math.sin(G.time * 2.5 + i));
+      cx.fillStyle = auraColor;
+      cx.beginPath();
+      cx.arc(px, py, particleR, 0, TAU);
+      cx.fill();
+    }
+    cx.restore();
     // Draw the locally saved freehand skin clipped to the player's body.
     try {
       const rawSkin = localStorage.getItem("neon-shard.custom-skin.v1") || "[]";
@@ -868,7 +886,7 @@ export function render() {
         for (const stroke of skin.slice(0, 200)) {
           if (!Array.isArray(stroke.points) || stroke.points.length < 1) continue;
           cx.beginPath();
-          cx.strokeStyle = /^#[0-9a-f]{6}$/i.test(stroke.color) ? stroke.color : "#22e6ff";
+          cx.strokeStyle = /^#[0-9a-f]{6}$/i.test(stroke.color) ? stroke.color : "#ff4dff";
           cx.lineWidth = Math.max(1, Math.min(16, Number(stroke.width) || 3)) * Math.max(0.25, p.r / 18);
           cx.lineCap = "round";
           cx.lineJoin = "round";
