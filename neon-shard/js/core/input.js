@@ -83,7 +83,8 @@ addEventListener("keydown", (e) => {
   else if (
     e.code === "Enter" &&
     fsm.state !== "play" &&
-    !$("ov").classList.contains("h")
+    !$("ov").classList.contains("h") &&
+    !(e.target instanceof Element && e.target.closest("input, textarea, select, button, form, [contenteditable='true']"))
   )
     start();
 });
