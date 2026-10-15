@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050816">
+  <title>認證成功｜NEON SHARD</title>
+
+  <style>
+    :root {
+      --cyan: #00eaff;
+      --purple: #a855f7;
+      --green: #00ffad;
+      --bg: #050816;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: #eafaff;
+      background:
+        radial-gradient(ellipse at 50% 40%, #102454 0%, transparent 60%),
+        linear-gradient(135deg, #050816, #100725);
+      font-family: system-ui, -apple-system, "Noto Sans TC",
+        "Microsoft JhengHei", sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+      padding: 48px 28px;
+      text-align: center;
+      border: 1px solid rgba(0, 234, 255, 0.35);
+      border-radius: 18px;
+      background: rgba(7, 14, 38, 0.88);
+      box-shadow:
+        0 0 35px rgba(0, 234, 255, 0.08),
+        inset 0 0 30px rgba(87, 55, 255, 0.06);
+    }
+
+    .logo {
+      margin-bottom: 42px;
+      color: var(--cyan);
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-shadow: 0 0 18px rgba(0, 234, 255, 0.6);
+    }
+
+    .check {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 28px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--green);
+      border-radius: 50%;
+      color: var(--green);
+      font-size: 52px;
+      box-shadow: 0 0 30px rgba(0, 255, 173, 0.25);
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: clamp(1.8rem, 6vw, 2.5rem);
+      letter-spacing: 3px;
+    }
+
+    p {
+      margin: 0 0 32px;
+      color: #b7c8e8;
+      line-height: 1.9;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 14px 32px;
+      border: 1px solid var(--cyan);
+      border-radius: 8px;
+      color: white;
+      background: linear-gradient(110deg, #0754a8, #6924c9);
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: 0.25s;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 24px rgba(0, 234, 255, 0.35);
+    }
+
+    .footer {
+      margin-top: 36px;
+      color: #607394;
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+    }
+
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 15px rgba(0, 255, 173, 0.15);
+      }
+      to {
+        box-shadow: 0 0 35px rgba(0, 255, 173, 0.45);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <div class="logo">◆ NEON SHARD</div>
+
+    <div class="check" aria-hidden="true">✓</div>
+
+    <h1>認證成功！</h1>
+
+    <p>
+      您的電子郵件已成功完成認證。<br>
+      您現在可以返回遊戲，開始您的冒險了！
+    </p>
+
+    <a class="button" href="https://fuguangji.github.io/">
+      進入遊戲　→
+    </a>
+
+    <div class="footer">IDENTITY VERIFIED · NEON SHARD</div>
+  </main>
+</body>
+</html>
