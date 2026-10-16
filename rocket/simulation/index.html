@@ -1,1303 +1,702 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="dark">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>大氣運動與空氣阻力互動模擬器</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0f172a',
-                        cardBg: '#1e293b',
-                        accent: '#3b82f6',
-                        accentHover: '#2563eb'
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        /* Custom scrollbar for engineering dashboard */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大氣運動與空氣阻力互動模擬器</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1c232c;--line:#2d3640;--fg:#e6edf3;--mut:#8b98a5;--acc:#4fb3d9;--acc2:#f0a64a;--ok:#56c271;--warn:#e5c14b;--bad:#ef5d5d;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between}
+header h1{margin:0;font-size:18px;letter-spacing:.5px}
+header small{color:var(--mut)}
+main{display:grid;grid-template-columns:340px 1fr;gap:14px;padding:14px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+.panel h2{font-size:14px;margin:0 0 10px;color:var(--acc);font-weight:600;letter-spacing:.5px}
+.field{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center;margin-bottom:7px}
+.field label{font-size:13px}
+.field label .u{color:var(--mut);font-size:11px;display:block}
+input[type=number],select{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:6px;font:inherit;font-variant-numeric:tabular-nums}
+input:focus,select:focus{outline:1px solid var(--acc)}
+input.invalid{border-color:var(--bad)}
+.chk{display:flex;gap:6px;align-items:center;margin:4px 0;font-size:13px}
+fieldset{border:1px solid var(--line);border-radius:6px;margin:8px 0;padding:8px}
+legend{color:var(--mut);font-size:12px;padding:0 4px}
+button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:7px 11px;font:inherit;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--acc);color:#071018;border-color:var(--acc);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.errors{color:var(--bad);font-size:12px;white-space:pre-line;margin-top:6px}
+.note{color:var(--mut);font-size:12px;border-left:3px solid var(--warn);padding:6px 8px;background:#1d1a10;margin-top:8px}
+.tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button.on{border-color:var(--acc);color:var(--acc)}
+.view{display:none}.view.on{display:block}
+#anim{width:100%;height:440px;background:#0a0e13;border:1px solid var(--line);border-radius:6px;display:block}
+#three-wrap{width:100%;height:480px;background:#0a0e13;border:1px solid var(--line);border-radius:6px;position:relative}
+#three-wrap .ov{position:absolute;left:8px;top:8px;color:var(--mut);font-size:12px;pointer-events:none}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px}
+.charts .c{background:#0a0e13;border:1px solid var(--line);border-radius:6px;padding:6px;height:260px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;font-size:13px}
+th{color:var(--mut);font-weight:500}
+.lvl{padding:2px 8px;border-radius:10px;font-weight:600;color:#081018}
+.status{font-size:12px;color:var(--mut);margin:6px 0}
+</style>
 </head>
-<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col">
-
-    <header class="bg-cardBg border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center shadow-lg">
-        <div class="flex items-center space-x-3">
-            <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold tracking-tight text-white">大氣運動與空氣阻力互動模擬器</h1>
-                <p class="text-xs text-slate-400">Atmospheric Motion & Aerodynamic Drag Physics Simulation Engine</p>
-            </div>
-        </div>
-        <div class="flex items-center space-x-3 mt-3 sm:mt-0">
-            <span class="px-3 py-1 bg-blue-900/50 text-blue-400 border border-blue-700/50 rounded-full text-xs font-medium">SI 國際單位制</span>
-            <span class="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-full text-xs font-medium">RK4 數值積分</span>
-        </div>
-    </header>
-
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Left Column: Input Parameters Panel (4 Columns) -->
-        <section class="lg:col-span-4 bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col h-[calc(100vh-140px)] sticky top-6">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
-                <h2 class="text-base font-semibold text-slate-200 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                    </svg>
-                    模擬參數設定
-                </h2>
-                <button id="reset-params" class="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition">重設預設值</button>
-            </div>
-
-            <!-- Scrollable Parameter Form -->
-            <div id="param-form-container" class="flex-1 overflow-y-auto pr-2 space-y-4 text-sm">
-                
-                <!-- Group 1: Environmental & Initial State -->
-                <div class="space-y-3 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">環境與初始狀態</h3>
-                    
-                    <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">緯度 Latitude (°): <span id="val-lat" class="font-mono text-blue-400">25.0</span></label>
-                        <input type="range" id="input-lat" min="-90" max="90" step="0.1" value="25.0" class="w-full accent-blue-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">初始海拔 (m)</label>
-                            <input type="number" id="input-alt" value="0" step="10" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">物體質量 (g)</label>
-                            <input type="number" id="input-mass" value="1000" min="1" step="10" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">初始速度 (m/s)</label>
-                            <input type="number" id="input-v0" value="50" min="0" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">運動仰角 (°)</label>
-                            <input type="number" id="input-angle" value="45" min="-90" max="90" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 2: Aerodynamics & Atmosphere -->
-                <div class="space-y-3 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">空氣動力與大氣</h3>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">初始阻力參數 CdA (m²)</label>
-                            <input type="number" id="input-cda" value="0.05" min="0" step="0.001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">大氣模型選擇</label>
-                            <select id="input-atmos-model" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="standard">標準對流層模型</option>
-                                <option value="exponential">指數大氣模型</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 3: Numerical Integration & Limits -->
-                <div class="space-y-3 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">數值計算設定</h3>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">模擬時間上限 (s)</label>
-                            <input type="number" id="input-tmax" value="60" min="1" max="1000" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">積分步長 dt (s)</label>
-                            <input type="number" id="input-dt" value="0.05" min="0.001" max="1" step="0.005" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 4: Parachute & Propulsion Dynamics -->
-                <div class="space-y-3 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">降落傘與推進設定</h3>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">開傘後向下 CdA (m²)</label>
-                            <input type="number" id="input-cda-chute-down" value="1.5" min="0" step="0.1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">開傘後向上 CdA (m²)</label>
-                            <input type="number" id="input-cda-chute-up" value="0.5" min="0" step="0.1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">降落傘開啟時機</label>
-                        <select id="input-chute-trigger" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="none">不開啟</option>
-                            <option value="vx_zero">水平方向動能為0時</option>
-                            <option value="falling" selected>垂直方向開始墜落時</option>
-                            <option value="fuel_exhausted">燃料耗盡時</option>
-                            <option value="launch">升空時開啟</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-center space-x-2 pt-1">
-                        <input type="checkbox" id="input-invert-trigger" class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded focus:ring-blue-500 accent-blue-500">
-                        <label for="input-invert-trigger" class="text-xs text-slate-300 cursor-pointer">反轉降落傘開啟時機</label>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">每秒質量減輕 (g/s)</label>
-                            <input type="number" id="input-mass-loss" value="0" min="0" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">推進燃燒時間 (s)</label>
-                            <input type="number" id="input-burn-duration" value="0" min="0" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 mono text-xs focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 5: Visualization & 3D Settings -->
-                <div class="space-y-3 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">視覺化與 3D 設定</h3>
-                    
-                    <div class="space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="show-velocity-vec" checked class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded accent-blue-500">
-                            <label for="show-velocity-vec" class="text-xs text-slate-300 cursor-pointer">顯示速度向量</label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="show-gravity-vec" checked class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded accent-blue-500">
-                            <label for="show-gravity-vec" class="text-xs text-slate-300 cursor-pointer">顯示重力向量</label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="show-drag-vec" checked class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded accent-blue-500">
-                            <label for="show-drag-vec" class="text-xs text-slate-300 cursor-pointer">顯示空氣阻力向量</label>
-                        </div>
-                    </div>
-
-                    <div class="pt-2 border-t border-slate-800 space-y-3">
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="enable-3d" class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded accent-blue-500">
-                            <label for="enable-3d" class="text-xs font-semibold text-blue-300 cursor-pointer">啟用 3D 模擬 (載入 Three.js)</label>
-                        </div>
-
-                        <div id="3d-options" class="space-y-2.5 pl-2 border-l-2 border-blue-500/30 hidden">
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[11px] text-slate-400 mb-1">模擬精度 (m)</label>
-                                    <input type="number" id="input-3d-precision" value="1" min="0.1" step="0.1" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs mono">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] text-slate-400 mb-1">模擬 FPS</label>
-                                    <select id="input-3d-fps" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs">
-                                        <option value="30">30 FPS</option>
-                                        <option value="60" selected>60 FPS</option>
-                                        <option value="120">120 FPS</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">視角模式</label>
-                                <select id="input-3d-camera" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs">
-                                    <option value="follow" selected>動態跟隨</option>
-                                    <option value="base">站定基地</option>
-                                    <option value="apex">站定最高點</option>
-                                    <option value="object">物品第一視角</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Run & Action Buttons -->
-            <div class="pt-4 mt-2 border-t border-slate-800 flex space-x-2">
-                <button id="btn-run" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>開始模擬計算</span>
-                </button>
-                <button id="btn-export-csv" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl border border-slate-700 transition text-xs font-medium flex items-center justify-center" title="匯出 CSV">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                </button>
-            </div>
-        </section>
-
-        <!-- Right Column: Visualization, Charts & Results (8 Columns) -->
-        <section class="lg:col-span-8 flex flex-col space-y-6">
-            
-            <!-- Navigation Tabs -->
-            <div class="flex space-x-2 bg-cardBg p-1.5 rounded-2xl border border-slate-800 overflow-x-auto">
-                <button data-tab="tab-anim" class="tab-btn flex-1 py-2 px-4 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow transition whitespace-nowrap">2D 動畫模擬</button>
-                <button data-tab="tab-3d" id="nav-btn-3d" class="tab-btn flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition whitespace-nowrap">3D 空間模擬</button>
-                <button data-tab="tab-charts" class="tab-btn flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition whitespace-nowrap">數據圖表分析</button>
-                <button data-tab="tab-summary" class="tab-btn flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition whitespace-nowrap">模擬結果摘要</button>
-                <button data-tab="tab-table" class="tab-btn flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition whitespace-nowrap">數據明細表格</button>
-            </div>
-
-            <!-- Tab Content Container -->
-            <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col min-h-[550px]">
-                
-                <!-- Tab 1: 2D Animation View -->
-                <div id="tab-anim" class="tab-content flex-1 flex flex-col space-y-4">
-                    <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <div class="flex items-center space-x-4">
-                            <span class="text-xs font-bold text-slate-300">動畫播放控制:</span>
-                            <div class="flex space-x-2">
-                                <button id="anim-play" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-                                    </svg>
-                                    <span id="play-btn-text">播放</span>
-                                </button>
-                                <button id="anim-pause" class="bg-slate-800 hover:bg-slate-750 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-slate-700">暫停</button>
-                                <button id="anim-reset" class="bg-slate-800 hover:bg-slate-750 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-slate-700">重播</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <label class="text-xs text-slate-400">播放速率:</label>
-                            <select id="anim-speed" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200">
-                                <option value="0.5">0.5x</option>
-                                <option value="1" selected>1.0x</option>
-                                <option value="2">2.0x</option>
-                                <option value="5">5.0x</option>
-                                <option value="10">10.0x</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Canvas Container -->
-                    <div class="relative flex-1 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center min-h-[400px]">
-                        <canvas id="canvas-2d" class="w-full h-full block cursor-crosshair"></canvas>
-                        <!-- HUD Overlay -->
-                        <div id="hud-overlay" class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-3 text-xs space-y-1.5 shadow-lg pointer-events-none">
-                            <div class="text-blue-400 font-bold border-b border-slate-800 pb-1 mb-1">即時物理狀態 (HUD)</div>
-                            <div>時間 t: <span id="hud-t" class="mono text-white">0.00</span> s</div>
-                            <div>水平位置 x: <span id="hud-x" class="mono text-white">0.00</span> m</div>
-                            <div>垂直高度 z: <span id="hud-z" class="mono text-white">0.00</span> m</div>
-                            <div>速度 v: <span id="hud-v" class="mono text-white">0.00</span> m/s</div>
-                            <div>水平速度 vx: <span id="hud-vx" class="mono text-white">0.00</span> m/s</div>
-                            <div>垂直速度 vz: <span id="hud-vz" class="mono text-white">0.00</span> m/s</div>
-                            <div>空氣阻力 Fd: <span id="hud-fd" class="mono text-white">0.00</span> N</div>
-                            <div>空氣密度 ρ: <span id="hud-rho" class="mono text-white">1.225</span> kg/m³</div>
-                            <div>物件質量 m: <span id="hud-m" class="mono text-white">1.000</span> kg</div>
-                            <div id="hud-parachute-status" class="text-yellow-400 font-medium pt-1">降落傘: 未開啟</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 2: 3D Simulation View -->
-                <div id="tab-3d" class="tab-content flex-1 flex flex-col space-y-4 hidden">
-                    <div id="3d-container-wrapper" class="relative flex-1 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center min-h-[450px]">
-                        <div id="3d-placeholder" class="text-center p-6 space-y-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            <h3 class="text-base font-semibold text-slate-300">3D 模擬未啟用</h3>
-                            <p class="text-xs text-slate-500 max-w-sm mx-auto">請在左側設定面板中勾選「啟用 3D 模擬」，或點擊下方按鈕以載入 Three.js 引擎並啟動三維空間視覺化。</p>
-                            <button id="btn-activate-3d" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-medium transition shadow-lg">立即載入並啟動 3D 模擬</button>
-                        </div>
-                        <canvas id="canvas-3d" class="w-full h-full block hidden"></canvas>
-                    </div>
-                </div>
-
-                <!-- Tab 3: Charts Analysis -->
-                <div id="tab-charts" class="tab-content flex-1 flex flex-col space-y-4 hidden overflow-y-auto pr-1">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">水平位置 x 對時間 t</h3>
-                            <div class="h-64"><canvas id="chart-x"></canvas></div>
-                        </div>
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">高度 z 對時間 t</h3>
-                            <div class="h-64"><canvas id="chart-z"></canvas></div>
-                        </div>
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">總速度大小 v 對時間 t</h3>
-                            <div class="h-64"><canvas id="chart-v"></canvas></div>
-                        </div>
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">速度分量 (vx, vz) 對時間 t</h3>
-                            <div class="h-64"><canvas id="chart-vxyz"></canvas></div>
-                        </div>
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">大氣密度 ρ 對高度 z</h3>
-                            <div class="h-64"><canvas id="chart-density"></canvas></div>
-                        </div>
-                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                            <h3 class="text-xs font-bold text-blue-400 mb-2">能量變化 (動能、位能、總機械能) 對時間 t</h3>
-                            <div class="h-64"><canvas id="chart-energy"></canvas></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 4: Results Summary -->
-                <div id="tab-summary" class="tab-content flex-1 flex flex-col space-y-4 hidden overflow-y-auto">
-                    <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-4">
-                        <h3 class="text-sm font-bold text-white flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            物理模擬結果摘要报告
-                        </h3>
-                        
-                        <div id="summary-alert" class="p-3 bg-blue-900/30 border border-blue-700/50 rounded-xl text-xs text-blue-300 font-medium">
-                            模擬計算尚未執行。請設定參數並點擊「開始模擬計算」。
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs" id="summary-cards">
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">模擬總時間</div>
-                                <div id="sum-time" class="text-lg font-bold text-white mono mt-1">0.00 s</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">最高高度 (Apogee)</div>
-                                <div id="sum-max-z" class="text-lg font-bold text-white mono mt-1">0.00 m</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">最大速度大小</div>
-                                <div id="sum-max-v" class="text-lg font-bold text-white mono mt-1">0.00 m/s</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">最終落地位置 (x)</div>
-                                <div id="sum-final-x" class="text-lg font-bold text-white mono mt-1">0.00 m</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-800/60">
-                                <div class="text-slate-400">最終速度大小</div>
-                                <div id="sum-final-v" class="text-lg font-bold text-white mono mt-1">0.00 m/s</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">最終速度分量 (vx, vz)</div>
-                                <div id="sum-final-vxyz" class="text-sm font-bold text-white mono mt-1">0.00, 0.00 m/s</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">最大空氣阻力</div>
-                                <div id="sum-max-fd" class="text-lg font-bold text-white mono mt-1">0.00 N</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">數值積分總步數</div>
-                                <div id="sum-steps" class="text-lg font-bold text-white mono mt-1">0 步</div>
-                            </div>
-                            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60">
-                                <div class="text-slate-400">預計降落開傘時間</div>
-                                <div id="sum-chute-time" class="text-lg font-bold text-white mono mt-1">未開啟</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 5: Data Table -->
-                <div id="tab-table" class="tab-content flex-1 flex flex-col space-y-4 hidden overflow-y-auto">
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-slate-400">每步模擬狀態記錄 (取樣顯示)</span>
-                        <button id="btn-table-export" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg text-xs font-medium border border-slate-700 transition">下載 CSV 檔案</button>
-                    </div>
-                    <div class="overflow-x-auto flex-1 border border-slate-800 rounded-xl bg-slate-950">
-                        <table class="w-full text-left text-xs mono">
-                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 sticky top-0">
-                                <tr>
-                                    <th class="p-2.5">t (s)</th>
-                                    <th class="p-2.5">x (m)</th>
-                                    <th class="p-2.5">z (m)</th>
-                                    <th class="p-2.5">vx (m/s)</th>
-                                    <th class="p-2.5">vz (m/s)</th>
-                                    <th class="p-2.5">v (m/s)</th>
-                                    <th class="p-2.5">ρ (kg/m³)</th>
-                                    <th class="p-2.5">Fd (N)</th>
-                                    <th class="p-2.5">質量 m (kg)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="data-table-body" class="divide-y divide-slate-900 text-slate-300">
-                                <tr>
-                                    <td colspan="9" class="p-4 text-center text-slate-500">尚無模擬數據，請點擊「開始模擬計算」。</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-    </main>
-
-    <!-- Custom Modal for Notifications (No alert() used) -->
-    <div id="custom-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-cardBg border border-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl space-y-4">
-            <h3 id="modal-title" class="text-base font-bold text-white">提示訊息</h3>
-            <p id="modal-body" class="text-sm text-slate-300 leading-relaxed"></p>
-            <div class="flex justify-end pt-2">
-                <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-medium transition">確認</button>
-            </div>
-        </div>
+<body>
+<header>
+  <h1>大氣運動與空氣阻力互動模擬器</h1>
+  <small>二維質點模型 · RK4 數值積分 · SI 單位制</small>
+</header>
+<main>
+<section class="panel" id="inputs">
+  <h2>模擬參數</h2>
+  <fieldset><legend>環境</legend>
+    <div class="field"><label for="lat">緯度<span class="u">度，-90 ~ 90</span></label><input id="lat" type="number" value="25.03" min="-90" max="90" step="0.01"></div>
+    <div class="field"><label for="alt">初始海拔<span class="u">m，-400 ~ 30000</span></label><input id="alt" type="number" value="0" min="-400" max="30000" step="1"></div>
+    <div class="field"><label for="ground">地面海拔<span class="u">m，須 ≤ 初始海拔</span></label><input id="ground" type="number" value="0" min="-400" max="30000" step="1"></div>
+    <div class="field"><label for="model">大氣模型</label><select id="model">
+      <option value="isa">ISA 標準大氣（0–20 km）</option>
+      <option value="tropo">僅對流層（0–11 km）</option>
+      <option value="exp">指數大氣（H=8500 m）</option>
+      <option value="vac">真空（無空氣阻力）</option></select></div>
+  </fieldset>
+  <fieldset><legend>物體與發射</legend>
+    <div class="field"><label for="mass">物體質量<span class="u">g，0.01 ~ 1e7</span></label><input id="mass" type="number" value="500" min="0.01" max="10000000" step="any"></div>
+    <div class="field"><label for="v0">初始速度<span class="u">m/s，0 ~ 3000</span></label><input id="v0" type="number" value="60" min="0" max="3000" step="any"></div>
+    <div class="field"><label for="ang">初始仰角<span class="u">度，-90 ~ 90</span></label><input id="ang" type="number" value="70" min="-90" max="90" step="any"></div>
+    <div class="field"><label for="cda">空氣阻力 CdA<span class="u">m²，0 ~ 100</span></label><input id="cda" type="number" value="0.004" min="0" max="100" step="any"></div>
+  </fieldset>
+  <fieldset><legend>推進（自訂擴充）</legend>
+    <div class="field"><label for="thrust">推力大小<span class="u">N，0 ~ 1e6，沿速度方向</span></label><input id="thrust" type="number" value="25" min="0" max="1000000" step="any"></div>
+    <div class="field"><label for="burn">推進時間<span class="u">s，0 ~ 3600</span></label><input id="burn" type="number" value="2" min="0" max="3600" step="any"></div>
+    <div class="field"><label for="mdot">每秒質量減輕<span class="u">g/s，選填，預設 0</span></label><input id="mdot" type="number" value="20" min="0" step="any"></div>
+  </fieldset>
+  <fieldset><legend>降落傘</legend>
+    <div class="field"><label for="cdaDown">開傘後向下 CdA<span class="u">m²，0 ~ 1000</span></label><input id="cdaDown" type="number" value="0.25" min="0" max="1000" step="any"></div>
+    <div class="field"><label for="cdaUp">開傘後向上 CdA<span class="u">m²，選填，空白=同向下</span></label><input id="cdaUp" type="number" placeholder="同向下" min="0" max="1000" step="any"></div>
+    <div class="field"><label for="chute">開啟時機</label><select id="chute">
+      <option value="none">不開啟</option>
+      <option value="vx0">水平方向動能為 0 時</option>
+      <option value="apex" selected>垂直方向開始墜落時</option>
+      <option value="burnout">燃料耗盡時</option>
+      <option value="launch">升空時開啟</option></select></div>
+    <label class="chk"><input id="rev" type="checkbox">反轉開啟時機（起飛即開傘，事件發生時收傘）</label>
+  </fieldset>
+  <fieldset><legend>數值積分</legend>
+    <div class="field"><label for="tmax">模擬時間上限<span class="u">s，0.1 ~ 100000</span></label><input id="tmax" type="number" value="120" min="0.1" max="100000" step="any"></div>
+    <div class="field"><label for="dt">積分步長<span class="u">s，1e-5 ~ 10</span></label><input id="dt" type="number" value="0.01" min="0.00001" max="10" step="any"></div>
+  </fieldset>
+  <fieldset><legend>顯示</legend>
+    <label class="chk"><input id="showV" type="checkbox" checked>速度向量（藍）</label>
+    <label class="chk"><input id="showG" type="checkbox" checked>重力向量（橙）</label>
+    <label class="chk"><input id="showD" type="checkbox" checked>空氣阻力向量（紅）</label>
+    <label class="chk"><input id="en3d" type="checkbox">3D 模擬</label>
+    <div id="opt3d" style="display:none">
+      <div class="field"><label for="prec">模擬精度<span class="u">m，軌跡取樣間距 0.01 ~ 10000</span></label><input id="prec" type="number" value="1" min="0.01" max="10000" step="any"></div>
+      <div class="field"><label for="fps">模擬 fps</label><select id="fps"><option>30</option><option selected>60</option><option>120</option></select></div>
+      <div class="field"><label for="cam">視角</label><select id="cam">
+        <option value="follow">跟隨</option><option value="base">站定基地</option>
+        <option value="apex">站定最高點</option><option value="obj">物品視角</option></select></div>
     </div>
+  </fieldset>
+  <div class="row">
+    <button class="primary" id="btnRun">執行模擬</button>
+    <button id="btnConv">步長收斂檢查</button>
+    <button id="btnCsv" disabled>匯出 CSV</button>
+  </div>
+  <div class="errors" id="errors" role="alert"></div>
+  <div class="note">
+    模型假設與限制：二維質點、平坦地面、不考慮地球自轉（科氏力）、風、升力、旋轉、馬赫數對 Cd 的影響，重力不隨高度變化（僅依緯度）。
+    推力與推進時間為本程式為支援「燃料耗盡」事件新增的欄位，推力方向沿瞬時速度。
+    ISA 模型超出 20 km 時改用指數外推、僅對流層模型超出 11 km 時固定為 11 km 處密度（皆會標示警告）。
+    降落傘假設瞬間完全展開，不模擬開傘衝擊與擺動。
+  </div>
+</section>
 
-    <script>
-        // Global Simulation State & Data
-        let simResults = [];
-        let isPlaying = false;
-        let animationTime = 0;
-        let animationInterval = null;
-        let playbackSpeed = 1.0;
-        let chartInstances = {};
-        let threeScene = null, threeCamera = null, threeRenderer = null, threeMesh = null, threeLoaded = false;
+<section>
+  <div class="panel">
+    <div class="tabs" id="tabs">
+      <button data-v="v2d" class="on">簡易 2D 動畫</button>
+      <button data-v="vcharts">數據圖表</button>
+      <button data-v="v3d" id="tab3d" style="display:none">3D 模擬</button>
+    </div>
+    <div class="view on" id="v2d">
+      <canvas id="anim"></canvas>
+      <div class="row" style="margin-top:8px">
+        <button id="aStart" disabled>開始</button>
+        <button id="aPause" disabled>暫停</button>
+        <button id="aResume" disabled>繼續</button>
+        <button id="aReplay" disabled>重播</button>
+        <label>播放速度 <select id="aSpeed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>5</option><option>10</option><option>50</option></select></label>
+        <span class="status" id="aInfo">尚未執行模擬</span>
+      </div>
+    </div>
+    <div class="view" id="vcharts"><div class="charts" id="charts"></div></div>
+    <div class="view" id="v3d">
+      <div class="row" style="margin-bottom:8px"><button id="btn3d">載入 3D 模擬</button><span class="status" id="s3d">按下按鈕才會下載 three.js</span></div>
+      <div id="three-wrap"><div class="ov" id="ov3d"></div></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <h2>結果摘要</h2>
+    <div class="status" id="warns"></div>
+    <table id="summary"><tbody><tr><td>請先執行模擬</td></tr></tbody></table>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <h2>步長收斂檢查</h2>
+    <table id="conv"><tbody><tr><td>以 Δt、Δt/2、Δt/4 分別積分並比較結果差異</td></tr></tbody></table>
+  </div>
+</section>
+</main>
 
-        // UI Element References
-        const btnRun = document.getElementById('btn-run');
-        const btnExportCsv = document.getElementById('btn-export-csv');
-        const btnTableExport = document.getElementById('btn-table-export');
-        const inputLat = document.getElementById('input-lat');
-        const valLat = document.getElementById('val-lat');
-        const inputAlt = document.getElementById('input-alt');
-        const inputMass = document.getElementById('input-mass');
-        const inputV0 = document.getElementById('input-v0');
-        const inputAngle = document.getElementById('input-angle');
-        const inputCda = document.getElementById('input-cda');
-        const inputTmax = document.getElementById('input-tmax');
-        const inputDt = document.getElementById('input-dt');
-        const inputAtmosModel = document.getElementById('input-atmos-model');
-        const showVelocityVec = document.getElementById('show-velocity-vec');
-        const showGravityVec = document.getElementById('show-gravity-vec');
-        const showDragVec = document.getElementById('show-drag-vec');
-        const inputCdaChuteDown = document.getElementById('input-cda-chute-down');
-        const inputCdaChuteUp = document.getElementById('input-cda-chute-up');
-        const inputChuteTrigger = document.getElementById('input-chute-trigger');
-        const inputInvertTrigger = document.getElementById('input-invert-trigger');
-        const inputMassLoss = document.getElementById('input-mass-loss');
-        const inputBurnDuration = document.getElementById('input-burn-duration');
-        const enable3d = document.getElementById('enable-3d');
-        const options3dDiv = document.getElementById('3d-options');
-        const input3dPrecision = document.getElementById('input-3d-precision');
-        const input3dFps = document.getElementById('input-3d-fps');
-        const input3dCamera = document.getElementById('input-3d-camera');
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const DEG = Math.PI / 180;
+const MAX_STEPS = 2000000;
 
-        // Latitude slider listener
-        inputLat.addEventListener('input', (e) => {
-            valLat.textContent = parseFloat(e.target.value).toFixed(1);
-        });
+/* ================= 物理模型 ================= */
 
-        // 3D toggle listener
-        enable3d.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                options3dDiv.classList.remove('hidden');
-                document.getElementById('nav-btn-3d').click();
-            } else {
-                options3dDiv.classList.add('hidden');
-            }
-        });
+/** WGS-84 正常重力近似：輸入緯度（度），回傳 g (m/s²) */
+function gravityWGS84(latDeg) {
+  const s2 = Math.sin(latDeg * DEG) ** 2;
+  return 9.7803253359 * (1 + 0.00193185265241 * s2) / Math.sqrt(1 - 0.00669437999013 * s2);
+}
 
-        // Tab switching logic
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const targetTab = btn.getAttribute('data-tab');
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('bg-blue-600', 'text-white', 'shadow');
-                    b.classList.add('text-slate-400');
-                });
-                btn.classList.add('bg-blue-600', 'text-white', 'shadow');
-                btn.classList.remove('text-slate-400');
+/** 大氣密度 (kg/m³)。回傳 {rho, warn}，保證不為負或 NaN */
+function airDensity(h, model) {
+  const R = 287.05287, g0 = 9.80665, L = 0.0065, T0 = 288.15, P0 = 101325;
+  const expo = g0 / (R * L); // ≈ 5.2559
+  let warn = '';
+  if (model === 'vac') return { rho: 0, warn };
+  if (model === 'exp') {
+    const hh = Math.max(h, -1000);
+    return { rho: 1.225 * Math.exp(-hh / 8500), warn: h < -1000 ? '高度低於 -1000 m，已截斷' : '' };
+  }
+  let hh = h;
+  if (hh < -1000) { hh = -1000; warn = '高度低於 -1000 m，已截斷'; }
+  const tropoTop = 11000;
+  const tropo = z => { const T = T0 - L * z; const P = P0 * Math.pow(T / T0, expo); return { T, P, rho: P / (R * T) }; };
+  if (hh <= tropoTop) return { rho: tropo(hh).rho, warn };
+  const top = tropo(tropoTop);
+  if (model === 'tropo') return { rho: top.rho, warn: '超出對流層模型範圍 (>11 km)，密度固定於 11 km 值' };
+  // ISA 平流層下層：等溫 216.65 K，至 20 km
+  const T11 = top.T;
+  const hz = Math.min(hh, 20000);
+  let rho = top.rho * Math.exp(-g0 * (hz - tropoTop) / (R * T11));
+  if (hh > 20000) { rho *= Math.exp(-(hh - 20000) / 6500); warn = '超出 ISA 實作範圍 (>20 km)，以指數外推'; }
+  return { rho: Math.max(rho, 0), warn };
+}
 
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                document.getElementById(targetTab).classList.remove('hidden');
+/** 二次空氣阻力大小 Fd = 0.5 ρ CdA v² */
+function dragForce(rho, cdA, v) { return 0.5 * rho * cdA * v * v; }
 
-                if (targetTab === 'tab-3d' && enable3d.checked && !threeLoaded) {
-                    initThreeJS();
-                }
-            });
-        });
+/**
+ * 狀態導數。state = [x, z, vx, vz, m(kg)]
+ * ctx 在單一積分步內為常數（降落傘狀態），推力依時間判斷。
+ */
+function derivatives(t, s, P, ctx) {
+  const [, z, vx, vz, m] = s;
+  const v = Math.hypot(vx, vz);
+  const rho = airDensity(z, P.model).rho;
+  const cdA = currentCdA(ctx.chuteOpen, vz, P);
+  const Fd = dragForce(rho, cdA, v);
+  let ax = 0, az = -P.g, dm = 0;
+  if (v > 1e-12 && Fd > 0) { ax -= Fd * vx / (m * v); az -= Fd * vz / (m * v); } // v=0 時阻力為 0，避免除以零
+  // 推進狀態由積分步起點決定（步長已切齊 t = burn），避免 RK4 末端子步 k4 於 t+h = burn 處被誤判為無推力
+  if (ctx.thrusting && P.thrust > 0) {
+    let ux, uz;
+    if (v > 1e-9) { ux = vx / v; uz = vz / v; } else { ux = Math.cos(P.ang); uz = Math.sin(P.ang); }
+    ax += P.thrust * ux / m; az += P.thrust * uz / m;
+  }
+  if (ctx.thrusting) dm = -P.mdot;
+  return [vx, vz, ax, az, dm];
+}
 
-        function showModalMessage(title, message) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-body').textContent = message;
-            document.getElementById('custom-modal').classList.remove('hidden');
+/** 依降落傘狀態與運動方向選擇 CdA */
+function currentCdA(open, vz, P) {
+  if (!open) return P.cdA;
+  return vz > 0 ? P.cdAUp : P.cdADown;
+}
+
+/* ================= 數值積分 ================= */
+
+/** 單步 RK4 */
+function rk4Step(t, s, h, P, ctx) {
+  const add = (a, b, k) => a.map((v, i) => v + b[i] * k);
+  const k1 = derivatives(t, s, P, ctx);
+  const k2 = derivatives(t + h / 2, add(s, k1, h / 2), P, ctx);
+  const k3 = derivatives(t + h / 2, add(s, k2, h / 2), P, ctx);
+  const k4 = derivatives(t + h, add(s, k3, h), P, ctx);
+  return s.map((v, i) => v + h / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+}
+
+/** 判斷降落傘觸發事件是否發生 */
+function chuteEventHappened(mode, t, prev, cur, P) {
+  switch (mode) {
+    case 'launch': return true;
+    case 'burnout': return t >= P.burn - 1e-12;
+    case 'apex': return cur[3] <= 0;
+    case 'vx0': return Math.abs(cur[2]) < 1e-9 || (prev && Math.sign(prev[2]) !== Math.sign(cur[2]));
+    default: return false;
+  }
+}
+
+/** 記錄單筆輸出資料 */
+function makeRecord(t, s, P, open) {
+  const [x, z, vx, vz, m] = s;
+  const speed = Math.hypot(vx, vz);
+  const rho = airDensity(z, P.model).rho;
+  const Fd = dragForce(rho, currentCdA(open, vz, P), speed);
+  return { t, x, z, vx, vz, m, speed, rho, Fd, KE: 0.5 * m * speed * speed, PE: m * P.g * (z - P.ground), chute: open };
+}
+
+/** 主模擬：RK4 積分、事件偵測、限制檢查 */
+function simulate(P, dt) {
+  const nSteps = Math.ceil(P.tmax / dt);
+  if (nSteps > MAX_STEPS) throw new Error(`積分步數 ${nSteps} 超過上限 ${MAX_STEPS}，請加大步長或縮短模擬時間。`);
+  let s = [0, P.alt, P.v0 * Math.cos(P.ang), P.v0 * Math.sin(P.ang), P.m0];
+  let t = 0, triggered = false, eventTime = null, prev = null;
+  const recs = [];
+  const warns = new Set();
+  let landed = false, steps = 0, burnEnd = null, coastEnd = null;
+  const minMass = P.m0 - P.mdot * P.burn;
+  while (true) {
+    if (!triggered && P.chuteMode !== 'none' && chuteEventHappened(P.chuteMode, t, prev, s, P)) { triggered = true; eventTime = t; }
+    const open = P.chuteMode === 'none' ? P.rev : (P.rev ? !triggered : triggered);
+    recs.push(makeRecord(t, s, P, open));
+    const w = airDensity(s[1], P.model).warn; if (w) warns.add(w);
+    if (t >= P.tmax - 1e-12 || steps >= nSteps) break;
+    // 推力在 t = burn 為不連續函數：將積分步切齊於推進結束時刻，避免 RK4 子步跨越不連續點
+    let h = Math.min(dt, P.tmax - t);
+    if (t < P.burn && P.burn - t > 1e-12 && P.burn - t < h) h = P.burn - t;
+    let ns = rk4Step(t, s, h, P, { chuteOpen: open, thrusting: t < P.burn - 1e-12 });
+    if (ns[4] < minMass) ns[4] = minMass; // 質量不得低於燃料耗盡後之值
+    if (!ns.every(Number.isFinite)) throw new Error(`第 ${steps + 1} 步出現非有限數值（NaN/Infinity），請縮小步長或檢查參數。`);
+    if (Math.hypot(ns[2], ns[3]) > 1e5) throw new Error('速度超過 100 km/s，超出本模型合理範圍，已停止計算。');
+    steps++;
+    // 地面事件：z 由 ≥ 地面跨越至 < 地面時線性插值求接觸時刻
+    if (ns[1] < P.ground && s[1] >= P.ground) {
+      const f = (s[1] - P.ground) / (s[1] - ns[1]);
+      const hs = s.map((v, i) => v + (ns[i] - v) * f);
+      hs[1] = P.ground;
+      t = t + h * f; prev = s; s = hs;
+      if (!triggered && P.chuteMode !== 'none' && chuteEventHappened(P.chuteMode, t, prev, s, P)) { triggered = true; eventTime = t; }
+      recs.push(makeRecord(t, s, P, open));
+      landed = true; break;
+    }
+    // 推進結束點：積分步已在 t = burn 處切齊，因此此處為精確時刻
+    if (burnEnd === null && P.burn > 0 && t + h >= P.burn - 1e-12) burnEnd = { t: t + h, x: ns[0], z: ns[1], speed: Math.hypot(ns[2], ns[3]) };
+    // 慣性耗盡點：推進結束後，向上速度 vz 由正轉為 ≤ 0（殘餘向上動量被重力與阻力完全抵銷），線性插值求時刻
+    if (coastEnd === null && t + h >= P.burn - 1e-12 && s[3] > 0 && ns[3] <= 0) {
+      const f = s[3] / (s[3] - ns[3]);
+      coastEnd = { t: t + h * f, x: s[0] + (ns[0] - s[0]) * f, z: s[1] + (ns[1] - s[1]) * f, speed: Math.abs(s[2] + (ns[2] - s[2]) * f) };
+    }
+    prev = s; s = ns; t += h;
+  }
+  return { recs, landed, steps, eventTime, burnEnd, coastEnd, warns: [...warns], dt, P };
+}
+
+/* ================= 輸入驗證 ================= */
+
+/** 讀取並驗證所有欄位，不使用 eval */
+function readParams() {
+  const errs = [];
+  const num = (id, min, max, label, optional, def) => {
+    const el = $(id); el.classList.remove('invalid');
+    const raw = el.value.trim();
+    if (raw === '' && optional) return def;
+    const v = Number(raw);
+    if (raw === '' || !Number.isFinite(v) || (min !== null && v < min) || (max !== null && v > max)) {
+      el.classList.add('invalid');
+      errs.push(`「${label}」須為 ${min ?? '-∞'} 至 ${max ?? '∞'} 之數值`);
+      return NaN;
+    }
+    return v;
+  };
+  const P = {};
+  P.lat = num('lat', -90, 90, '緯度');
+  P.alt = num('alt', -400, 30000, '初始海拔');
+  P.ground = num('ground', -400, 30000, '地面海拔');
+  const mg = num('mass', 0.01, 1e7, '物體質量');
+  P.v0 = num('v0', 0, 3000, '初始速度');
+  const angDeg = num('ang', -90, 90, '初始仰角');
+  P.cdA = num('cda', 0, 100, '空氣阻力 CdA');
+  P.thrust = num('thrust', 0, 1e6, '推力');
+  P.burn = num('burn', 0, 3600, '推進時間');
+  const mdotG = num('mdot', 0, 1e7, '每秒質量減輕', true, 0);
+  P.cdADown = num('cdaDown', 0, 1000, '開傘後向下 CdA');
+  P.cdAUp = num('cdaUp', 0, 1000, '開傘後向上 CdA', true, null);
+  P.tmax = num('tmax', 0.1, 100000, '模擬時間上限');
+  P.dt = num('dt', 1e-5, 10, '積分步長');
+  P.model = $('model').value;
+  P.chuteMode = $('chute').value;
+  P.rev = $('rev').checked;
+  if (errs.length) return { errs };
+  if (P.cdAUp === null) P.cdAUp = P.cdADown;
+  P.m0 = mg / 1000; P.mdot = mdotG / 1000; P.ang = angDeg * DEG; P.angDeg = angDeg;
+  P.g = gravityWGS84(P.lat);
+  if (P.ground > P.alt) errs.push('地面海拔不可高於初始海拔');
+  if (P.mdot * P.burn >= P.m0) errs.push('推進期間脫離的總質量必須小於物體質量');
+  if (P.dt > P.tmax) errs.push('積分步長不可大於模擬時間上限');
+  if (P.ground === P.alt && P.v0 * Math.sin(P.ang) <= 0 && P.thrust * Math.sin(P.ang) <= (P.m0 * P.g) )
+    errs.push('物體位於地面且無向上初速/足夠推力，將立即觸地；請調整仰角或初速');
+  return { errs, P };
+}
+
+/* ================= 動畫（播放時間與模擬時間分離） ================= */
+
+/** 以二分搜尋於紀錄中內插取得任意播放時間的狀態 */
+function sampleAt(recs, t) {
+  if (t <= recs[0].t) return { r: recs[0], i: 0 };
+  const last = recs[recs.length - 1];
+  if (t >= last.t) return { r: last, i: recs.length - 1 };
+  let lo = 0, hi = recs.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (recs[mid].t <= t) lo = mid; else hi = mid; }
+  const a = recs[lo], b = recs[hi], f = (t - a.t) / (b.t - a.t);
+  const r = {};
+  for (const k of ['t', 'x', 'z', 'vx', 'vz', 'm', 'speed', 'rho', 'Fd', 'KE', 'PE']) r[k] = a[k] + (b[k] - a[k]) * f;
+  r.chute = a.chute;
+  return { r, i: lo };
+}
+
+/** 播放器：單一 requestAnimationFrame 迴圈，供 2D 與 3D 共用 */
+const player = {
+  sim: null, tPlay: 0, playing: false, last: 0, raf: 0, listeners: [],
+  load(sim) { this.sim = sim; this.tPlay = 0; this.playing = false; this.emit(); },
+  start() { this.tPlay = 0; this.play(); },
+  play() { if (!this.sim) return; this.playing = true; this.last = performance.now(); if (!this.raf) this.raf = requestAnimationFrame(this.tick); },
+  pause() { this.playing = false; },
+  tick: null,
+  emit() { for (const f of this.listeners) f(); }
+};
+player.tick = (now) => {
+  player.raf = 0;
+  if (!player.playing || !player.sim) return;
+  const real = Math.min((now - player.last) / 1000, 0.1);
+  player.last = now;
+  const end = player.sim.recs[player.sim.recs.length - 1].t;
+  player.tPlay = Math.min(end, player.tPlay + real * Number($('aSpeed').value));
+  if (player.tPlay >= end) player.playing = false;
+  player.emit();
+  if (player.playing) player.raf = requestAnimationFrame(player.tick);
+};
+
+/** 2D Canvas 繪圖 */
+function draw2D() {
+  const cv = $('anim'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#0a0e13'; c.fillRect(0, 0, W, H);
+  const sim = player.sim;
+  if (!sim) { c.fillStyle = '#8b98a5'; c.font = '14px sans-serif'; c.fillText('請設定參數後按「執行模擬」', 20, 30); return; }
+  const { recs, P } = sim;
+  let xmin = 0, xmax = 0, zmax = P.alt;
+  for (const r of recs) { if (r.x < xmin) xmin = r.x; if (r.x > xmax) xmax = r.x; if (r.z > zmax) zmax = r.z; }
+  const zmin = P.ground;
+  const pad = 46;
+  const spanX = Math.max(xmax - xmin, 1), spanZ = Math.max(zmax - zmin, 1);
+  const sc = Math.min((W - 2 * pad) / spanX, (H - 2 * pad) / spanZ); // 等比例尺
+  const ox = pad + ((W - 2 * pad) - spanX * sc) / 2 - xmin * sc;
+  const oy = H - pad;
+  const X = x => ox + x * sc, Z = z => oy - (z - zmin) * sc;
+  // 高度參考線
+  const step = niceStep(spanZ / 5);
+  c.font = '11px sans-serif'; c.textAlign = 'left';
+  for (let z = Math.ceil(zmin / step) * step; z <= zmax + step; z += step) {
+    const y = Z(z); if (y < 8) break;
+    c.strokeStyle = '#1e2731'; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+    c.fillStyle = '#5d6b78'; c.fillText(`${fmt(z, 0)} m`, 4, y - 3);
+  }
+  // 地面
+  c.fillStyle = '#1b2a1f'; c.fillRect(0, oy, W, H - oy);
+  c.strokeStyle = '#56c271'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, oy); c.lineTo(W, oy); c.stroke();
+  c.fillStyle = '#8b98a5'; c.fillText(`比例尺：100 px = ${fmt(100 / sc, 2)} m`, W - 190, H - 12);
+  // 軌跡
+  const cur = sampleAt(recs, player.tPlay);
+  c.strokeStyle = '#2a4a5c'; c.lineWidth = 1; c.beginPath();
+  const stride = Math.max(1, Math.floor(recs.length / 3000));
+  for (let i = 0; i < recs.length; i += stride) { const r = recs[i]; i ? c.lineTo(X(r.x), Z(r.z)) : c.moveTo(X(r.x), Z(r.z)); }
+  c.stroke();
+  c.strokeStyle = '#4fb3d9'; c.lineWidth = 2; c.beginPath();
+  for (let i = 0; i <= cur.i; i += stride) { const r = recs[i]; i ? c.lineTo(X(r.x), Z(r.z)) : c.moveTo(X(r.x), Z(r.z)); }
+  c.lineTo(X(cur.r.x), Z(cur.r.z)); c.stroke();
+  // 推進結束點 / 慣性耗盡點標記
+  const mark = (pt, col, label) => { if (!pt) return; const mx = X(pt.x), my = Z(pt.z); c.fillStyle = col; c.beginPath(); c.moveTo(mx, my - 6); c.lineTo(mx + 6, my); c.lineTo(mx, my + 6); c.lineTo(mx - 6, my); c.fill(); c.font = '11px sans-serif'; c.fillText(label, mx + 9, my + 4); };
+  mark(sim.burnEnd, '#ffffff', `推進結束 t=${fmt(sim.burnEnd?.t, 2)} s`);
+  mark(sim.coastEnd, '#ff4fd8', `慣性耗盡 t=${fmt(sim.coastEnd?.t, 2)} s`);
+  // 物體
+  const r = cur.r, px = X(r.x), py = Z(r.z);
+  if (r.chute) { c.strokeStyle = '#f0a64a'; c.fillStyle = 'rgba(240,166,74,.35)'; c.beginPath(); c.arc(px, py - 16, 12, Math.PI, 0); c.fill(); c.stroke(); c.beginPath(); c.moveTo(px - 12, py - 16); c.lineTo(px, py); c.lineTo(px + 12, py - 16); c.stroke(); }
+  c.fillStyle = '#e6edf3'; c.beginPath(); c.arc(px, py, 5, 0, 2 * Math.PI); c.fill();
+  // 向量
+  const vmax = Math.max(...recs.map(q => q.speed), 1e-9);
+  const W0 = r.m * P.g;
+  const arrow = (dx, dy, col) => { const L = Math.hypot(dx, dy); if (L < 1) return; c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.lineTo(px + dx, py + dy); c.stroke(); const a = Math.atan2(dy, dx); c.beginPath(); c.moveTo(px + dx, py + dy); c.lineTo(px + dx - 8 * Math.cos(a - .4), py + dy - 8 * Math.sin(a - .4)); c.lineTo(px + dx - 8 * Math.cos(a + .4), py + dy - 8 * Math.sin(a + .4)); c.fill(); };
+  if ($('showV').checked && r.speed > 0) { const L = 70 * r.speed / vmax; arrow(L * r.vx / r.speed, -L * r.vz / r.speed, '#4fb3d9'); }
+  if ($('showG').checked) arrow(0, 40, '#f0a64a');
+  if ($('showD').checked && r.speed > 0 && r.Fd > 0) { const L = Math.min(40 * r.Fd / W0, 120); arrow(-L * r.vx / r.speed, L * r.vz / r.speed, '#ef5d5d'); }
+  // 資訊
+  c.fillStyle = 'rgba(10,14,19,.8)'; c.fillRect(W - 210, 6, 204, 106);
+  c.fillStyle = '#e6edf3'; c.font = '12px monospace';
+  const lines = [`t  = ${fmt(r.t, 2)} s`, `x  = ${fmt(r.x, 2)} m`, `z  = ${fmt(r.z, 2)} m`, `|v|= ${fmt(r.speed, 2)} m/s`, `Fd = ${fmt(r.Fd, 3)} N`, `降落傘：${r.chute ? '開啟' : '關閉'}`];
+  lines.forEach((l, i) => c.fillText(l, W - 202, 22 + i * 16));
+  if ($('showV').checked || $('showG').checked || $('showD').checked) { c.font = '11px sans-serif'; c.fillStyle = '#8b98a5'; c.fillText('向量長度為示意（重力固定長度，阻力相對重量）', 8, 16); }
+  $('aInfo').textContent = `播放 ${fmt(player.tPlay, 2)} / ${fmt(recs[recs.length - 1].t, 2)} s${player.playing ? '' : '（停止）'}`;
+}
+
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); const n = x / p; return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p; }
+function fmt(v, d = 3) { if (v === null || v === undefined || !Number.isFinite(v)) return '—'; const a = Math.abs(v); if (a !== 0 && (a >= 1e7 || a < 1e-4)) return v.toExponential(3); return v.toFixed(d); }
+
+/* ================= 圖表 ================= */
+const charts = new Map();
+/** 建立或重建圖表（先銷毀舊圖表，避免重複建立） */
+function renderCharts(sim) {
+  const host = $('charts');
+  for (const ch of charts.values()) ch.destroy();
+  charts.clear(); host.replaceChildren();
+  if (typeof Chart === 'undefined') { const p = document.createElement('p'); p.textContent = 'Chart.js 載入失敗（可能為離線狀態），圖表無法顯示；其他功能不受影響。'; host.append(p); return; }
+  const { recs, P } = sim;
+  const stride = Math.max(1, Math.floor(recs.length / 1500));
+  const ds = recs.filter((_, i) => i % stride === 0 || i === recs.length - 1);
+  const pts = (fx, fy) => ds.map(r => ({ x: fx(r), y: fy(r) }));
+  const zTop = Math.max(...recs.map(r => r.z), P.alt + 100);
+  const dens = []; for (let i = 0; i <= 100; i++) { const h = P.ground + (zTop - P.ground) * i / 100; dens.push({ x: airDensity(h, P.model).rho, y: h }); }
+  // 推進結束點與慣性耗盡點標記（僅標記點，不連線）
+  const mk = (fy) => {
+    const out = [];
+    if (sim.burnEnd) { const r = sampleAt(recs, sim.burnEnd.t).r; out.push(['推進結束點', [{ x: r.t, y: fy(r) }], '#ffffff', true]); }
+    if (sim.coastEnd) { const r = sampleAt(recs, sim.coastEnd.t).r; out.push(['慣性耗盡點', [{ x: r.t, y: fy(r) }], '#ff4fd8', true]); }
+    return out;
+  };
+  const defs = [
+    ['水平位置 x 對時間', '時間 t (s)', '水平位置 x (m)', [['x', pts(r => r.t, r => r.x), '#4fb3d9']]],
+    ['高度 z 對時間', '時間 t (s)', '海拔高度 z (m)', [['z', pts(r => r.t, r => r.z), '#56c271'], ...mk(r => r.z)]],
+    ['速度大小對時間', '時間 t (s)', '速度 |v| (m/s)', [['|v|', pts(r => r.t, r => r.speed), '#f0a64a'], ...mk(r => r.speed)]],
+    ['水平速度 vx 對時間', '時間 t (s)', 'vx (m/s)', [['vx', pts(r => r.t, r => r.vx), '#c792ea']]],
+    ['垂直速度 vz 對時間', '時間 t (s)', 'vz (m/s)', [['vz', pts(r => r.t, r => r.vz), '#ef5d5d'], ...mk(r => r.vz)]],
+    ['空氣密度對高度', '空氣密度 ρ (kg/m³)', '海拔高度 (m)', [['ρ', dens, '#7fdbca']]],
+    ['能量隨時間變化', '時間 t (s)', '能量 (J)', [['動能', pts(r => r.t, r => r.KE), '#f0a64a'], ['重力位能', pts(r => r.t, r => r.PE), '#56c271'], ['機械能', pts(r => r.t, r => r.KE + r.PE), '#e6edf3']]],
+    ['空氣阻力對時間', '時間 t (s)', '阻力 Fd (N)', [['Fd', pts(r => r.t, r => r.Fd), '#ef5d5d']]]
+  ];
+  defs.forEach(([title, xl, yl, sets], k) => {
+    const box = document.createElement('div'); box.className = 'c';
+    const cv = document.createElement('canvas'); box.append(cv); host.append(box);
+    charts.set(k, new Chart(cv, {
+      type: 'scatter',
+      data: { datasets: sets.map(([label, data, col, marker]) => ({ label, data, borderColor: col, backgroundColor: col, showLine: !marker, pointRadius: marker ? 6 : 0, pointStyle: marker ? 'rectRot' : 'circle', borderWidth: 1.6 })) },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+        plugins: { title: { display: true, text: title, color: '#e6edf3' }, legend: { labels: { color: '#8b98a5' } } },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: xl, color: '#8b98a5' }, ticks: { color: '#8b98a5' }, grid: { color: '#1e2731' } },
+          y: { title: { display: true, text: yl, color: '#8b98a5' }, ticks: { color: '#8b98a5' }, grid: { color: '#1e2731' } }
         }
-        window.closeModal = function() {
-            document.getElementById('custom-modal').classList.add('hidden');
-        };
-
-        // Reset parameters handler
-        document.getElementById('reset-params').addEventListener('click', () => {
-            inputLat.value = 25.0;
-            valLat.textContent = '25.0';
-            inputAlt.value = 0;
-            inputMass.value = 1000;
-            inputV0.value = 50;
-            inputAngle.value = 45;
-            inputCda.value = 0.05;
-            inputTmax.value = 60;
-            inputDt.value = 0.05;
-            inputAtmosModel.value = 'standard';
-            inputCdaChuteDown.value = 1.5;
-            inputCdaChuteUp.value = 0.5;
-            inputChuteTrigger.value = 'falling';
-            inputInvertTrigger.checked = false;
-            inputMassLoss.value = 0;
-            inputBurnDuration.value = 0;
-            enable3d.checked = false;
-            options3dDiv.classList.add('hidden');
-            showModalMessage('已重設', '所有參數已恢復為預設工程數值。');
-        });
-
-        // ==========================================
-        // Physics Calculations
-        // ==========================================
-        function calculateGravity(latDeg) {
-            const latRad = latDeg * Math.PI / 180;
-            const sinLat = Math.sin(latRad);
-            const num = 9.7803253359 * (1 + 0.00193185265241 * Math.sin(latRad) * Math.sin(latRad));
-            const den = Math.sqrt(1 - 0.00669437999013 * Math.sin(latRad) * Math.sin(latRad));
-            return num / den;
-        }
-
-        function getAirDensity(z, model) {
-            if (z < 0) z = 0;
-            if (model === 'exponential') {
-                const rho0 = 1.225;
-                const H = 8500;
-                if (z > 80000) return 0;
-                return rho0 * Math.exp(-z / H);
-            } else {
-                // US Standard Atmosphere troposphere and stratosphere approximation
-                const rho0 = 1.225;
-                if (z <= 11000) {
-                    const T0 = 288.15;
-                    const L = 0.0065;
-                    const T = T0 - L * z;
-                    if (T <= 0) return 0;
-                    return rho0 * Math.pow(T / T0, 4.25588);
-                } else if (z <= 25000) {
-                    const rho11 = 0.36391;
-                    const z11 = 11000;
-                    const H_strat = 6341.6;
-                    return rho11 * Math.exp(-(z - z11) / H_strat);
-                } else {
-                    const rho25 = 0.04008;
-                    return rho25 * Math.exp(-(z - 25000) / 7000);
-                }
-            }
-        }
-
-        function checkParachuteTrigger(triggerType, inverted, state, t, initialVx) {
-            const vx = state[2];
-            const vz = state[3];
-            let triggered = false;
-
-            switch (triggerType) {
-                case 'none':
-                    triggered = false;
-                    break;
-                case 'vx_zero':
-                    triggered = (Math.abs(vx) < 0.1 || (initialVx > 0 && vx <= 0) || (initialVx < 0 && vx >= 0));
-                    break;
-                case 'falling':
-                    triggered = (vz <= 0);
-                    break;
-                case 'fuel_exhausted':
-                    triggered = (t >= window.currentBurnDuration);
-                    break;
-                case 'launch':
-                    triggered = (t >= 0);
-                    break;
-                default:
-                    triggered = false;
-            }
-            return inverted ? !triggered : triggered;
-        }
-
-        // ==========================================
-        // RK4 Numerical Integration Engine
-        // ==========================================
-        function runSimulation() {
-            // Read inputs with validation
-            const lat = parseFloat(inputLat.value);
-            const z0 = parseFloat(inputAlt.value);
-            const massG = parseFloat(inputMass.value);
-            const v0 = parseFloat(inputV0.value);
-            const angleDeg = parseFloat(inputAngle.value);
-            let cdaNormal = parseFloat(inputCda.value);
-            const tMax = parseFloat(inputTmax.value);
-            const dt = parseFloat(inputDt.value);
-            const atmosModel = inputAtmosModel.value;
-            const cdaChuteDown = parseFloat(inputCdaChuteDown.value);
-            const cdaChuteUp = parseFloat(inputCdaChuteUp.value);
-            const chuteTrigger = inputChuteTrigger.value;
-            const invertTrigger = inputInvertTrigger.checked;
-            const massLossRateG = parseFloat(inputMassLoss.value); // g/s
-            const burnDuration = parseFloat(inputBurnDuration.value);
-
-            window.currentBurnDuration = burnDuration;
-
-            if (isNaN(lat) || isNaN(z0) || isNaN(massG) || isNaN(v0) || isNaN(angleDeg) || isNaN(cdaNormal) || isNaN(tMax) || isNaN(dt) || dt <= 0) {
-                showModalMessage('輸入錯誤', '請檢查所有參數是否填寫正確的數值。');
-                return;
-            }
-
-            const g = calculateGravity(lat);
-            let m = massG / 1000.0; // convert to kg
-            const massLossRate = massLossRateG / 1000.0; // kg/s
-            const angleRad = angleDeg * Math.PI / 180;
-            let vx = v0 * Math.cos(angleRad);
-            let vz = v0 * Math.sin(angleRad);
-            let x = 0;
-            let z = Math.max(0, z0);
-
-            let t = 0;
-            simResults = [];
-            let parachuteActive = false;
-            let chuteDeploymentTime = null;
-            let maxZ = z;
-            let maxV = v0;
-            let maxFd = 0;
-            let steps = 0;
-            let landed = false;
-
-            // Initial state record
-            let initialDensity = getAirDensity(z, atmosModel);
-            let initialSpeed = v0;
-            let initialFd = 0.5 * initialDensity * cdaNormal * initialSpeed * initialSpeed;
-            let initialKe = 0.5 * m * initialSpeed * initialSpeed;
-            let initialPe = m * g * z;
-
-            simResults.push({
-                t: t, x: x, z: z, vx: vx, vz: vz, speed: initialSpeed,
-                density: initialDensity, drag_force: initialFd,
-                kinetic_energy: initialKe, potential_energy: initialPe,
-                mechanical_energy: initialKe + initialPe, mass: m, parachute: false
-            });
-
-            // Derivatives function for RK4
-            const getDerivs = (curT, st, curM, isChute) => {
-                const stX = st[0], stZ = st[1], stVx = st[2], stVz = st[3];
-                const speed = Math.sqrt(stVx * stVx + stVz * stVz);
-                const density = getAirDensity(stZ, atmosModel);
-                
-                let activeCdA = cdaNormal;
-                if (isChute) {
-                    if (cdaChuteUp > 0 && stVz > 0) {
-                        activeCdA = cdaChuteUp;
-                    } else {
-                        activeCdA = cdaChuteDown;
-                    }
-                }
-
-                const Fd = 0.5 * density * activeCdA * speed * speed;
-                let dvx = 0, dvz = 0;
-                if (speed > 1e-9) {
-                    dvx = - (Fd * stVx) / (curM * speed);
-                    dvz = -g - (Fd * stVz) / (curM * speed);
-                } else {
-                    dvz = -g;
-                }
-
-                let dmdt = 0;
-                if (curT <= burnDuration && massLossRate > 0) {
-                    dmdt = -massLossRate;
-                }
-
-                return [stVx, stVz, dvx, dvz, dmdt];
-            };
-
-            // Main integration loop
-            while (t < tMax && steps < 200000) {
-                // Check parachute trigger before step
-                if (!parachuteActive && chuteTrigger !== 'none') {
-                    if (checkParachuteTrigger(chuteTrigger, invertTrigger, [x, z, vx, vz, m], t, v0 * Math.cos(angleRad))) {
-                        parachuteActive = true;
-                        chuteDeploymentTime = t;
-                    }
-                }
-
-                // RK4 step
-                const st0 = [x, z, vx, vz, m];
-                
-                // k1
-                const d1 = getDerivs(t, st0, m, parachuteActive);
-                
-                // k2
-                const st1 = [
-                    x + 0.5 * dt * d1[0],
-                    z + 0.5 * dt * d1[1],
-                    vx + 0.5 * dt * d1[2],
-                    vz + 0.5 * dt * d1[3],
-                    Math.max(0.0001, m + 0.5 * dt * d1[4])
-                ];
-                const d2 = getDerivs(t + 0.5 * dt, st1, st1[4], parachuteActive);
-
-                // k3
-                const st2 = [
-                    x + 0.5 * dt * d2[0],
-                    z + 0.5 * dt * d2[1],
-                    vx + 0.5 * dt * d2[2],
-                    vz + 0.5 * dt * d2[3],
-                    Math.max(0.0001, m + 0.5 * dt * d2[4])
-                ];
-                const d3 = getDerivs(t + 0.5 * dt, st2, st2[4], parachuteActive);
-
-                // k4
-                const st3 = [
-                    x + dt * d3[0],
-                    z + dt * d3[1],
-                    vx + dt * d3[2],
-                    vz + dt * d3[3],
-                    Math.max(0.0001, m + dt * d3[4])
-                ];
-                const d4 = getDerivs(t + dt, st3, st3[4], parachuteActive);
-
-                // Update state
-                x += (dt / 6.0) * (d1[0] + 2 * d2[0] + 2 * d3[0] + d4[0]);
-                z += (dt / 6.0) * (d1[1] + 2 * d2[1] + 2 * d3[1] + d4[1]);
-                vx += (dt / 6.0) * (d1[2] + 2 * d2[2] + 2 * d3[2] + d4[2]);
-                vz += (dt / 6.0) * (d1[3] + 2 * d2[3] + 2 * d3[3] + d4[3]);
-                m += (dt / 6.0) * (d1[4] + 2 * d2[4] + 2 * d3[4] + d4[4]);
-                m = Math.max(0.0001, m);
-
-                t += dt;
-                steps++;
-
-                const speed = Math.sqrt(vx * vx + vz * vz);
-                const density = getAirDensity(z, atmosModel);
-                let currentCdA = parachuteActive ? (cdaChuteUp > 0 && vz > 0 ? cdaChuteUp : cdaChuteDown) : cdaNormal;
-                const Fd = 0.5 * density * currentCdA * speed * speed;
-                const ke = 0.5 * m * speed * speed;
-                const pe = m * g * z;
-
-                if (z > maxZ) maxZ = z;
-                if (speed > maxV) maxV = speed;
-                if (Fd > maxFd) maxFd = Fd;
-
-                simResults.push({
-                    t: t, x: x, z: z, vx: vx, vz: vz, speed: speed,
-                    density: density, drag_force: Fd,
-                    kinetic_energy: ke, potential_energy: pe,
-                    mechanical_energy: ke + pe, mass: m, parachute: parachuteActive
-                });
-
-                // Ground contact detection
-                if (z <= 0) {
-                    z = 0;
-                    landed = true;
-                    break;
-                }
-            }
-
-            // Update UI Summary & Charts & Table
-            updateSummaryReport(landed, t, maxZ, maxV, maxFd, steps, chuteDeploymentTime, simResults[simResults.length - 1]);
-            populateDataTable();
-            updateCharts();
-            initAnimationPlayback();
-
-            showModalMessage('模擬完成', `物理計算已成功完成！總計算步數：${steps} 步。`);
-        }
-
-        // ==========================================
-        // Results Summary & Table
-        // ==========================================
-        function updateSummaryReport(landed, totalTime, maxZ, maxV, maxFd, steps, chuteTime, finalState) {
-            const alertBox = document.getElementById('summary-alert');
-            if (landed) {
-                alertBox.className = 'p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-xl text-xs text-emerald-300 font-medium';
-                alertBox.textContent = '成功偵測到地面事件：物體已順利抵達地面。';
-            } else {
-                alertBox.className = 'p-3 bg-amber-900/30 border border-amber-700/50 rounded-xl text-xs text-amber-300 font-medium';
-                alertBox.textContent = '模擬尚未抵達地面（已達到設定的時間上限）。';
-            }
-
-            document.getElementById('sum-time').textContent = totalTime.toFixed(2) + ' s';
-            document.getElementById('sum-max-z').textContent = maxZ.toFixed(2) + ' m';
-            document.getElementById('sum-max-v').textContent = maxV.toFixed(2) + ' m/s';
-            document.getElementById('sum-final-x').textContent = finalState.x.toFixed(2) + ' m';
-            document.getElementById('sum-final-v').textContent = finalState.speed.toFixed(2) + ' m/s';
-            document.getElementById('sum-final-vxyz').textContent = `${finalState.vx.toFixed(2)}, ${finalState.vz.toFixed(2)} m/s`;
-            document.getElementById('sum-max-fd').textContent = maxFd.toFixed(2) + ' N';
-            document.getElementById('sum-steps').textContent = steps.toLocaleString() + ' 步';
-            document.getElementById('sum-chute-time').textContent = chuteTime !== null ? chuteTime.toFixed(2) + ' s' : '未開啟';
-        }
-
-        function populateDataTable() {
-            const tbody = document.getElementById('data-table-body');
-            tbody.innerHTML = '';
-            // Sample max 500 rows for performance
-            const stepSize = Math.max(1, Math.floor(simResults.length / 300));
-            for (let i = 0; i < simResults.length; i += stepSize) {
-                const r = simResults[i];
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-900/50';
-                tr.innerHTML = `
-                    <td class="p-2.5">${r.t.toFixed(2)}</td>
-                    <td class="p-2.5">${r.x.toFixed(2)}</td>
-                    <td class="p-2.5">${r.z.toFixed(2)}</td>
-                    <td class="p-2.5">${r.vx.toFixed(2)}</td>
-                    <td class="p-2.5">${r.vz.toFixed(2)}</td>
-                    <td class="p-2.5">${r.speed.toFixed(2)}</td>
-                    <td class="p-2.5">${r.density.toExponential(3)}</td>
-                    <td class="p-2.5">${r.drag_force.toFixed(2)}</td>
-                    <td class="p-2.5">${r.mass.toFixed(3)}</td>
-                `;
-                tbody.appendChild(tr);
-            }
-        }
-
-        // ==========================================
-        // Chart.js Visualization
-        // ==========================================
-        function updateCharts() {
-            const labels = simResults.map(r => r.t.toFixed(1));
-            const xData = simResults.map(r => r.x);
-            const zData = simResults.map(r => r.z);
-            const vData = simResults.map(r => r.speed);
-            const vxData = simResults.map(r => r.vx);
-            const vzData = simResults.map(r => r.vz);
-
-            const sampleIndices = [];
-            const stride = Math.max(1, Math.floor(simResults.length / 200));
-            for (let i = 0; i < simResults.length; i += stride) sampleIndices.push(i);
-            const sampledLabels = sampleIndices.map(i => simResults[i].t.toFixed(1));
-
-            const createOrUpdateChart = (chartId, config) => {
-                if (chartInstances[chartId]) {
-                    chartInstances[chartId].destroy();
-                }
-                const ctx = document.getElementById(chartId).getContext('2d');
-                chartInstances[chartId] = new Chart(ctx, config);
-            };
-
-            const commonOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                scales: {
-                    x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
-                    y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
-                },
-                plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 11 } } } }
-            };
-
-            // 1. x vs t
-            createOrUpdateChart('chart-x', {
-                type: 'line',
-                data: {
-                    labels: sampledLabels,
-                    datasets: [{ label: '水平位置 x (m)', data: sampleIndices.map(i => simResults[i].x), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0 }]
-                },
-                options: commonOptions
-            });
-
-            // 2. z vs t
-            createOrUpdateChart('chart-z', {
-                type: 'line',
-                data: {
-                    labels: sampledLabels,
-                    datasets: [{ label: '高度 z (m)', data: sampleIndices.map(i => simResults[i].z), borderColor: '#10b981', borderWidth: 2, pointRadius: 0 }]
-                },
-                options: commonOptions
-            });
-
-            // 3. v vs t
-            createOrUpdateChart('chart-v', {
-                type: 'line',
-                data: {
-                    labels: sampledLabels,
-                    datasets: [{ label: '速度大小 v (m/s)', data: sampleIndices.map(i => simResults[i].speed), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0 }]
-                },
-                options: commonOptions
-            });
-
-            // 4. vx, vz vs t
-            createOrUpdateChart('chart-vxyz', {
-                type: 'line',
-                data: {
-                    labels: sampledLabels,
-                    datasets: [
-                        { label: '水平速度 vx (m/s)', data: sampleIndices.map(i => simResults[i].vx), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0 },
-                        { label: '垂直速度 vz (m/s)', data: sampleIndices.map(i => simResults[i].vz), borderColor: '#ec4899', borderWidth: 2, pointRadius: 0 }
-                    ]
-                },
-                options: commonOptions
-            });
-
-            // 5. Density vs Altitude
-            const densitySorted = [...simResults].sort((a, b) => a.z - b.z);
-            createOrUpdateChart('chart-density', {
-                type: 'line',
-                data: {
-                    labels: densitySorted.map(r => r.z.toFixed(0)),
-                    datasets: [{ label: '大氣密度 ρ (kg/m³)', data: densitySorted.map(r => r.density), borderColor: '#8b5cf6', borderWidth: 2, pointRadius: 0 }]
-                },
-                options: {
-                    ...commonOptions,
-                    scales: {
-                        x: { title: { display: true, text: '高度 z (m)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
-                        y: { title: { display: true, text: '密度 ρ', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
-                    }
-                }
-            });
-
-            // 6. Energy vs t
-            createOrUpdateChart('chart-energy', {
-                type: 'line',
-                data: {
-                    labels: sampledLabels,
-                    datasets: [
-                        { label: '動能 (J)', data: sampleIndices.map(i => simResults[i].kinetic_energy), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 0 },
-                        { label: '重力位能 (J)', data: sampleIndices.map(i => simResults[i].potential_energy), borderColor: '#10b981', borderWidth: 2, pointRadius: 0 },
-                        { label: '總機械能 (J)', data: sampleIndices.map(i => simResults[i].mechanical_energy), borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, borderDash: [4, 4] }
-                    ]
-                },
-                options: commonOptions
-            });
-        }
-
-        // ==========================================
-        // 2D Canvas Animation Engine
-        // ==========================================
-        const canvas2d = document.getElementById('canvas-2d');
-        const ctx2d = canvas2d.getContext('2d');
-
-        function resizeCanvas2d() {
-            const container = canvas2d.parentElement;
-            canvas2d.width = container.clientWidth;
-            canvas2d.height = container.clientHeight;
-        }
-        window.addEventListener('resize', resizeCanvas2d);
-        resizeCanvas2d();
-
-        function draw2DFrame(timeIndex) {
-            if (simResults.length === 0) return;
-            const r = simResults[Math.min(timeIndex, simResults.length - 1)];
-
-            ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
-
-            const padding = 60;
-            const width = canvas2d.width - 2 * padding;
-            const height = canvas2d.height - 2 * padding;
-
-            // Find bounds
-            let maxX = Math.max(...simResults.map(item => item.x), 10);
-            let maxZ = Math.max(...simResults.map(item => item.z), 10);
-            maxX = Math.max(maxX, 50);
-            maxZ = Math.max(maxZ, 50);
-
-            const scaleX = width / maxX;
-            const scaleZ = height / maxZ;
-            const scale = Math.min(scaleX, scaleZ);
-
-            const originX = padding;
-            const originY = canvas2d.height - padding;
-
-            // Draw Ground line
-            ctx2d.strokeStyle = '#64748b';
-            ctx2d.lineWidth = 2;
-            ctx2d.beginPath();
-            ctx2d.moveTo(originX - 20, originY);
-            ctx2d.lineTo(originX + maxX * scale + 20, originY);
-            ctx2d.stroke();
-
-            // Draw Trajectory curve
-            ctx2d.strokeStyle = '#3b82f6';
-            ctx2d.lineWidth = 2;
-            ctx2d.beginPath();
-            for (let i = 0; i <= timeIndex && i < simResults.length; i++) {
-                const pt = simResults[i];
-                const px = originX + pt.x * scale;
-                const pz = originY - pt.z * scale;
-                if (i === 0) ctx2d.moveTo(px, pz);
-                else ctx2d.lineTo(px, pz);
-            }
-            ctx2d.stroke();
-
-            // Draw Object Position
-            const objPx = originX + r.x * scale;
-            const objPz = originY - r.z * scale;
-
-            if (r.parachute) {
-                // Draw Parachute canopy
-                ctx2d.fillStyle = '#ef4444';
-                ctx2d.beginPath();
-                ctx2d.arc(objPx, objPz - 15, 12, Math.PI, 0, false);
-                ctx2d.fill();
-                // Strings
-                ctx2d.strokeStyle = '#cbd5e1';
-                ctx2d.lineWidth = 1;
-                ctx2d.beginPath();
-                ctx2d.moveTo(objPx - 12, objPz - 15);
-                ctx2d.lineTo(objPx, objPz);
-                ctx2d.moveTo(objPx + 12, objPz - 15);
-                ctx2d.lineTo(objPx, objPz);
-                ctx2d.stroke();
-            }
-
-            // Object body
-            ctx2d.fillStyle = '#f59e0b';
-            ctx2d.beginPath();
-            ctx2d.arc(objPx, objPz, 6, 0, 2 * Math.PI);
-            ctx2d.fill();
-            ctx2d.strokeStyle = '#ffffff';
-            ctx2d.lineWidth = 1.5;
-            ctx2d.stroke();
-
-            // Draw Vectors
-            const vecScale = 0.5;
-            if (showVelocityVec.checked) {
-                drawVector(objPx, objPz, r.vx * vecScale, -r.vz * vecScale, '#3b82f6', 'v');
-            }
-            if (showGravityVec.checked) {
-                drawVector(objPx, objPz, 0, 30, '#10b981', 'g');
-            }
-            if (showDragVec.checked && r.speed > 0.1) {
-                const speed = r.speed;
-                const fdx = -r.vx / speed * Math.min(50, r.drag_force * 0.2);
-                const fdz = -r.vz / speed * Math.min(50, r.drag_force * 0.2);
-                drawVector(objPx, objPz, fdx, fdz, '#ec4899', 'Fd');
-            }
-
-            // Update HUD
-            document.getElementById('hud-t').textContent = r.t.toFixed(2);
-            document.getElementById('hud-x').textContent = r.x.toFixed(2);
-            document.getElementById('hud-z').textContent = r.z.toFixed(2);
-            document.getElementById('hud-v').textContent = r.speed.toFixed(2);
-            document.getElementById('hud-vx').textContent = r.vx.toFixed(2);
-            document.getElementById('hud-vz').textContent = r.vz.toFixed(2);
-            document.getElementById('hud-fd').textContent = r.drag_force.toFixed(2);
-            document.getElementById('hud-rho').textContent = r.density.toExponential(3);
-            document.getElementById('hud-m').textContent = r.mass.toFixed(3);
-            const chuteStatus = document.getElementById('hud-parachute-status');
-            chuteStatus.textContent = r.parachute ? '降落傘: 已展開 (Active)' : '降落傘: 未開啟';
-            chuteStatus.className = r.parachute ? 'text-emerald-400 font-medium pt-1' : 'text-slate-400 font-medium pt-1';
-        }
-
-        function drawVector(x, y, dx, dy, color, label) {
-            ctx2d.strokeStyle = color;
-            ctx2d.fillStyle = color;
-            ctx2d.lineWidth = 2;
-            ctx2d.beginPath();
-            ctx2d.moveTo(x, y);
-            ctx2d.lineTo(x + dx, y + dy);
-            ctx2d.stroke();
-
-            // Arrow head
-            const angle = Math.atan2(dy, dx);
-            ctx2d.save();
-            ctx2d.translate(x + dx, y + dy);
-            ctx2d.rotate(angle);
-            ctx2d.beginPath();
-            ctx2d.moveTo(0, 0);
-            ctx2d.lineTo(-6, -3);
-            ctx2d.lineTo(-6, 3);
-            ctx2d.closePath();
-            ctx2d.fill();
-            ctx2d.restore();
-
-            // Label
-            ctx2d.font = '10px Inter';
-            ctx2d.fillText(label, x + dx + 4, y + dy + 4);
-        }
-
-        function initAnimationPlayback() {
-            animationTime = 0;
-            if (animationInterval) clearInterval(animationInterval);
-            isPlaying = false;
-            document.getElementById('play-btn-text').textContent = '播放';
-            if (simResults.length > 0) draw2DFrame(0);
-        }
-
-        document.getElementById('anim-play').addEventListener('click', () => {
-            if (simResults.length === 0) {
-                showModalMessage('提示', '請先執行模擬計算。');
-                return;
-            }
-            isPlaying = !isPlaying;
-            document.getElementById('play-btn-text').textContent = isPlaying ? '暫停' : '播放';
-
-            if (isPlaying) {
-                const fps = 60;
-                const speedVal = parseFloat(document.getElementById('anim-speed').value);
-                const dtStep = simResults.length > 1 ? simResults[1].t - simResults[0].t : 0.05;
-                const intervalMs = 1000 / fps;
-                const indicesPerFrame = Math.max(1, Math.round((speedVal * dtStep) / (intervalMs / 1000)));
-
-                animationInterval = setInterval(() => {
-                    animationTime += indicesPerFrame;
-                    if (animationTime >= simResults.length) {
-                        animationTime = simResults.length - 1;
-                        isPlaying = false;
-                        document.getElementById('play-btn-text').textContent = '播放';
-                        clearInterval(animationInterval);
-                    }
-                    draw2DFrame(animationTime);
-                    if (threeLoaded && enable3d.checked) updateThreeFrame(animationTime);
-                }, intervalMs);
-            } else {
-                clearInterval(animationInterval);
-            }
-        });
-
-        document.getElementById('anim-pause').addEventListener('click', () => {
-            isPlaying = false;
-            document.getElementById('play-btn-text').textContent = '播放';
-            if (animationInterval) clearInterval(animationInterval);
-        });
-
-        document.getElementById('anim-reset').addEventListener('click', () => {
-            isPlaying = false;
-            document.getElementById('play-btn-text').textContent = '播放';
-            if (animationInterval) clearInterval(animationInterval);
-            animationTime = 0;
-            if (simResults.length > 0) draw2DFrame(0);
-            if (threeLoaded && enable3d.checked) updateThreeFrame(0);
-        });
-
-        // ==========================================
-        // Three.js 3D Simulation Integration
-        // ==========================================
-        document.getElementById('btn-activate-3d').addEventListener('click', () => {
-            enable3d.checked = true;
-            options3dDiv.classList.remove('hidden');
-            initThreeJS();
-        });
-
-        function initThreeJS() {
-            if (threeLoaded) return;
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-            script.onload = () => {
-                threeLoaded = true;
-                document.getElementById('3d-placeholder').classList.add('hidden');
-                document.getElementById('canvas-3d').classList.remove('hidden');
-                setupThreeScene();
-            };
-            document.head.appendChild(script);
-        }
-
-        function setupThreeScene() {
-            const container = document.getElementById('3d-container-wrapper');
-            threeScene = new THREE.Scene();
-            threeScene.background = new THREE.Color(0x0f172a);
-            threeScene.fog = new THREE.FogExp2(0x0f172a, 0.002);
-
-            threeCamera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 5000);
-            threeRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas-3d'), antialias: true });
-            threeRenderer.setSize(container.clientWidth, container.clientHeight);
-            threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            threeScene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(100, 200, 100);
-            threeScene.add(dirLight);
-
-            // Grid Ground
-            const gridHelper = new THREE.GridHelper(1000, 50, 0x3b82f6, 0x334155);
-            gridHelper.position.y = 0;
-            threeScene.add(gridHelper);
-
-            // Projectile Mesh
-            const geometry = new THREE.SphereGeometry(3, 32, 32);
-            const material = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.8 });
-            threeMesh = new THREE.Mesh(geometry, material);
-            threeScene.add(threeMesh);
-
-            // Draw Trajectory line in 3D if simResults exists
-            if (simResults.length > 0) {
-                const points = simResults.map(r => new THREE.Vector3(r.x, r.z, 0));
-                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const lineMat = new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 });
-                const trajLine = new THREE.Line(lineGeo, lineMat);
-                threeScene.add(trajLine);
-            }
-
-            threeCamera.position.set(0, 50, 200);
-            threeCamera.lookAt(0, 0, 0);
-
-            threeRenderer.render(threeScene, threeCamera);
-        }
-
-        function updateThreeFrame(timeIndex) {
-            if (!threeLoaded || !threeMesh || simResults.length === 0) return;
-            const r = simResults[Math.min(timeIndex, simResults.length - 1)];
-            threeMesh.position.set(r.x, r.z, 0);
-
-            const camMode = input3dCamera.value;
-            if (camMode === 'follow') {
-                threeCamera.position.set(r.x - 80, r.z + 30, 150);
-                threeCamera.lookAt(r.x, r.z, 0);
-            } else if (camMode === 'base') {
-                threeCamera.position.set(0, 50, 200);
-                threeCamera.lookAt(0, 20, 0);
-            } else if (camMode === 'object') {
-                threeCamera.position.set(r.x + 5, r.z + 5, 20);
-                threeCamera.lookAt(r.x + 50, r.z, 0);
-            }
-
-            threeRenderer.render(threeScene, threeCamera);
-        }
-
-        // ==========================================
-        // CSV Export Handler
-        // ==========================================
-        function exportCSV() {
-            if (simResults.length === 0) {
-                showModalMessage('提示', '尚無模擬數據可供匯出。');
-                return;
-            }
-
-            let csvContent = "t,x,z,vx,vz,speed,density,drag_force,kinetic_energy,potential_energy,mechanical_energy,mass,parachute\n";
-            simResults.forEach(r => {
-                csvContent += `${r.t.toFixed(4)},${r.x.toFixed(4)},${r.z.toFixed(4)},${r.vx.toFixed(4)},${r.vz.toFixed(4)},${r.speed.toFixed(4)},${r.density},${r.drag_force.toFixed(4)},${r.kinetic_energy.toFixed(4)},${r.potential_energy.toFixed(4)},${r.mechanical_energy.toFixed(4)},${r.mass.toFixed(4)},${r.parachute ? 1 : 0}\n`;
-            });
-
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `atmosphere_simulation_${new Date().toISOString().slice(0,10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-
-        btnExportCsv.addEventListener('click', exportCSV);
-        btnTableExport.addEventListener('click', exportCSV);
-
-        // Run simulation event listener
-        btnRun.addEventListener('click', () => {
-            runSimulation();
-        });
-
-        // Initial default run on load
-        window.addEventListener('load', () => {
-            runSimulation();
-        });
-    </script>
+      }
+    }));
+  });
+}
+
+/* ================= 結果摘要 ================= */
+/** 依落地動能給予警示等級 */
+function impactLevel(E) {
+  if (E < 1) return ['安全', '#56c271', '動能極低，適合作為發射參數'];
+  if (E < 14) return ['低', '#a3d977', '輕微撞擊，一般可接受'];
+  if (E < 80) return ['中', '#e5c14b', '可能造成財物損傷，需淨空落點區域'];
+  if (E < 1000) return ['高', '#f0a64a', '具傷人風險（>80 J），不建議作為發射參數'];
+  return ['極高', '#ef5d5d', '具嚴重破壞性，不適合作為發射參數'];
+}
+
+function renderSummary(sim) {
+  const { recs, P, landed, steps, eventTime } = sim;
+  const last = recs[recs.length - 1];
+  let zmax = -Infinity, vmax = 0, fmax = 0, tz = 0;
+  for (const r of recs) { if (r.z > zmax) { zmax = r.z; tz = r.t; } if (r.speed > vmax) vmax = r.speed; if (r.Fd > fmax) fmax = r.Fd; }
+  let chuteText;
+  if (P.chuteMode === 'none') chuteText = P.rev ? '全程開啟（不開啟 + 反轉）' : '不開啟';
+  else if (eventTime === null) chuteText = P.rev ? '0.000 s 開啟；收傘事件未於模擬期間發生' : '觸發事件未於模擬期間發生';
+  else chuteText = P.rev ? `0.000 s 開啟，${fmt(eventTime, 3)} s 收傘` : `${fmt(eventTime, 3)} s`;
+  const rows = [
+    ['模擬總時間', `${fmt(last.t, 3)} s`],
+    ['當地重力加速度', `${fmt(P.g, 6)} m/s²`],
+    ['最高高度', `${fmt(zmax, 2)} m（t = ${fmt(tz, 2)} s）`],
+    ['最大速度', `${fmt(vmax, 3)} m/s`],
+    ['最終位置', `x = ${fmt(last.x, 2)} m，z = ${fmt(last.z, 2)} m`],
+    ['最終速度大小', `${fmt(last.speed, 3)} m/s`],
+    ['最終水平 / 垂直速度', `vx = ${fmt(last.vx, 3)} m/s，vz = ${fmt(last.vz, 3)} m/s`],
+    ['最終質量', `${fmt(last.m * 1000, 2)} g`],
+    ['最大空氣阻力', `${fmt(fmax, 4)} N`],
+    ['數值積分步數', `${steps}（Δt = ${P.dt} s）`],
+    ['地面事件', landed ? `成功偵測，落地時間 ${fmt(last.t, 3)} s` : '模擬尚未抵達地面'],
+    ['推進結束點（停止推進）', sim.burnEnd ? `t = ${fmt(sim.burnEnd.t, 3)} s，x = ${fmt(sim.burnEnd.x, 2)} m，z = ${fmt(sim.burnEnd.z, 2)} m，|v| = ${fmt(sim.burnEnd.speed, 3)} m/s` : (P.burn > 0 ? '推進結束前已落地或模擬結束' : '無推進')],
+    ['慣性耗盡點（推進後 vz 降為 0）', sim.coastEnd ? `t = ${fmt(sim.coastEnd.t, 3)} s，z = ${fmt(sim.coastEnd.z, 2)} m，滑行 ${fmt(sim.coastEnd.t - Math.min(P.burn, sim.coastEnd.t), 3)} s，剩餘水平速度 ${fmt(sim.coastEnd.speed, 3)} m/s` : '推進結束後未出現向上速度轉為 0 的時刻'],
+    ['預計降落傘開啟時間', chuteText]
+  ];
+  const tb = document.createElement('tbody');
+  for (const [k, v] of rows) { const tr = document.createElement('tr'); const a = document.createElement('th'); a.textContent = k; const b = document.createElement('td'); b.textContent = v; tr.append(a, b); tb.append(tr); }
+  const tr = document.createElement('tr'); const a = document.createElement('th'); a.textContent = '落地動能警示'; const b = document.createElement('td');
+  if (landed) { const [lv, col, desc] = impactLevel(last.KE); const sp = document.createElement('span'); sp.className = 'lvl'; sp.style.background = col; sp.textContent = lv; b.append(sp, document.createTextNode(` ${fmt(last.KE, 2)} J — ${desc}`)); }
+  else b.textContent = '未落地，無法評估';
+  tr.append(a, b); tb.append(tr);
+  $('summary').replaceChildren(tb);
+  $('warns').textContent = sim.warns.length ? '⚠ ' + sim.warns.join('；') : '';
+}
+
+/* ================= 收斂檢查 ================= */
+function runConvergence() {
+  const { errs, P } = readParams();
+  if (errs.length) { $('errors').textContent = errs.join('\n'); return; }
+  $('errors').textContent = '';
+  const out = [];
+  try {
+    for (const k of [1, 2, 4]) {
+      const dt = P.dt / k;
+      const s = simulate(P, dt);
+      const last = s.recs[s.recs.length - 1];
+      out.push({ dt, steps: s.steps, t: last.t, x: last.x, zmax: Math.max(...s.recs.map(r => r.z)), v: last.speed, landed: s.landed });
+    }
+  } catch (e) { $('errors').textContent = '收斂檢查失敗：' + e.message; return; }
+  const tb = document.createElement('tbody');
+  const head = document.createElement('tr');
+  ['步長 Δt (s)', '步數', '結束時間 (s)', '最終 x (m)', '最高 z (m)', '最終 |v| (m/s)', '與 Δt/4 之 x 差 (m)'].forEach(h => { const th = document.createElement('th'); th.textContent = h; head.append(th); });
+  tb.append(head);
+  const ref = out[2];
+  for (const o of out) {
+    const tr = document.createElement('tr');
+    [fmt(o.dt, 6), String(o.steps), fmt(o.t, 4) + (o.landed ? '' : '（未落地）'), fmt(o.x, 4), fmt(o.zmax, 4), fmt(o.v, 4), fmt(Math.abs(o.x - ref.x), 6)]
+      .forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.append(td); });
+    tb.append(tr);
+  }
+  const e1 = Math.abs(out[0].x - ref.x), e2 = Math.abs(out[1].x - ref.x);
+  const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7;
+  td.textContent = e1 < 1e-9 ? '結果已收斂（差異低於 1e-9 m）。' : `誤差比 ≈ ${fmt(e1 / Math.max(e2, 1e-15), 2)}。注意：降落傘切換與觸地插值為非光滑事件，收斂階數可能低於 RK4 理論值 4。`;
+  tr.append(td); tb.append(tr);
+  $('conv').replaceChildren(tb);
+}
+
+/* ================= CSV 匯出 ================= */
+function exportCSV(sim) {
+  const head = 't,x,z,vx,vz,speed,density,drag_force,kinetic_energy,potential_energy,mass,parachute';
+  const lines = [head];
+  for (const r of sim.recs) lines.push([r.t, r.x, r.z, r.vx, r.vz, r.speed, r.rho, r.Fd, r.KE, r.PE, r.m, r.chute ? 1 : 0].map(v => typeof v === 'number' ? String(+v.toPrecision(10)) : v).join(','));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'atmosphere-simulation.csv';
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ================= 3D 模擬（按需載入 three.js） ================= */
+const view3d = {
+  THREE: null, renderer: null, scene: null, camera: null, model: null, chute: null, line: null, pts: [], acc: 0, lastT: 0, raf: 0, size: 1,
+  /** 動態載入 three.js 並建立場景 */
+  async load() {
+    if (this.THREE) { this.build(); return; }
+    $('s3d').textContent = '正在載入 three.js…'; $('btn3d').disabled = true;
+    try { this.THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'); }
+    catch (e) { $('s3d').textContent = 'three.js 載入失敗：' + e.message; $('btn3d').disabled = false; return; }
+    const T = this.THREE, wrap = $('three-wrap');
+    this.renderer = new T.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    wrap.append(this.renderer.domElement);
+    this.scene = new T.Scene(); this.scene.background = new T.Color(0x0a0e13);
+    this.camera = new T.PerspectiveCamera(55, 1, 0.01, 1e7);
+    this.scene.add(new T.HemisphereLight(0xbfd8ff, 0x203020, 1.2));
+    const sun = new T.DirectionalLight(0xffffff, 1.4); sun.position.set(1, 2, 1); this.scene.add(sun);
+    // 簡易模型：圓柱機身 + 圓錐鼻錐 + 半球降落傘
+    this.model = new T.Group();
+    const body = new T.Mesh(new T.CylinderGeometry(0.15, 0.15, 1, 16), new T.MeshStandardMaterial({ color: 0xdfe6ee, metalness: .3, roughness: .5 }));
+    const nose = new T.Mesh(new T.ConeGeometry(0.15, 0.4, 16), new T.MeshStandardMaterial({ color: 0xef5d5d }));
+    nose.position.y = 0.7; this.model.add(body, nose);
+    this.chute = new T.Mesh(new T.SphereGeometry(0.8, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: 0xf0a64a, side: T.DoubleSide, transparent: true, opacity: .85 }));
+    this.scene.add(this.model, this.chute);
+    new ResizeObserver(() => this.resize()).observe(wrap);
+    this.resize(); this.build();
+    $('s3d').textContent = '3D 模擬已載入（與 2D 共用播放控制）';
+    $('btn3d').textContent = '重新建立 3D 場景'; $('btn3d').disabled = false;
+    const loop = (now) => { this.raf = requestAnimationFrame(loop); const fps = Number($('fps').value); this.acc += now - this.lastT; this.lastT = now; if (this.acc < 1000 / fps - 0.5) return; this.acc = 0; this.frame(); };
+    this.raf = requestAnimationFrame(loop);
+  },
+  resize() { if (!this.renderer) return; const w = $('three-wrap').clientWidth, h = $('three-wrap').clientHeight; this.renderer.setSize(w, h); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); },
+  /** 依精度重新取樣軌跡並建立地面、軌跡線（移除舊物件避免重複） */
+  build() {
+    const sim = player.sim; if (!sim || !this.THREE) return;
+    const T = this.THREE, P = sim.P;
+    for (const o of this.scene.children.filter(o => o.userData.dyn)) { this.scene.remove(o); o.geometry?.dispose(); o.material?.dispose?.(); }
+    let prec = Number($('prec').value); if (!(prec >= 0.01 && prec <= 10000)) prec = 1;
+    const pts = []; let lx = null, lz = null;
+    for (const r of sim.recs) { if (lx === null || Math.hypot(r.x - lx, r.z - lz) >= prec) { pts.push(new T.Vector3(r.x, r.z - P.ground, 0)); lx = r.x; lz = r.z; } if (pts.length > 50000) break; }
+    const lr = sim.recs[sim.recs.length - 1]; pts.push(new T.Vector3(lr.x, lr.z - P.ground, 0));
+    let xmin = 0, xmax = 0, ymax = 1; for (const p of pts) { xmin = Math.min(xmin, p.x); xmax = Math.max(xmax, p.x); ymax = Math.max(ymax, p.y); }
+    const ext = Math.max(xmax - xmin, ymax, 10); this.ext = ext;
+    this.size = Math.max(ext * 0.015, 0.3); this.model.scale.setScalar(this.size); this.chute.scale.setScalar(this.size);
+    const line = new T.Line(new T.BufferGeometry().setFromPoints(pts), new T.LineBasicMaterial({ color: 0x4fb3d9 })); line.userData.dyn = true;
+    const grid = new T.GridHelper(ext * 3, 30, 0x56c271, 0x1e3a28); grid.position.x = (xmin + xmax) / 2; grid.userData.dyn = true;
+    const pad = new T.Mesh(new T.CylinderGeometry(this.size, this.size, this.size * 0.1, 24), new T.MeshStandardMaterial({ color: 0x8b98a5 })); pad.userData.dyn = true;
+    this.scene.add(line, grid, pad);
+    let ai = 0; sim.recs.forEach((r, i) => { if (r.z > sim.recs[ai].z) ai = i; });
+    this.apex = new T.Vector3(sim.recs[ai].x, sim.recs[ai].z - P.ground, 0);
+    $('ov3d').textContent = `取樣點 ${pts.length}，精度 ${prec} m，模型放大 ${fmt(this.size, 2)} 倍以便觀察`;
+  },
+  /** 每幀依共用播放時間更新模型與攝影機 */
+  frame() {
+    const sim = player.sim; if (!sim) return;
+    const T = this.THREE, r = sampleAt(sim.recs, player.tPlay).r, P = sim.P;
+    const pos = new T.Vector3(r.x, r.z - P.ground, 0);
+    this.model.position.copy(pos);
+    const ang = r.speed > 1e-6 ? Math.atan2(r.vz, r.vx) : P.ang;
+    this.model.rotation.set(0, 0, ang - Math.PI / 2);
+    this.chute.visible = r.chute; this.chute.position.set(pos.x, pos.y + this.size * 1.4, 0);
+    const mode = $('cam').value, cam = this.camera, s = this.size;
+    if (mode === 'follow') { cam.position.set(pos.x - s * 6, pos.y + s * 3, s * 14); cam.lookAt(pos); }
+    else if (mode === 'base') { cam.position.set(-s * 4, s * 1.5, s * 6); cam.lookAt(pos); }
+    else if (mode === 'apex') { cam.position.set(this.apex.x, this.apex.y + s * 2, s * 8); cam.lookAt(pos); }
+    else { const dir = r.speed > 1e-6 ? new T.Vector3(r.vx, r.vz, 0).normalize() : new T.Vector3(Math.cos(P.ang), Math.sin(P.ang), 0); cam.position.copy(pos).addScaledVector(dir, s * 1.2).add(new T.Vector3(0, 0, s * 0.01)); cam.lookAt(pos.clone().addScaledVector(dir, s * 50)); }
+    this.model.visible = mode !== 'obj';
+    this.renderer.render(this.scene, cam);
+  }
+};
+
+/* ================= UI 控制 ================= */
+let currentSim = null;
+function runSimulation() {
+  const { errs, P } = readParams();
+  if (errs.length) { $('errors').textContent = errs.join('\n'); return; }
+  $('errors').textContent = '';
+  try { currentSim = simulate(P, P.dt); }
+  catch (e) { $('errors').textContent = '模擬失敗：' + e.message; return; }
+  player.pause(); player.load(currentSim);
+  renderSummary(currentSim); renderCharts(currentSim);
+  ['aStart', 'aPause', 'aResume', 'aReplay', 'btnCsv'].forEach(id => $(id).disabled = false);
+  if (view3d.THREE) view3d.build();
+  player.start();
+}
+
+// 事件監聽器只在初始化時註冊一次
+$('btnRun').addEventListener('click', runSimulation);
+$('btnConv').addEventListener('click', runConvergence);
+$('btnCsv').addEventListener('click', () => currentSim && exportCSV(currentSim));
+$('aStart').addEventListener('click', () => player.start());
+$('aPause').addEventListener('click', () => player.pause());
+$('aResume').addEventListener('click', () => { const s = player.sim; if (s && player.tPlay < s.recs[s.recs.length - 1].t) player.play(); });
+$('aReplay').addEventListener('click', () => player.start());
+['showV', 'showG', 'showD'].forEach(id => $(id).addEventListener('change', draw2D));
+$('en3d').addEventListener('change', () => { const on = $('en3d').checked; $('opt3d').style.display = on ? '' : 'none'; $('tab3d').style.display = on ? '' : 'none'; if (!on && $('v3d').classList.contains('on')) switchTab('v2d'); });
+$('prec').addEventListener('change', () => view3d.build());
+$('btn3d').addEventListener('click', () => { if (!player.sim) { $('s3d').textContent = '請先執行模擬'; return; } view3d.load(); });
+function switchTab(v) { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); document.querySelectorAll('.view').forEach(d => d.classList.toggle('on', d.id === v)); if (v === 'v2d') draw2D(); if (v === 'v3d') view3d.resize(); }
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.v); });
+player.listeners.push(draw2D);
+window.addEventListener('resize', draw2D);
+draw2D();
+runSimulation();
+})();
+</script>
 </body>
 </html>
