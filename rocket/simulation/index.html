@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大氣阻力與拋體運動研究器</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    font-family: system-ui, sans-serif;
+    background: #10151d;
+    color: #e8edf5;
+  }
+  body {
+    max-width: 1000px;
+    margin: auto;
+    padding: 20px;
+  }
+  h1 { font-size: 1.6rem; }
+  .panel {
+    background: #1a2230;
+    border: 1px solid #344256;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(210px,1fr));
+    gap: 14px;
+  }
+  label { display: block; font-size: .9rem; }
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px;
+    background: #10151d;
+    color: white;
+    border: 1px solid #46566c;
+    border-radius: 6px;
+  }
+  button {
+    border: 0;
+    padding: 11px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #75d4c5;
+    color: #10201f;
+    font-weight: 700;
+  }
+  .results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+    gap: 10px;
+  }
+  .metric {
+    padding: 12px;
+    border-radius: 8px;
+    background: #10151d;
+  }
+  .value { font-size: 1.25rem; font-weight: 700; }
+  canvas { max-height: 350px; }
+  .note { color: #aebbd0; font-size: .9rem; line-height: 1.6; }
+  #error { color: #ff9292; }
+</style>
+</head>
+<body>
+<h1>大氣阻力與拋體運動研究器</h1>
+<p class="note">
+  研究固定大氣模型下，重力、初始速度與二次空氣阻力的關係。
+  本工具不包含動力推進或開傘控制。
+</p>
+
+<section class="panel">
+  <h2>一、初始條件</h2>
+  <div class="grid">
+    <label>緯度（度）
+      <input id="lat" type="number" value="22.17" min="-90" max="90" step="0.01">
+    </label>
+    <label>初始海拔（m）
+      <input id="alt" type="number" value="0" min="0" max="11000">
+    </label>
+    <label>質量（kg）
+      <input id="mass" type="number" value="1" min="0.001" step="any">
+    </label>
+    <label>初始速度（m/s）
+      <input id="speed" type="number" value="10" min="0" step="any">
+    </label>
+    <label>初始仰角（度）
+      <input id="angle" type="number" value="80" min="-90" max="90">
+    </label>
+    <label>阻力係數 × 迎風面積 CdA（m²）
+      <input id="cda" type="number" value="0.01" min="0" step="any">
+    </label>
+    <label>最大模擬時間（秒）
+      <input id="duration" type="number" value="60" min="0.1" max="3600">
+    </label>
+    <label>積分步長（秒）
+      <input id="dt" type="number" value="0.01" min="0.001" max="0.1" step="0.001">
+    </label>
+  </div>
+  <p><button id="run">執行模擬</button></p>
+  <p id="error"></p>
+</section>
+
+<section class="panel">
+  <h2>二、計算結果</h2>
+  <div class="results">
+    <div class="metric">重力加速度<div id="gravity" class="value">—</div></div>
+    <div class="metric">模擬時間<div id="time" class="value">—</div></div>
+    <div class="metric">最高海拔<div id="maxAlt" class="value">—</div></div>
+    <div class="metric">水平位移<div id="range" class="value">—</div></div>
+    <div class="metric">結束速度<div id="finalSpeed" class="value">—</div></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>三、二維軌跡</h2>
+  <canvas id="trajectory"></canvas>
+</section>
+<section class="panel">
+  <h2>四、速度與時間</h2>
+  <canvas id="velocity"></canvas>
+</section>
+<section class="panel">
+  <h2>五、高度與時間</h2>
+  <canvas id="height"></canvas>
+</section>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+let charts = {};
+
+function gravityAtLatitude(latitude) {
+  // WGS-84 常用正常重力近似式
+  const phi = latitude * Math.PI / 180;
+  return 9.7803253359 *
+    (1 + 0.00193185265241 * Math.sin(phi) ** 2) /
+    Math.sqrt(1 - 0.00669437999013 * Math.sin(phi) ** 2);
+}
+
+function densityAtAltitude(h) {
+  // ISA 對流層模型；高度單位 m
+  const T0 = 288.15;
+  const L = 0.0065;
+  const R = 287.05;
+  const g0 = 9.80665;
+  const rho0 = 1.225;
+
+  const base = 1 - L * h / T0;
+  if (base <= 0) {
+    throw new Error("高度超出本模型的有效範圍。");
+  }
+  return rho0 * base ** (g0 / (R * L) - 1);
+}
+
+function readInputs() {
+  const p = {
+    lat: Number($("lat").value),
+    alt: Number($("alt").value),
+    mass: Number($("mass").value),
+    speed: Number($("speed").value),
+    angle: Number($("angle").value) * Math.PI / 180,
+    cda: Number($("cda").value),
+    duration: Number($("duration").value),
+    dt: Number($("dt").value)
+  };
+
+  if (Object.values(p).some(v => !Number.isFinite(v))) {
+    throw new Error("所有欄位都必須是有效數字。");
+  }
+  if (p.lat < -90 || p.lat > 90 ||
+      p.alt < 0 || p.alt > 11000 ||
+      p.mass <= 0 || p.speed < 0 ||
+      p.cda < 0 || p.duration <= 0 ||
+      p.dt < 0.001 || p.dt > 0.1 ||
+      p.angle < -Math.PI/2 || p.angle > Math.PI/2) {
+    throw new Error("請檢查輸入範圍。");
+  }
+  return p;
+}
+
+function derivative(s, p, g) {
+  const speed = Math.hypot(s.vx, s.vz);
+  const rho = densityAtAltitude(Math.max(0, s.z));
+  const drag = 0.5 * rho * p.cda * speed;
+
+  return {
+    x: s.vx,
+    z: s.vz,
+    vx: -drag * s.vx / p.mass,
+    vz: -g - drag * s.vz / p.mass
+  };
+}
+
+function add(s, d, factor) {
+  return {
+    x: s.x + d.x * factor,
+    z: s.z + d.z * factor,
+    vx: s.vx + d.vx * factor,
+    vz: s.vz + d.vz * factor
+  };
+}
+
+// 四階 Runge-Kutta 數值積分
+function rk4(s, p, g, dt) {
+  const k1 = derivative(s, p, g);
+  const k2 = derivative(add(s, k1, dt/2), p, g);
+  const k3 = derivative(add(s, k2, dt/2), p, g);
+  const k4 = derivative(add(s, k3, dt), p, g);
+
+  return {
+    x: s.x + dt*(k1.x+2*k2.x+2*k3.x+k4.x)/6,
+    z: s.z + dt*(k1.z+2*k2.z+2*k3.z+k4.z)/6,
+    vx: s.vx + dt*(k1.vx+2*k2.vx+2*k3.vx+k4.vx)/6,
+    vz: s.vz + dt*(k1.vz+2*k2.vz+2*k3.vz+k4.vz)/6
+  };
+}
+
+function makeChart(id, type, datasets, xTitle, yTitle) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart($(id), {
+    type,
+    data: { datasets },
+    options: {
+      responsive: true,
+      animation: false,
+      parsing: false,
+      scales: {
+        x: {
+          type: "linear",
+          title: { display: true, text: xTitle }
+        },
+        y: { title: { display: true, text: yTitle } }
+      }
+    }
+  });
+}
+
+function simulate() {
+  $("error").textContent = "";
+  try {
+    const p = readInputs();
+    const g = gravityAtLatitude(p.lat);
+
+    let s = {
+      x: 0,
+      z: p.alt,
+      vx: p.speed * Math.cos(p.angle),
+      vz: p.speed * Math.sin(p.angle)
+    };
+
+    let t = 0;
+    let maxZ = s.z;
+    const trajectory = [];
+    const velocities = [];
+    const heights = [];
+
+    const steps = Math.ceil(p.duration / p.dt);
+    if (steps > 2000000) throw new Error("步數過多，請增加步長。");
+
+    for (let i = 0; i <= steps; i++) {
+      const v = Math.hypot(s.vx, s.vz);
+
+      trajectory.push({x: s.x, y: s.z});
+      velocities.push({x: t, y: v});
+      heights.push({x: t, y: s.z});
+      maxZ = Math.max(maxZ, s.z);
+
+      if (i === steps || (s.z <= 0 && i > 0)) break;
+
+      const next = rk4(s, p, g, Math.min(p.dt, p.duration - t));
+      t += Math.min(p.dt, p.duration - t);
+
+      // 對地面交點作線性內插
+      if (next.z < 0) {
+        const f = s.z / (s.z - next.z);
+        next.x = s.x + f * (next.x - s.x);
+        next.vx = s.vx + f * (next.vx - s.vx);
+        next.vz = s.vz + f * (next.vz - s.vz);
+        next.z = 0;
+      }
+
+      s = next;
+      if (s.z === 0) {
+        trajectory.push({x:s.x,y:0});
+        velocities.push({x:t,y:Math.hypot(s.vx,s.vz)});
+        heights.push({x:t,y:0});
+        break;
+      }
+    }
+
+    $("gravity").textContent = g.toFixed(5) + " m/s²";
+    $("time").textContent = t.toFixed(2) + " s";
+    $("maxAlt").textContent = maxZ.toFixed(2) + " m";
+    $("range").textContent = s.x.toFixed(2) + " m";
+    $("finalSpeed").textContent =
+      Math.hypot(s.vx,s.vz).toFixed(3) + " m/s";
+
+    makeChart("trajectory", "line", [{
+      label: "軌跡",
+      data: trajectory,
+      pointRadius: 0,
+      borderColor: "#75d4c5"
+    }], "水平位移 x（m）", "海拔 z（m）");
+
+    makeChart("velocity", "line", [{
+      label: "速度大小",
+      data: velocities,
+      pointRadius: 0,
+      borderColor: "#8eafff"
+    }], "時間 t（s）", "速度（m/s）");
+
+    makeChart("height", "line", [{
+      label: "海拔",
+      data: heights,
+      pointRadius: 0,
+      borderColor: "#f1c477"
+    }], "時間 t（s）", "海拔（m）");
+  } catch (err) {
+    $("error").textContent = err.message;
+  }
+}
+
+$("run").addEventListener("click", simulate);
+simulate();
+</script>
+</body>
+</html>
