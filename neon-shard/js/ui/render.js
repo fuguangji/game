@@ -20,6 +20,7 @@ import { XS, xResult } from "./menu.js";
 import { bossCatalog, telegraphDurationOf, telegraphRadiusOf, usesLineTelegraph } from "../config/index.js";
 import { settings } from "../core/settings-store.js";
 import { drawRoleAura, skinRenderer } from "../profile/appearance.js";
+import { accountService } from "../account/index.js";
 
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
@@ -844,12 +845,12 @@ export function render() {
     const p = G.pl,
       col = p.hf > 0 ? "#ffffff" : G.CHR.c;
     cx.translate(p.x, p.y);
-    cx.globalAlpha = p.dashT > 0 ? 0.45 : 1;
+    cx.globalAlpha = p.dashT > 0 ? 0.7 : 1;
     cx.shadowColor = col;
     cx.shadowBlur = 16;
     cx.strokeStyle = col;
     cx.fillStyle = col + "33";
-    cx.lineWidth = 2.5;
+    cx.lineWidth = 1.5;
     cx.beginPath();
     cx.arc(0, 0, p.r, 0, TAU);
     cx.fill();
@@ -865,6 +866,53 @@ export function render() {
       cx.stroke();
     }
     cx.restore();
+        // 名牌：畫在玩家頭上
+    const name = accountService.displayName;           // 純文字，fillText 不會解析 HTML，不需要額外跳脫
+    const size = 13 / G.S;                              // 除以縮放倍率，讓字在螢幕上永遠是 13px
+    cx.save();
+    cx.font = `bold ${size}px system-ui, "Noto Sans TC", sans-serif`;
+    
+    // 1. 先量測文字寬度
+    const textMetrics = cx.measureText(name);
+    const textWidth = textMetrics.width;
+    const textHeight = size;                            // 13px 換算後的文字高度
+    
+    // 2. 設定圓角矩形的內距 (Padding) 與圓角半徑 (同樣要除以 G.S 保持螢幕物理像素不變)
+    const paddingX = 8 / G.S;
+    const paddingY = 4 / G.S;
+    const borderRadius = 4 / G.S;
+    
+    // 3. 計算圓角矩形的尺寸
+    const rectWidth = textWidth + paddingX * 2;
+    const rectHeight = textHeight + paddingY * 2;
+    
+    // 4. 定位文字與矩形
+    // 原本文字的基準點 Y 軸
+    const y = p.y - p.r - 16;                           // 16 是留給職業光環的空間，可自行調整
+    
+    // 因為文字是置中且底部對齊，所以矩形的左上角 (X, Y) 座標如下計算：
+    const rectX = p.x - rectWidth / 2;
+    const rectY = y - textHeight - paddingY;            // 從文字底部往上推算矩形頂端
+    
+    // 5. 先畫圓角矩形背景
+    cx.beginPath();
+    cx.roundRect(rectX, rectY, rectWidth, rectHeight, borderRadius);
+    cx.fillStyle = "rgba(5, 6, 13, 0.65)";               // 65% 透明度的深色背景
+    cx.fill();
+    
+    // 6. 再畫字（因為有了背景，描邊通常可省略，如果你想保留也可以取消註解）
+    cx.textAlign = "center";
+    cx.textBaseline = "bottom";
+    cx.lineJoin = "round";
+    cx.lineWidth = 3 / G.S;
+    cx.strokeStyle = "#05060dcc";                       
+    cx.fillStyle = "#d8f4ff";
+    
+    // cx.strokeText(name, p.x, y);                    // 有背景後可不描邊。若想保留雙重防護可自由開啟
+    cx.fillText(name, p.x, y);
+    cx.restore();
+
+     
   }
   drawLZ();
   for (const b of G.bl) {
