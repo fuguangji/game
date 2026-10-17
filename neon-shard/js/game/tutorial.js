@@ -282,6 +282,12 @@ export class TutorialController {
 
   #startMenuTour() {
     if (!this.#active || !this.#done) return;
+    // 戰鬥教學結束後真正回到選單，讓玩家操作原本的介面。
+    this.#markDone();
+    this.#active = false;
+    this.#syncUi();
+    fsm.transition("menu");
+    showOv(0);
     this.#tourStep = 0;
     this.#tour.style.display = "flex";
     this.#showMenuTourStep();
@@ -292,15 +298,10 @@ export class TutorialController {
     const step = steps[this.#tourStep];
     if (!step) return this.#endMenuTour();
     this.#tourSeenTab = false;
-    if (step.page === "menu") {
-      window.showTab?.(step.tab);
-    } else {
-      window.showTab?.(step.tab);
-      requestAnimationFrame(() => document.getElementById(step.sub)?.click());
-    }
+    // 不代替玩家點擊：每一步都由玩家在真實選單中完成。
     this.#tour.querySelector("[data-tour-title]").textContent = step.title;
     this.#tour.querySelector("[data-tour-body]").textContent = step.body;
-    this.#tour.querySelector("[data-tour-status]").textContent = `步驟 ${this.#tourStep + 1} / ${steps.length} · 請先在遊戲介面實際查看，再按「我已操作，下一步」。`;
+    this.#tour.querySelector("[data-tour-status]").textContent = `步驟 ${this.#tourStep + 1} / ${steps.length} · 請先在遊戲介面親自點選指定分頁，再按「我已操作，下一步」。`;
     const next = this.#tour.querySelector("[data-tour-next]");
     next.textContent = this.#tourStep === steps.length - 1 ? "完成導覽" : "我已操作，下一步";
     next.focus();
