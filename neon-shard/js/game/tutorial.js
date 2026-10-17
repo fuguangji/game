@@ -237,11 +237,10 @@ export class TutorialController {
     // 短句、實際點擊導向的選單教學；不再用長篇文字代替操作。
     const tour = document.createElement("section");
     tour.setAttribute("role", "dialog");
-    tour.setAttribute("aria-modal", "true");
     tour.setAttribute("aria-label", "NEON SHARD 選單操作教學");
-    tour.style.cssText = "position:fixed;z-index:40;inset:0;display:none;align-items:center;justify-content:center;padding:16px;background:#02040dcc;color:#d8f4ff";
+    tour.style.cssText = "position:fixed;z-index:40;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:none;width:min(480px,calc(100% - 24px));color:#d8f4ff;pointer-events:none";
     tour.innerHTML = `
-      <div style="width:min(480px,100%);padding:20px;background:#0d1328;border:1px solid #22e6ff88;border-radius:14px">
+      <div style="width:100%;padding:20px;background:#0d1328;border:1px solid #22e6ff88;border-radius:14px;box-shadow:0 12px 40px #0009;pointer-events:auto">
         <div style="color:#22e6ff;font-size:12px;letter-spacing:.12em">FIELD GUIDE · 選單實作</div>
         <h2 data-tour-title style="margin:8px 0;font-size:22px"></h2>
         <p data-tour-body style="line-height:1.65;margin:8px 0 18px"></p>
