@@ -1,0 +1,31 @@
+/* 個人檔案頁面：分頁、頭像、進度、設定、外觀編輯器（沿用 account-features.css 的卡片與按鈕樣式） */
+.ns-profile{width:100%;max-width:1120px;margin:0 auto;display:grid;gap:14px}
+.ns-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.ns-tab{flex:0 0 auto;min-height:40px;padding:9px 16px;border:1px solid #ffffff24;border-radius:999px;background:#101923;color:var(--t);font:inherit;font-weight:650;cursor:pointer;transition:border-color .15s,background .15s}
+.ns-tab:hover{border-color:#22e6ff99}
+.ns-tab[aria-selected="true"]{border-color:#22e6ff;background:linear-gradient(135deg,#12445a,#123044);box-shadow:inset 0 0 18px #22e6ff12}
+.ns-tab:focus-visible{outline:2px solid #22e6ff;outline-offset:2px}
+.ns-profile-hidden{display:none!important}
+.ns-tab-panels>div{min-width:0}
+.ns-profile-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ns-avatar,.ns-skin-preview{width:112px;height:112px;flex:0 0 auto;border:1px solid #38506a;border-radius:16px;background:radial-gradient(circle at center,#0d1b2b,#070d18 72%)}
+.ns-profile-id{display:grid;gap:8px;min-width:0}
+.ns-profile-name{font-size:1.5rem;font-weight:700;overflow-wrap:anywhere}
+.ns-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ns-stat{display:grid;gap:4px;min-width:0;padding:12px;border:1px solid #ffffff12;border-radius:10px;background:#070d16}
+.ns-stat span{color:var(--sub,#9aaec1);font-size:.85rem}
+.ns-stat b{overflow-wrap:anywhere;font-size:clamp(14px,2.2vw,18px)}
+.ns-option-list{display:grid;gap:8px}
+.ns-option{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;padding:11px 12px;border:1px solid #ffffff14;border-radius:10px;background:#080e18;cursor:pointer}
+.ns-option:hover{border-color:#22e6ff66}
+.ns-option input{grid-row:span 2;width:18px;height:18px;accent-color:#22e6ff}
+.ns-option span{font-weight:650}
+.ns-option small{color:var(--sub,#9aaec1);line-height:1.5}
+.ns-appearance-body{display:grid;gap:14px;align-items:start}
+.ns-appearance-side{display:grid;gap:10px;justify-items:start}
+.ns-preview-caption{color:var(--sub,#9aaec1);font-size:.85rem}
+@media(min-width:720px){
+  .ns-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .ns-appearance-body{grid-template-columns:minmax(0,360px) minmax(0,1fr)}
+}
+@media(max-width:420px){.ns-tab{padding:8px 12px}.ns-avatar{width:88px;height:88px}}

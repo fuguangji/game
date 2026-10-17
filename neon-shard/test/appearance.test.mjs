@@ -1,0 +1,129 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { EDITOR_BODY_RADIUS, EDITOR_BODY_RATIO, MAX_STROKES, MIN_IN_GAME_LINE_WIDTH, SkinRenderer, SkinStore, drawRoleAura, paintStrokes, sanitizeStrokes } from "../js/profile/appearance.js";
+import { SettingsStore } from "../js/core/settings-store.js";
+import { KEYS, SaveStore } from "../js/core/save-store.js";
+
+const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), raw: m }; };
+/** 記錄所有繪圖呼叫的假 ctx */
+function recorder() {
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_, k) => k === "calls" ? calls : (...a) => { calls.push([k, ...a]); }, set: (_, k, v) => { calls.push(["set", k, v]); return true; } });
+  return { ctx, calls, sets: (name) => calls.filter((c) => c[0] === "set" && c[1] === name).map((c) => c[2]), of: (name) => calls.filter((c) => c[0] === name) };
+}
+const stroke = (points, width = 5, color = "#ff4dff") => ({ color, width, points });
+
+test("sanitizeStrokes：壞資料被整理成安全範圍，且不修改輸入", () => {
+  assert.deepEqual(sanitizeStrokes(null), []);
+  assert.deepEqual(sanitizeStrokes("x"), []);
+  const input = [{ color: "javascript:alert(1)", width: 999, points: [{ x: -5, y: 9 }, { x: "a", y: NaN }] }, { points: [] }, null];
+  const snapshot = JSON.stringify(input);
+  const out = sanitizeStrokes(input);
+  assert.equal(JSON.stringify(input), snapshot);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].color, "#ff4dff");
+  assert.equal(out[0].width, 20);
+  assert.deepEqual(out[0].points, [{ x: 0, y: 1 }, { x: 0, y: 0 }]);
+  assert.equal(sanitizeStrokes(Array.from({ length: 500 }, () => stroke([{ x: 0.5, y: 0.5 }]))).length, MAX_STROKES);
+});
+
+test("所見即所得：編輯器圓圈的邊緣 = 遊戲身體的邊緣；線寬依圓圈半徑換算", () => {
+  const edge = 0.5 + EDITOR_BODY_RATIO; // 編輯器圓圈右緣
+  for (const radius of [12, 32, EDITOR_BODY_RADIUS]) {
+    const r = recorder();
+    paintStrokes(r.ctx, [stroke([{ x: edge, y: 0.5 }, { x: 0.5, y: 0.5 }], 5)], radius);
+    const [, x, y] = r.of("moveTo")[0];
+    assert.ok(Math.abs(x - radius) < 1e-9 && Math.abs(y) < 1e-9, `半徑 ${radius}：圓圈右緣應落在 (${radius}, 0)，實際 (${x}, ${y})`);
+    assert.deepEqual(r.of("arc")[0].slice(1, 4), [0, 0, radius], "裁切圓半徑等於身體半徑");
+    assert.ok(Math.abs(r.sets("lineWidth")[0] - (5 * radius) / EDITOR_BODY_RADIUS) < 1e-9);
+  }
+  // 編輯器本身（半徑 145）：粗細就是筆刷像素值，與畫布上看到的一致
+  const r = recorder(); paintStrokes(r.ctx, [stroke([{ x: 0.5, y: 0.5 }], 9)], EDITOR_BODY_RADIUS);
+  assert.equal(r.sets("lineWidth")[0], 9);
+});
+
+test("遊戲內最小線寬：細筆不會細到看不見；粗筆維持比例", () => {
+  const thin = recorder(); paintStrokes(thin.ctx, [stroke([{ x: 0.5, y: 0.5 }, { x: 0.6, y: 0.5 }], 5)], 12, { minLineWidth: MIN_IN_GAME_LINE_WIDTH });
+  assert.equal(thin.sets("lineWidth")[0], MIN_IN_GAME_LINE_WIDTH);
+  const thick = recorder(); paintStrokes(thick.ctx, [stroke([{ x: 0.5, y: 0.5 }, { x: 0.6, y: 0.5 }], 20)], 12, { minLineWidth: MIN_IN_GAME_LINE_WIDTH });
+  assert.ok(Math.abs(thick.sets("lineWidth")[0] - (20 * 12) / EDITOR_BODY_RADIUS) < 1e-9);
+  assert.ok(thick.sets("lineWidth")[0] > MIN_IN_GAME_LINE_WIDTH);
+});
+
+test("SkinStore：載入時驗證並快取；儲存失敗會回報；改動時 revision 增加", () => {
+  const st = memStorage();
+  st.setItem("k", JSON.stringify([{ color: "bad", width: 1000, points: [{ x: 2, y: 2 }] }]));
+  const store = new SkinStore(st, "k");
+  assert.equal(store.strokes[0].color, "#ff4dff");
+  assert.equal(store.strokes, store.strokes, "同一份快取，不會每次重新解析");
+  const rev = store.revision;
+  assert.equal(store.save([stroke([{ x: 0.2, y: 0.2 }])]), true);
+  assert.ok(store.revision > rev);
+  assert.equal(JSON.parse(st.getItem("k")).length, 1);
+  store.clear();
+  assert.equal(st.getItem("k"), null);
+  const full = new SkinStore({ getItem: () => null, setItem() { throw new Error("quota"); }, removeItem() {} }, "k");
+  assert.equal(full.save([stroke([{ x: 0.5, y: 0.5 }])]), false, "空間滿：回傳 false，但記憶體中仍有效");
+  assert.equal(full.strokes.length, 1);
+  assert.deepEqual(new SkinStore(memStorage(), "none").strokes, []);
+  const broken = memStorage(); broken.setItem("k", "{oops");
+  assert.deepEqual(new SkinStore(broken, "k").strokes, []);
+});
+
+test("SkinStore：其他分頁修改時重新讀取", () => {
+  const st = memStorage(); const store = new SkinStore(st, "k");
+  const bus = new EventTarget(); store.watch(bus);
+  assert.equal(store.strokes.length, 0);
+  st.setItem("k", JSON.stringify([stroke([{ x: 0.1, y: 0.1 }])]));
+  let changed = 0; store.addEventListener("change", () => changed++);
+  bus.dispatchEvent(Object.assign(new Event("storage"), { key: "k" }));
+  assert.equal(store.strokes.length, 1); assert.equal(changed, 1);
+  bus.dispatchEvent(Object.assign(new Event("storage"), { key: "other" }));
+  assert.equal(changed, 1, "不相關的鍵不應觸發");
+});
+
+test("SkinRenderer：離屏貼圖只在內容或大小改變時重畫；每一幀只做一次 drawImage", () => {
+  let surfaces = 0;
+  globalThis.OffscreenCanvas = class { constructor(w, h) { surfaces++; this.width = w; this.height = h; this.rec = recorder(); } getContext() { return this.rec.ctx; } };
+  try {
+    const store = new SkinStore(memStorage(), "k"); const renderer = new SkinRenderer(store);
+    const frame = recorder();
+    renderer.draw(frame.ctx, 12, 1);
+    assert.equal(surfaces, 0, "沒有皮膚就不建立貼圖、不繪製");
+    assert.equal(frame.of("drawImage").length, 0);
+    store.save([stroke([{ x: 0.4, y: 0.5 }, { x: 0.6, y: 0.5 }])]);
+    for (let i = 0; i < 60; i++) renderer.draw(frame.ctx, 12, 1);
+    assert.equal(surfaces, 1, "60 幀只建立 1 張貼圖");
+    assert.equal(frame.of("drawImage").length, 60);
+    assert.deepEqual(frame.of("drawImage")[0].slice(2), [-12, -12, 24, 24]);
+    renderer.draw(frame.ctx, 12, 2);
+    assert.equal(surfaces, 2, "螢幕上的實際大小改變 → 重畫");
+    store.save([stroke([{ x: 0.5, y: 0.5 }])]);
+    renderer.draw(frame.ctx, 12, 2);
+    assert.equal(surfaces, 3, "皮膚內容改變 → 重畫");
+  } finally { delete globalThis.OffscreenCanvas; }
+});
+
+test("drawRoleAura：使用職業顏色畫 12 個粒子", () => {
+  const r = recorder(); drawRoleAura(r.ctx, 12, "#22e6ff", 1.5);
+  assert.deepEqual(r.sets("shadowColor"), ["#22e6ff"]);
+  assert.equal(r.of("arc").length, 12);
+});
+
+test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重設", () => {
+  const st = memStorage(); const store = new SettingsStore(new SaveStore(st));
+  assert.deepEqual(store.all(), { showAura: true, showSkin: true });
+  let events = 0; store.addEventListener("change", () => events++);
+  store.set("showAura", false); store.set("showAura", false);
+  assert.equal(events, 1, "值沒變就不觸發事件");
+  assert.equal(JSON.parse(st.getItem(KEYS.settings)).showAura, false);
+  assert.throws(() => store.set("showAura", "yes"), TypeError);
+  assert.throws(() => store.set("nope", true), RangeError);
+  assert.throws(() => store.get("nope"), RangeError);
+  assert.equal(new SettingsStore(new SaveStore(st)).get("showAura"), false, "重新載入後保留");
+  const bad = memStorage(); bad.setItem(KEYS.settings, JSON.stringify({ showAura: "x", showSkin: false, evil: 1, __proto__: { x: 1 } }));
+  const loaded = new SettingsStore(new SaveStore(bad));
+  assert.deepEqual(loaded.all(), { showAura: true, showSkin: false }, "型別不符與未知欄位被忽略");
+  store.reset();
+  assert.deepEqual(store.all(), { showAura: true, showSkin: true });
+});

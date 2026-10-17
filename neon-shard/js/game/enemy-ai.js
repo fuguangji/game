@@ -2,26 +2,38 @@
 import { G } from "../core/game-state.js";
 import { N, T, TAU } from "../core/viewport.js";
 import { ELITE, EL_COL } from "../enemy-config.js";
-import { BS, CD, ESPD, PREF, REC, TL } from "../game-config.js";
 import { blocked, burst, cell, hitCell, hurt, mkEn, mv, ray, solidAt } from "./battle.js";
 import { LEAD, bLead, bossAI3, chg, cloneAI, flk, isB, leadAt, nodeAI, thr } from "./boss.js";
 import { nav } from "./pathfinding.js";
+import { BULLET_SPEED_SCALE, ENEMY_SPEED_SCALE, attackCooldownOf, bulletCatalog, preferredDistanceOf, recoveryTimeOf, telegraphDurationOf } from "../config/index.js";
 
 // 功能：處理「eb」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
-export function eb(e, a, sp, dmg, eff) {
+/** 依子彈設定，在 (x, y) 朝 angle 方向發射一顆敵方子彈；color 省略時用設定中的顏色 */
+export function spawnEnemyBullet(x, y, angle, def, color) {
   G.bl.push({
-    eff,
-    hm2: eff === 2,
-    x: e.x + Math.cos(a) * e.r,
-    y: e.y + Math.sin(a) * e.r,
-    vx: Math.cos(a) * sp * BS,
-    vy: Math.sin(a) * sp * BS,
-    r: 5,
+    eff: def.effect,
+    hm2: def.isHoming,
+    x,
+    y,
+    vx: Math.cos(angle) * def.speed * BULLET_SPEED_SCALE,
+    vy: Math.sin(angle) * def.speed * BULLET_SPEED_SCALE,
+    r: def.radius,
     own: 0,
-    dmg,
-    life: 3,
-    col: e.col,
+    dmg: def.damage,
+    life: def.lifetimeScalesWithSpeedScale ? def.lifetimeSeconds / BULLET_SPEED_SCALE : def.lifetimeSeconds,
+    col: color ?? def.color,
   });
+}
+
+/** 從發射者 e 的邊緣射出具名子彈（見 config/bullet-catalog.js） */
+export function fireBullet(e, angle, bulletId) {
+  const def = bulletCatalog.get(bulletId);
+  spawnEnemyBullet(e.x + Math.cos(angle) * e.r, e.y + Math.sin(angle) * e.r, angle, def, def.color ?? e.col); // 設定有指定顏色就用設定的
+}
+
+/** 臨時組合的敵方子彈（Boss 的速度、傷害會隨階段變動）；eff 為 BulletEffect */
+export function eb(e, a, sp, dmg, eff) {
+  spawnEnemyBullet(e.x + Math.cos(a) * e.r, e.y + Math.sin(a) * e.r, a, bulletCatalog.custom({ speed: sp, damage: dmg, effect: eff }), e.col);
 }
 // 功能：更新「updEW」所管理的遊戲狀態。
 export function updEW(dt) {
@@ -83,18 +95,7 @@ export function updEW(dt) {
         sx = x + Math.cos(a) * T * 0.8,
         sy = y + Math.sin(a) * T * 0.8;
       if (d < 520 && !solidAt(sx, sy) && ray(sx, sy, a, d) >= d - T - 6)
-        G.bl.push({
-          eff: 0,
-          x: sx,
-          y: sy,
-          vx: Math.cos(a) * 160 * BS,
-          vy: Math.sin(a) * 160 * BS,
-          r: 4,
-          own: 0,
-          dmg: 6,
-          life: 3,
-          col: EL_COL,
-        });
+        spawnEnemyBullet(sx, sy, a, bulletCatalog.get("WALL_TURRET_SHOT"));
     }
   }
   for (let n = G.egh.length - 1; n >= 0; n--) {
@@ -103,18 +104,7 @@ export function updEW(dt) {
     if (!g.fd && g.t <= 0.4) {
       g.fd = 1;
       const a = Math.atan2(G.pl.y - g.y, G.pl.x - g.x);
-      G.bl.push({
-        eff: 0,
-        x: g.x + Math.cos(a) * 13,
-        y: g.y + Math.sin(a) * 13,
-        vx: Math.cos(a) * 320 * BS,
-        vy: Math.sin(a) * 320 * BS,
-        r: 5,
-        own: 0,
-        dmg: 14,
-        life: 3,
-        col: g.col,
-      });
+      spawnEnemyBullet(g.x + Math.cos(a) * 13, g.y + Math.sin(a) * 13, a, bulletCatalog.get("GHOST_SHOT"), g.col);
       burst(g.x, g.y, g.col, 6, 150, 2, 0.3);
     }
     if (g.t <= 0) G.egh.splice(n, 1);
@@ -146,26 +136,26 @@ export function lzEnd(e, n) {
 // 敵人開火（依種類發射子彈、投放地面區域或召喚）
 export function fire(e) {
   const t = e.t;
-  e.rec = REC[t] || 0.6;
+  e.rec = recoveryTimeOf(t) || 0.6;
   e.cd =
-    Math.max(1, ((e.el && ELITE[t].cd) || CD[t]) - 0.05 * G.wave) +
+    Math.max(1, ((e.el && ELITE[t].cd) || attackCooldownOf(t)) - 0.05 * G.wave) +
     Math.random() * 0.6;
   if (t === 1) {
     if (e.el) {
       e.shc = (e.shc || 0) + 1;
-      eb(e, e.aim, 480, 28);
+      fireBullet(e, e.aim, "SNIPER_ELITE_SHOT");
       if (e.shc % 3 === 0) {
         const bb = G.bl[G.bl.length - 1];
         bb.pw = 1;
         bb.col = EL_COL;
         bb.r = 6.5;
       }
-    } else eb(e, e.aim, 400, 20);
+    } else fireBullet(e, e.aim, "SNIPER_SHOT");
   } else if (t === 2) {
     if (e.el) {
       e.shc = (e.shc || 0) + 1;
       if (e.shc % 2 === 0) {
-        for (let k = -3; k <= 3; k++) eb(e, e.aim + k * 0.1, 250, 11);
+        for (let k = -3; k <= 3; k++) fireBullet(e, e.aim + k * 0.1, "SPREAD_ELITE_PELLET");
         e.dsc = 0.3;
         e.dsa = e.aim;
         G.fxs.push({
@@ -177,8 +167,8 @@ export function fire(e) {
           max: 0.3,
           col: EL_COL,
         });
-      } else for (let k = -3; k <= 3; k++) eb(e, e.aim + k * 0.2, 250, 11);
-    } else for (let k = -2; k <= 2; k++) eb(e, e.aim + k * 0.22, 235, 9);
+      } else for (let k = -3; k <= 3; k++) fireBullet(e, e.aim + k * 0.2, "SPREAD_ELITE_PELLET");
+    } else for (let k = -2; k <= 2; k++) fireBullet(e, e.aim + k * 0.22, "SPREAD_PELLET");
   } else if (t === 3) {
     if (e.el) {
       const nb = 2 + (Math.random() < 0.5 ? 1 : 0);
@@ -226,14 +216,14 @@ export function fire(e) {
   } else if (t === 4) {
     if (e.el) {
       e.shc = (e.shc || 0) + 1;
-      eb(e, e.aim, 320, 8, 3);
+      fireBullet(e, e.aim, "SLOW_ELITE_ORB");
       if (e.shc % 4 === 0) {
         const bb = G.bl[G.bl.length - 1];
         bb.efz = 1;
         bb.col = "#bfefff";
         bb.r = 7.5;
       }
-    } else eb(e, e.aim, 300, 6, 1);
+    } else fireBullet(e, e.aim, "SLOW_ORB");
   } else if (t === 5)
     G.zones.push(
       e.el
@@ -318,7 +308,7 @@ export function fire(e) {
     if (e.el) {
       e.shc = (e.shc || 0) + 1;
       for (let k = -1; k <= 1; k++) {
-        eb(e, e.aim + k * 0.3, 165, 14, 2);
+        fireBullet(e, e.aim + k * 0.3, "TRACKER_ORB_HEAVY");
         const bb = G.bl[G.bl.length - 1];
         bb.hr = 2.2;
         bb.acc = 1;
@@ -329,8 +319,8 @@ export function fire(e) {
         }
       }
     } else {
-      eb(e, e.aim - 0.25, 150, 12, 2);
-      eb(e, e.aim + 0.25, 150, 12, 2);
+      fireBullet(e, e.aim - 0.25, "TRACKER_ORB_LIGHT");
+      fireBullet(e, e.aim + 0.25, "TRACKER_ORB_LIGHT");
     }
   } else if (t === 28) {
     let h = 0;
@@ -391,13 +381,13 @@ export function fire(e) {
   } else if (t === 10) {
     if (e.el) {
       const a0 = G.time * 1.3;
-      for (let k = 0; k < 12; k++) eb(e, a0 + (k * Math.PI) / 6, 210, 10);
+      for (let k = 0; k < 12; k++) fireBullet(e, a0 + (k * Math.PI) / 6, "RING_ELITE_HEAVY_PELLET");
       for (let k = 0; k < 12; k++) {
-        eb(e, a0 + Math.PI / 12 + (k * Math.PI) / 6, 260, 6);
+        fireBullet(e, a0 + Math.PI / 12 + (k * Math.PI) / 6, "RING_ELITE_FAST_PELLET");
         G.bl[G.bl.length - 1].col = "#ffc0e8";
       }
     } else {
-      for (let k = 0; k < 8; k++) eb(e, G.time + (k / 8) * TAU, 190, 8);
+      for (let k = 0; k < 8; k++) fireBullet(e, G.time + (k / 8) * TAU, "RING_PELLET");
     }
   } else if (t === 11) {
     const E = e.el;
@@ -407,15 +397,15 @@ export function fire(e) {
     {
       const P = leadAt(
         e,
-        (E ? 320 : 300) * BS,
+        bulletCatalog.get(E ? "BLINK_BURST_ELITE_PELLET" : "BLINK_BURST_PELLET").speed * BULLET_SPEED_SCALE,
         0,
         Math.min(0.9, 0.4 + G.wave * 0.035) * 0.8,
       );
       e.aim = Math.atan2(P[1] - e.y, P[0] - e.x);
     }
     if (E) {
-      for (let k = 0; k < 4; k++) eb(e, e.aim + (k - 1.5) * 0.11, 320, 14);
-    } else for (let k = -1; k <= 1; k++) eb(e, e.aim + k * 0.12, 300, 12);
+      for (let k = 0; k < 4; k++) fireBullet(e, e.aim + (k - 1.5) * 0.11, "BLINK_BURST_ELITE_PELLET");
+    } else for (let k = -1; k <= 1; k++) fireBullet(e, e.aim + k * 0.12, "BLINK_BURST_PELLET");
   } else if (t === 13 && e.el) {
     const g1 = (Math.random() * 5) | 0,
       g2 = Math.random() < 0.5 ? (g1 + 2) % 5 : -1;
@@ -554,7 +544,7 @@ export function updEn(e, dt) {
     e.dsc -= dt;
     if (e.dsc <= 0) {
       for (let k = -3; k <= 3; k++)
-        (eb(e, e.dsa + k * 0.26, 250, 11), (G.bl[G.bl.length - 1].col = EL_COL));
+        (fireBullet(e, e.dsa + k * 0.26, "SPREAD_ELITE_PELLET"), (G.bl[G.bl.length - 1].col = EL_COL));
       burst(e.x, e.y, EL_COL, 10, 160, 2, 0.35);
     }
   }
@@ -569,7 +559,7 @@ export function updEn(e, dt) {
   }
   if (e.t === 0 || e.t === 12) {
     const na = nav(e, flk(e, a, d), d),
-      sp = e.sp + (e.bo > 0 ? 40 * ESPD : 0);
+      sp = e.sp + (e.bo > 0 ? 40 * ENEMY_SPEED_SCALE : 0);
     if (e.el && e.t === 0) {
       e.ft = (e.ft || 0) - dt;
       if (e.ft <= 0) {
@@ -648,7 +638,7 @@ export function updEn(e, dt) {
     if (e.tele <= 0) fire(e);
   } else {
     const los = ray(e.x, e.y, a, d) >= d - 6,
-      pref = (e.el && ELITE[e.t].pref) || PREF[e.t] || 210,
+      pref = (e.el && ELITE[e.t].pref) || preferredDistanceOf(e.t) || 210,
       m = !los ? 1 : d < pref - 40 ? -1 : d > pref + 40 ? 1 : 0,
       na = m > 0 ? nav(e, a, d) : a,
       k = los ? 1 : 0;
@@ -657,7 +647,7 @@ export function updEn(e, dt) {
     if (mv(e, vx * dt, vy * dt) && Math.random() < 0.02) e.st *= -1;
     e.cd -= dt;
     if (e.cd <= 0 && d < 560 && los) {
-      e.tele = (e.el && ELITE[e.t].tl) || TL[e.t] || 0.45;
+      e.tele = (e.el && ELITE[e.t].tl) || telegraphDurationOf(e.t) || 0.45;
       let tx = G.pl.x,
         ty = G.pl.y;
       {
@@ -665,7 +655,7 @@ export function updEn(e, dt) {
         if (ld) {
           const P = leadAt(
             e,
-            ld[0] < 1e4 ? ld[0] * BS : ld[0],
+            ld[0] < 1e4 ? ld[0] * BULLET_SPEED_SCALE : ld[0],
             ld[1] === null ? e.tele : ld[1],
             Math.min(e.el ? 0.97 : 0.9, 0.4 + G.wave * 0.035 + (e.el ? 0.2 : 0)) *
               ld[2],

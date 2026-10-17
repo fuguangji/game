@@ -571,7 +571,7 @@ export function drawLast() {
     cx.restore();
   }
 }
-const AAH = [
+export const AAH = [
   "完全手動，不做任何修正",
   "只修正你準星附近的敵人，其他方向照你瞄的打",
   "修正範圍較大，但仍只會鎖定準星方向附近的敵人",

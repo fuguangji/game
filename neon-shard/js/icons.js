@@ -1,5 +1,5 @@
 import { EL_COL } from "./enemy-config.js";
-import { SH } from "./game-config.js";
+import { iconShapeOf } from "./config/index.js";
 
 const TAU = Math.PI * 2;
 
@@ -207,8 +207,8 @@ function icon(c, t, x, y, s, col) {
       c.arc(0, 0, 0.75, 0, TAU);
       break;
     default:
-      if (SH[t.slice(1)]) {
-        const [n, r2] = SH[t.slice(1)],
+      if (iconShapeOf(Number(t.slice(1)))) {
+        const { sides: n, innerRatio: r2 } = iconShapeOf(Number(t.slice(1))),
           o = n === 4 ? TAU / 8 : 0;
         for (let i = 0; i < n; i++) {
           const r = r2 < 1 && i % 2 ? r2 : 1,

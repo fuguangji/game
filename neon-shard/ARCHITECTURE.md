@@ -30,40 +30,122 @@
 | `js/account/index.js` | 15 | 帳號系統組裝：把設定、Session、API、加密與服務接在一起（整個遊戲共用一份） |
 | `js/account/session-store.js` | 59 |  |
 | `js/api/extension.js` | 29 | 對外擴充 API（window.NEON_SHARD_API） |
+| `js/config/boss-catalog.js` | 91 |  |
+| `js/config/bullet-catalog.js` | 121 |  |
+| `js/config/creature-definition.js` | 81 |  |
+| `js/config/enemy-catalog.js` | 127 |  |
+| `js/config/index.js` | 40 |  |
 | `js/core/dom-utils.js` | 28 | 把任意文字轉成可安全放進 innerHTML 的字串（暱稱等使用者輸入一律先經過這裡） |
 | `js/core/event-bus.js` | 50 |  |
 | `js/core/flow-field.js` | 97 |  |
 | `js/core/game-state.js` | 91 |  |
-| `js/core/input.js` | 298 | 鍵盤、滑鼠、觸控輸入 |
-| `js/core/save-store.js` | 85 |  |
+| `js/core/input.js` | 299 | 鍵盤、滑鼠、觸控輸入 |
+| `js/core/save-store.js` | 86 |  |
+| `js/core/settings-store.js` | 53 |  |
 | `js/core/state-machine.js` | 144 |  |
 | `js/core/viewport.js` | 35 | 畫布、座標常數與視窗縮放 |
 | `js/enemy-config.js` | 155 |  |
-| `js/game-config.js` | 177 |  |
-| `js/game/battle.js` | 1013 | 戰鬥核心：開局、受傷、射擊、大招入口 |
-| `js/game/boss.js` | 1548 | Boss 與特效 |
+| `js/game-config.js` | 49 | 與敵人、子彈、Boss 無關的遊戲設定（敵方單位設定已搬到 config/） |
+| `js/game/ai-helpers.js` | 173 | 敵人 AI 共用輔助：預判彈道、閃避玩家子彈 |
+| `js/game/battle.js` | 277 | 戰鬥核心：開局、受傷、射擊、大招入口 |
+| `js/game/boss-ai.js` | 478 | Boss 行為決策：階段切換、招式選擇、移動、衝鋒、分身與節點 |
+| `js/game/boss-attacks.js` | 383 | Boss 的攻擊招式：彈幕、炸彈、地磚、落石、蜂群、傳送門、毒區、射線等 |
+| `js/game/boss-telegraph.js` | 138 | Boss 攻擊預警（直線、圓圈、扇形、光束、地磚）的計算與繪製 |
+| `js/game/boss-visuals.js` | 391 | Boss 登場、死亡、光環、氛圍等視覺效果與繪製 |
+| `js/game/boss.js` | 44 | Boss 與特效 |
+| `js/game/chip-effects.js` | 234 | 芯片觸發效果：命中、持續、連鎖、重力井、充能 |
 | `js/game/chips.js` | 562 | 芯片資料與改裝運算 |
 | `js/game/elite.js` | 47 | 精英怪詞綴與數值 |
-| `js/game/enemy-ai.js` | 701 | 敵人 AI：開火與每幀行為 |
+| `js/game/enemy-ai.js` | 691 | 敵人 AI：開火與每幀行為 |
+| `js/game/enemy-death.js` | 154 | 敵人死亡：得分、掉落、分裂與特效 |
+| `js/game/laser-zones.js` | 378 | 雷射地帶：發射、判定、更新與繪製 |
 | `js/game/pathfinding.js` | 143 | 路徑場與敵人尋路 |
 | `js/game/physics.js` | 250 | 爆炸、自動瞄準、追蹤 |
-| `js/game/pickups.js` | 369 | 掉落物、經濟、道具 |
+| `js/game/pickups.js` | 367 | 掉落物、經濟、道具 |
+| `js/game/player-attacks.js` | 602 | 玩家攻擊：開火、子彈建立、大招（SUPER）加成與施放 |
 | `js/game/player.js` | 175 | 玩家：衝刺、輸入、每幀更新 |
 | `js/game/progress.js` | 183 | 存檔、關卡、結算、暫停 |
 | `js/game/redeem.js` | 230 | 兌換碼 |
-| `js/game/simulation.js` | 1087 | 區域效果、擊殺、整體每幀模擬 |
+| `js/game/simulation.js` | 548 | 區域效果、擊殺、整體每幀模擬 |
 | `js/game/training.js` | 236 | 訓練場 |
 | `js/game/tutorial.js` | 392 | 教學模式（TutorialController） |
-| `js/game/ultimates.js` | 1542 | 各把槍的大招（SUPER）與雷射地帶 |
+| `js/game/ultimate-effects.js` | 203 | 大招與訓練用的視覺輔助：假人、閃電折線、飄字、雲層火花 |
+| `js/game/ultimates.js` | 774 | 各把槍的大招（SUPER）與雷射地帶 |
 | `js/game/weapons.js` | 627 | 武器資料表與出戰配置 |
+| `js/game/world-helpers.js` | 156 | 地圖格子、碰撞、射線、移動、粒子與掉落等世界基礎工具 |
+| `js/game/zone-update.js` | 409 | 地面區域效果（炸彈、牽引、毒區、地雷等）的每幀更新 |
 | `js/icons.js` | 274 |  |
 | `js/main.js` | 84 | 啟動流程與主迴圈 |
-| `js/ui/account.js` | 95 | 帳號頁面（遊戲端接合） |
+| `js/profile/appearance.js` | 185 |  |
+| `js/profile/profile-page.js` | 100 |  |
+| `js/profile/realtime-client.js` | 120 |  |
+| `js/profile/sections/appearance-section.js` | 109 |  |
+| `js/profile/sections/cloud-section.js` | 20 |  |
+| `js/profile/sections/online-section.js` | 96 |  |
+| `js/profile/sections/overview-section.js` | 63 |  |
+| `js/profile/sections/profile-section.js` | 24 | 個人檔案頁面的一個分頁區塊：持有自己的 DOM，並在顯示／隱藏／移除時收到通知 |
+| `js/profile/sections/settings-section.js` | 49 |  |
+| `js/ui/account.js` | 54 | 個人檔案頁面（遊戲端接合）：把遊戲的資料與動作包成 ProfileBridge，交給 ProfilePage 顯示 |
 | `js/ui/aim.js` | 477 | 瞄準線與彈道預測 |
 | `js/ui/hud.js` | 684 | 補給站、血條彈藥條、瞄準輔助 HUD |
-| `js/ui/menu.js` | 1433 | 主頁、備戰、背包、關卡、商城、圖鑑 |
-| `js/ui/render.js` | 1321 | 場景繪製與主頁／結算顯示 |
+| `js/ui/menu-bag.js` | 334 | 背包分頁：芯片改裝、裝備與庫存 |
+| `js/ui/menu-codex.js` | 295 | 圖鑑分頁：敵人與道具介紹、敵人比較 |
+| `js/ui/menu-lobby.js` | 358 | 大廳、備戰、關卡選擇、結算與暫停畫面 |
+| `js/ui/menu-shop.js` | 242 | 商城分頁：武器、角色、芯片與升級的購買 |
+| `js/ui/menu.js` | 252 | 主頁、備戰、背包、關卡、商城、圖鑑 |
+| `js/ui/render.js` | 1327 | 場景繪製與主頁／結算顯示 |
 | `js/ui/workshop.js` | 319 | 芯片工坊與訓練場改裝 |
+
+## 敵人、子彈、Boss 設定（`js/config/`）
+
+以前這些設定散在 `game-config.js` 的 9 張表（用位置編號對照）、`battle.js` 的陣列、`boss.js` 的 `EXT/BN/BK/BPF`，
+以及散落各處的 `eb(e, a, 400, 20)` 這種數字。現在各自是一個類別，屬性全用完整名稱：
+
+| 類別 | 內容 | 主要成員 |
+|---|---|---|
+| `EnemyCatalog` / `EnemyDefinition` | 18 種一般敵人 | `radius`、`maxHealth`、`moveSpeed`、`scoreValue`、`mass`、`unlockWave`、`preferredDistance`、`attackCooldown`、`recoveryTime`、`telegraphDuration`、`dodge`… |
+| `BossCatalog` / `BossDefinition` | 8 隻 Boss + 2 種召喚物 | `name`、`attackPatternCount`、`preferredDistance`，並繼承上面的基礎屬性 |
+| `BulletCatalog` / `BulletDefinition` | 16 種具名敵方子彈 | `speed`、`damage`、`radius`、`lifetimeSeconds`、`effect`（`BulletEffect`）、`color` |
+
+- **資料表是 `#` 私有欄位**：`Reflect.ownKeys(catalog)` 是空的，外部讀不到、列舉不到、也無法序列化；
+  定義實例已凍結，改寫會直接丟錯；`all()`、`names()`、`ids()` 回傳的都是副本。
+- **建構時驗證**：顏色格式、血量與半徑範圍、解鎖波數…寫錯會當場報錯，不會悄悄變成 `NaN`。
+- **查詢失敗會丟錯**：`bulletCatalog.get("拼錯了")` 與 `requireCreature(999)` 不會射出奇怪的子彈或生出奇怪的敵人。
+- 發射子彈：`fireBullet(enemy, angle, "SNIPER_SHOT")`；Boss 依階段變動的子彈用 `eb(...)`（內部走 `bulletCatalog.custom`）。
+- 原本散在 9 張表裡的數字，已用 359 項逐值比對確認轉抄無誤（見 `test/config.test.mjs` 的不變量測試）。
+
+## 個人檔案頁面（`js/profile/`）
+
+原本的 `account-features.js`（每行塞滿程式的單一檔案）已拆成：
+
+| 類別 | 責任 |
+|---|---|
+| `ProfilePage` | 分頁外殼（個人檔案／設定／外觀／雲端同步／線上聯機），支援方向鍵與 aria |
+| `OverviewSection` | 頭像（含目前外觀）、暱稱、帳號狀態、遊戲進度 |
+| `SettingsSection` | 自動瞄準、職業光環、自訂外觀顯示、重看教學、還原 |
+| `AppearanceSection` | 皮膚編輯器 + 遊戲內實際大小預覽 |
+| `CloudSection` | 雲端登入與加密存檔（掛上 `AccountView`） |
+| `OnlineSection` | 線上聯機（使用 `RealtimeClient`；離開頁面自動中斷） |
+| `SettingsStore`（`core/`） | 只接受已宣告欄位與正確型別的顯示設定 |
+
+頁面完全不直接碰遊戲內部：遊戲的資料與動作由 `ui/account.js` 組成 `ProfileBridge` 傳入。
+
+### 皮膚渲染的修正
+
+1. **編輯器與遊戲對不上**：舊版把 360px 畫布整個 0~1 拉伸到玩家身體上，筆畫粗細又乘 `r/18`，
+   結果遊戲裡的線寬約是編輯器的 8 倍、圖案被擠在約 67% 的範圍內。現在兩邊共用同一支 `paintStrokes()`，
+   以「圓圈半徑」換算位置與粗細（所見即所得）；玩家半徑只有約 12px，所以遊戲內有最小線寬，
+   編輯器另外提供「遊戲內實際大小 ×4」預覽。
+2. **每一幀讀 `localStorage` 並重畫所有筆畫**（最多 200 筆 × 1000 點）：改成載入時驗證一次，
+   `SkinRenderer` 把皮膚畫到離屏貼圖，之後每幀只 `drawImage` 一次；內容或螢幕大小改變才重畫。
+3. 資料驗證：顏色、粗細、座標與數量都限制在合理範圍；其他分頁修改時會同步；儲存失敗（隱私模式、空間滿）會明確告知。
+4. 光環與皮膚可在「設定」中關閉。
+
+## 拆分
+
+`boss`（1,524→54 行入口 + 6 個模組）、`ultimates`、`menu`、`battle`、`simulation` 已依功能拆開；
+原模組以 `export … from` 轉發，所以其他檔案的 import 完全不用改。拆分用的 `tools/split-module.cjs` 會自動算出新檔案需要的 import，
+並拒絕搬移會改寫原模組變數的程式碼。
 
 ## 帳號系統（`js/account/`）
 
@@ -97,22 +179,36 @@
   **任何敵人第一次開火都會丟出 `ReferenceError`**。拆分時已自動補上。
 - 拆分工具會掃描整份程式的未宣告名稱；除 `REC` 外沒有其他。
 
-## 測試
+## 測試與靜態檢查
 
 ```bash
 cd neon-shard
-node --import ./test/stubs.mjs --test test/*.test.mjs
+node --import ./test/stubs.mjs --test test/*.test.mjs      # 40 項
+node --expose-internals tools/check-imports.cjs js         # 每個 import 都有對應的 export
+node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告／沒 import 的名稱
 ```
 
-- `account.test.mjs`：Session、API 用戶端（refresh／逾時／錯誤碼）、帳號服務、`escapeHtml`
-- `game.behavior.test.mjs`：第一次遊玩自動進教學、教學 15 步通關、900 幀戰鬥、24 把槍的大招、狀態機、事件匯流排、存檔損毀與原型污染
-- `ui-smoke.test.mjs`：主頁每個分頁（含帳號）都能渲染，擴充 API 仍可用
+| 測試檔 | 內容 |
+|---|---|
+| `account.test.mjs` | Session、API 用戶端（refresh／逾時／錯誤碼）、帳號服務、`escapeHtml` |
+| `config.test.mjs` | 設定類別：私有資料表讀不到／改不了、定義已凍結、副本、建構驗證、查詢失敗會丟錯、原始碼中的子彈名稱都存在 |
+| `enemies.behavior.test.mjs` | 全部 28 種敵方單位（18 一般 + 8 Boss + 2 召喚物）生成並模擬、`fireBullet` 產生的子彈與設定一致 |
+| `appearance.test.mjs` | 皮膚換算（所見即所得）、最小線寬、快取、皮膚與設定儲存的驗證與持久化 |
+| `profile.test.mjs` | 個人檔案頁面（用小型假 DOM）：分頁切換、方向鍵、暱稱不會被當成 HTML、設定寫回、聯機鎖定、重新掛載會清理舊頁面 |
+| `game.behavior.test.mjs` | 第一次遊玩自動進教學、教學 15 步、900 幀戰鬥、24 把槍的大招、狀態機、事件匯流排、存檔損毀與原型污染 |
+| `ui-smoke.test.mjs` | 主頁每個分頁都能渲染，擴充 API 仍可用 |
 
 `stubs.mjs` 用假的 DOM 讓遊戲在 Node 裡執行，**只能驗證邏輯，看不到畫面**；排版、動畫與手感仍需在瀏覽器實際操作。
+後端另有 16 項測試（`neon-shard-api`：`RoomManager`、`TokenBucket`、暱稱驗證、加密、安全）。
 
 ## 下一步（尚未做）
 
-- 實體層級的 Class：`Player`、`Enemy`、`Bullet`、`Weapon`。目前 224 個函式仍以「實體物件當第一個參數」的方式運作，
-  要改成方法需要逐一確認每個呼叫點，這次沒有做。
-- 幾個模組仍然很大（`game/boss`、`game/ultimates`、`ui/menu`、`ui/render` 各約 1,300～1,500 行），可再按功能細分。
-- 純資料常數仍是模組頂層的 `const`；其餘載入時才執行的程式在 `init()` 內，是為了安全而非最終形態。
+- **`ui/render.js` 的 `render()` 是一個 1,100 多行的單一函式**，`update()`（約 500 行）也是；它們沒辦法靠「搬函式」拆開，
+  需要先把內容整理成多個繪製／更新階段，這次沒有處理。
+- **執行期的實體物件仍是欄位縮寫的普通物件**（`e.hp`、`b.dmg`、`pl.r`…）。目前完成的是「靜態設定」的類別
+  （`EnemyDefinition`、`BulletDefinition`、`BossDefinition`）；`Enemy`、`Bullet`、`Player` 等執行期類別還沒做，
+  因為這些欄位被數百處直接讀寫，需要逐一確認每個呼叫點。
+- 精英怪詞綴（`enemy-config.js` 的 `ELITE`）仍是一張以編號為鍵的表，尚未類別化。
+- 少數 Boss 招式仍直接以數字呼叫 `eb(...)`（速度與傷害依階段變動，走 `bulletCatalog.custom`），尚未全部具名。
+- 線上聯機只在個人檔案頁面開啟期間連線；與實際戰鬥畫面的同步還沒有接上。
+- 真實瀏覽器中的視覺驗證（皮膚線寬、頭像、分頁排版）。

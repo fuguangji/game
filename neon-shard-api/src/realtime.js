@@ -1,106 +1,96 @@
 import { WebSocketServer } from "ws";
+import { RoomManager } from "./room-manager.js";
+import { TokenBucket } from "./rate-limiter.js";
 
-const MAX_ROOM_SIZE = 4;
-const ROOM_CODE = /^[A-Z0-9]{4,8}$/;
-const rooms = new Map();
+const MAX_CONNECTIONS = 500;
+const AUTH_TIMEOUT_MS = 8000;
+const HEARTBEAT_MS = 30_000;
+const MAX_VIOLATIONS = 100; // 超過頻率限制的訊息累積這麼多就斷線
+
 const safeSend = (socket, data) => {
   if (socket.readyState === 1) socket.send(JSON.stringify(data));
 };
-const roomSnapshot = (room) => ({
-  type: "room",
-  code: room.code,
-  mode: room.mode,
-  players: [...room.players.values()].map(({ id, name, x, y, hp }) => ({ id, name, x, y, hp })),
-  bossHp: room.bossHp,
-  mobs: room.mobs,
-});
-function broadcast(room, data) {
-  for (const player of room.players.values()) safeSend(player.socket, data);
-}
-function makeRoom(code, mode) {
-  return { code, mode, players: new Map(), bossHp: 1000, mobs: [
-    { id: "m1", x: 0.22, y: 0.28, hp: 30 }, { id: "m2", x: 0.75, y: 0.62, hp: 30 },
-    { id: "m3", x: 0.66, y: 0.25, hp: 30 },
-  ] };
-}
-export function attachRealtime(server, { admin, allowedOrigins = [] } = {}) {
+
+/**
+ * WebSocket 轉接層：只處理連線、驗證、頻率限制與心跳；遊戲規則都在 RoomManager。
+ */
+export function attachRealtime(server, { admin, allowedOrigins = [], manager = new RoomManager() } = {}) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://localhost");
-    if (url.pathname !== "/api/realtime" || (req.headers.origin && allowedOrigins.length && !allowedOrigins.includes(req.headers.origin))) {
-      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+    const originBlocked = req.headers.origin && allowedOrigins.length && !allowedOrigins.includes(req.headers.origin);
+    if (url.pathname !== "/api/realtime" || originBlocked || wss.clients.size >= MAX_CONNECTIONS) {
+      socket.write(`HTTP/1.1 ${wss.clients.size >= MAX_CONNECTIONS ? "503 Service Unavailable" : "403 Forbidden"}\r\nConnection: close\r\n\r\n`);
       socket.destroy();
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
+
+  // 心跳：連續一輪沒有回應的連線視為已斷線並清掉（手機切換網路時常見）
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) { ws.terminate(); continue; }
+      ws.isAlive = false;
+      try { ws.ping(); } catch { /* ignore */ }
+    }
+  }, HEARTBEAT_MS);
+  heartbeat.unref?.();
+  wss.on("close", () => clearInterval(heartbeat));
+
   wss.on("connection", (socket) => {
+    socket.isAlive = true;
+    socket.on("pong", () => { socket.isAlive = true; });
+    const bucket = new TokenBucket({ capacity: 40, refillPerSecond: 30 });
+    let violations = 0;
     let player = null;
-    let authenticated = false;
-    const authTimeout = setTimeout(() => { if (!authenticated) socket.close(4401, "auth required"); }, 8000);
+    let authState = "none"; // none -> checking -> done
+    const authTimeout = setTimeout(() => { if (authState !== "done") socket.close(4401, "auth required"); }, AUTH_TIMEOUT_MS);
+
     socket.on("message", async (raw) => {
+      if (!bucket.tryRemove()) {
+        if (++violations > MAX_VIOLATIONS) socket.close(4429, "too many messages");
+        return;
+      }
       let msg;
       try { msg = JSON.parse(String(raw)); } catch { safeSend(socket, { type: "error", message: "Invalid JSON" }); return; }
-      if (!authenticated) {
-        if (msg.type !== "auth" || typeof msg.token !== "string" || msg.token.length > 4096) {
-          socket.close(4401, "auth required"); return;
+      if (!msg || typeof msg.type !== "string") return;
+
+      if (authState !== "done") {
+        if (authState === "checking" || msg.type !== "auth" || typeof msg.token !== "string" || msg.token.length > 4096) {
+          socket.close(4401, "auth required");
+          return;
         }
+        authState = "checking"; // 驗證進行中時，再收到任何訊息都視為違規
         const { data, error } = await admin.auth.getUser(msg.token);
         if (error || !data?.user?.id) { socket.close(4401, "invalid token"); return; }
-        authenticated = true; clearTimeout(authTimeout);
-        player = { id: data.user.id, name: String(data.user.user_metadata?.display_name ?? "玩家").slice(0, 20), socket, x: 0.5, y: 0.5, hp: 100, lastAttack: 0 };
+        authState = "done";
+        clearTimeout(authTimeout);
+        player = manager.createPlayer({
+          id: data.user.id,
+          name: data.user.user_metadata?.display_name ?? "玩家",
+          send: (payload) => safeSend(socket, payload),
+          close: (code, reason) => socket.close(code, reason),
+        });
         safeSend(socket, { type: "authenticated", playerId: player.id });
         return;
       }
-      if (!player || !msg || typeof msg.type !== "string") return;
+
       if (msg.type === "join") {
-        const code = typeof msg.code === "string" ? msg.code.toUpperCase() : "";
-        const mode = msg.mode === "boss" ? "boss" : "arena";
-        if (!ROOM_CODE.test(code)) { safeSend(socket, { type: "error", message: "房間代碼需為 4–8 位英數字" }); return; }
-        if (player.room) leaveRoom(player);
-        let room = rooms.get(code);
-        if (!room) { room = makeRoom(code, mode); rooms.set(code, room); }
-        if (room.mode !== mode || room.players.size >= MAX_ROOM_SIZE) { safeSend(socket, { type: "error", message: "房間不存在相容模式或已滿" }); return; }
-        player.room = room; room.players.set(player.id, player);
-        broadcast(room, roomSnapshot(room)); return;
-      }
-      const room = player.room;
-      if (!room) return;
-      if (msg.type === "move") {
-        const x = Number(msg.x), y = Number(msg.y);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          player.x = Math.max(0, Math.min(1, x)); player.y = Math.max(0, Math.min(1, y));
-          broadcast(room, { type: "move", id: player.id, x: player.x, y: player.y });
-        }
-      } else if (msg.type === "attack" && Date.now() - player.lastAttack >= 450) {
-        player.lastAttack = Date.now();
-        let hitPlayer = null;
-        if (room.mode === "arena") {
-          const opponents = [...room.players.values()].filter((other) => other.id !== player.id && other.hp > 0);
-          hitPlayer = opponents
-            .map((other) => ({ other, distance: Math.hypot(other.x - player.x, other.y - player.y) }))
-            .filter((entry) => entry.distance <= 0.12)
-            .sort((a, b) => a.distance - b.distance)[0]?.other ?? null;
-        }
-        if (room.mode === "boss") room.bossHp = Math.max(0, room.bossHp - 20);
-        else if (hitPlayer) hitPlayer.hp = Math.max(0, hitPlayer.hp - 20);
-        else if (Array.isArray(room.mobs)) {
-          const target = room.mobs.find((mob) => mob.hp > 0);
-          if (target) target.hp = Math.max(0, target.hp - 10);
-        }
-        broadcast(room, { type: "combat", bossHp: room.bossHp, mobs: room.mobs,
-          players: [...room.players.values()].map(({ id, name, x, y, hp }) => ({ id, name, x, y, hp })) });
+        const result = manager.join(player, { code: msg.code, mode: msg.mode });
+        if (!result.ok) safeSend(socket, { type: "error", message: result.message });
+      } else if (msg.type === "move") {
+        manager.move(player, Number(msg.x), Number(msg.y));
+      } else if (msg.type === "attack") {
+        manager.attack(player);
       }
     });
-    function leaveRoom(p) {
-      const room = p.room;
-      if (!room) return;
-      room.players.delete(p.id); p.room = null;
-      if (!room.players.size) rooms.delete(room.code);
-      else broadcast(room, roomSnapshot(room));
-    }
-    socket.on("close", () => { clearTimeout(authTimeout); if (player) leaveRoom(player); });
-    socket.on("error", () => { if (player) leaveRoom(player); });
+
+    const cleanup = () => { clearTimeout(authTimeout); if (player) manager.leave(player); };
+    socket.on("close", cleanup);
+    socket.on("error", cleanup);
   });
+
   return wss;
 }

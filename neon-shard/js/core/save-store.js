@@ -9,6 +9,7 @@ export const KEYS = Object.freeze({
   save: "neonShardSave",
   autoAim: "neonShardAA",
   tutorialDone: "neonShardTutorialDone",
+  settings: "neonShardSettings",
 });
 
 export const isPlainObject = (v) =>

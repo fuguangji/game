@@ -4,7 +4,6 @@ import { fsm } from "../core/state-machine.js";
 import { $ } from "../core/viewport.js";
 import { ELITE, EL_COL } from "../enemy-config.js";
 import { blocked, burst, empty, mkEn, setup } from "./battle.js";
-import { BN } from "./boss.js";
 import { CH, RC, RN, modW } from "./chips.js";
 import { elify } from "./elite.js";
 import { EN } from "./pickups.js";
@@ -14,6 +13,7 @@ import { ALLW, WP } from "./weapons.js";
 import { mkIcon } from "../icons.js";
 import { ECOL, trPick } from "../ui/menu.js";
 import { trChip } from "../ui/workshop.js";
+import { bossCatalog } from "../config/index.js";
 
 // 功能：處理「endTrain」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function endTrain() {
@@ -144,7 +144,7 @@ export function trBuild() {
       else go(0);
     }),
   );
-  BN.forEach((n, i) =>
+  bossCatalog.names().forEach((n, i) =>
     btn(
       g,
       "e" + (14 + i),

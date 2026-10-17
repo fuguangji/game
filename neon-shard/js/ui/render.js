@@ -4,9 +4,9 @@ import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
 import { $, MW, N, T, TAU, cx } from "../core/viewport.js";
 import { ELITE, EL_COL } from "../enemy-config.js";
-import { LN, PC, PN, RG, TL } from "../game-config.js";
+import { PC, PN } from "../game-config.js";
 import { ULN, hc, mouse, ray, setup, ta, tm, ultT } from "../game/battle.js";
-import { BN, bossTele, drawAtmos, drawBossFx, isB, teleBeams } from "../game/boss.js";
+import { bossTele, drawAtmos, drawBossFx, isB, teleBeams } from "../game/boss.js";
 import { CH, RC } from "../game/chips.js";
 import { aimT } from "../game/physics.js";
 import { EN, NEWT, drawItems } from "../game/pickups.js";
@@ -17,9 +17,9 @@ import { icon } from "../icons.js";
 import { drawAim } from "./aim.js";
 import { drawBars, drawLast, drawSlots } from "./hud.js";
 import { XS, xResult } from "./menu.js";
-
-let customSkinRaw = null;
-let customSkinCache = [];
+import { bossCatalog, telegraphDurationOf, telegraphRadiusOf, usesLineTelegraph } from "../config/index.js";
+import { settings } from "../core/settings-store.js";
+import { drawRoleAura, skinRenderer } from "../profile/appearance.js";
 
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
@@ -642,7 +642,7 @@ export function render() {
           0.7 *
             (1 -
               e.tele /
-                (isB(e) ? 0.6 : (e.el && ELITE[e.t].tl) || TL[e.t] || 0.45)),
+                (isB(e) ? 0.6 : (e.el && ELITE[e.t].tl) || telegraphDurationOf(e.t) || 0.45)),
       );
       cx.strokeStyle =
         e.el && e.t === 1 && ((e.shc || 0) + 1) % 3 === 0
@@ -653,7 +653,7 @@ export function render() {
       cx.beginPath();
       if (isB(e)) bossTele(e);
       else if (e.t === 30) teleBeams(e, 1);
-      else if (LN.includes(e.t)) {
+      else if (usesLineTelegraph(e.t)) {
         const E2 = e.el && e.t === 2,
           dbl = E2 && ((e.shc || 0) + 1) % 2 === 0,
           cnt = e.t === 2 ? (E2 ? 7 : 5) : 1,
@@ -683,7 +683,7 @@ export function render() {
           }
         }
       } else
-        cx.arc(e.tx, e.ty, (e.el && ELITE[e.t].rg) || RG[e.t] || 30, 0, TAU);
+        cx.arc(e.tx, e.ty, (e.el && ELITE[e.t].rg) || telegraphRadiusOf(e.t) || 30, 0, TAU);
       cx.stroke();
     }
   for (const e of G.en)
@@ -851,55 +851,9 @@ export function render() {
     cx.arc(0, 0, p.r, 0, TAU);
     cx.fill();
     cx.stroke();
-    // 職業代表色粒子光環：只影響視覺，不改變碰撞或戰鬥數值。
-    cx.save();
-    const auraColor = typeof G.CHR?.c === "string" && /^#[0-9a-f]{6}$/i.test(G.CHR.c) ? G.CHR.c : col;
-    cx.shadowColor = auraColor;
-    cx.shadowBlur = 10;
-    for (let i = 0; i < 12; i++) {
-      const angle = G.time * 0.9 + (i * TAU) / 12;
-      const radius = p.r + 8 + 2.5 * Math.sin(G.time * 2.4 + i * 1.7);
-      const px = Math.cos(angle) * radius;
-      const py = Math.sin(angle) * radius;
-      const particleR = 1.1 + 0.65 * (0.5 + 0.5 * Math.sin(G.time * 3 + i));
-      cx.globalAlpha = 0.42 + 0.5 * (0.5 + 0.5 * Math.sin(G.time * 2.5 + i));
-      cx.fillStyle = auraColor;
-      cx.beginPath();
-      cx.arc(px, py, particleR, 0, TAU);
-      cx.fill();
-    }
-    cx.restore();
-    // Draw the locally saved freehand skin clipped to the player's body.
-    try {
-      const rawSkin = localStorage.getItem("neon-shard.custom-skin.v1") || "[]";
-      if (rawSkin !== customSkinRaw) {
-        customSkinRaw = rawSkin;
-        const parsed = JSON.parse(rawSkin);
-        customSkinCache = Array.isArray(parsed) ? parsed.slice(0, 200) : [];
-      }
-      const skin = customSkinCache;
-      if (skin.length) {
-        cx.save();
-        cx.beginPath();
-        cx.arc(0, 0, p.r - 1, 0, TAU);
-        cx.clip();
-        for (const stroke of skin.slice(0, 200)) {
-          if (!Array.isArray(stroke.points) || stroke.points.length < 1) continue;
-          cx.beginPath();
-          cx.strokeStyle = /^#[0-9a-f]{6}$/i.test(stroke.color) ? stroke.color : "#ff4dff";
-          cx.lineWidth = Math.max(1, Math.min(16, Number(stroke.width) || 3)) * Math.max(0.25, p.r / 18);
-          cx.lineCap = "round";
-          cx.lineJoin = "round";
-          stroke.points.slice(0, 1000).forEach((point, index) => {
-            const x = (Math.max(0, Math.min(1, Number(point.x) || 0)) * 2 - 1) * (p.r - 2);
-            const y = (Math.max(0, Math.min(1, Number(point.y) || 0)) * 2 - 1) * (p.r - 2);
-            if (index === 0) cx.moveTo(x, y); else cx.lineTo(x, y);
-          });
-          cx.stroke();
-        }
-        cx.restore();
-      }
-    } catch { /* malformed local cosmetic data must never break rendering */ }
+    // 職業光環與自訂外觀：只影響視覺，可在「個人檔案 → 設定」關閉
+    if (settings.get("showAura")) drawRoleAura(cx, p.r, /^#[0-9a-f]{6}$/i.test(G.CHR?.c) ? G.CHR.c : col, G.time);
+    if (settings.get("showSkin")) skinRenderer.draw(cx, p.r, G.S * G.DPR);
     cx.rotate(p.aim);
     cx.beginPath();
     cx.moveTo(p.r + 9, 0);
@@ -1261,7 +1215,7 @@ export function hud() {
       cx.font = `bold ${18 * u}px ui-monospace,monospace`;
       cx.fillStyle = "#ff4d4d";
       cx.fillText(
-        "BOSS: " + (BN[G.en.find(isB).t - 14] || "肉盾"),
+        "BOSS: " + (bossCatalog.findByType(G.en.find(isB).t)?.name || "肉盾"),
         G.W / 2,
         G.H * 0.25 + 34 * u,
       );

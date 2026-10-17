@@ -1,16 +1,16 @@
-/** ui/account — 帳號頁面（遊戲端接合） */
+/** ui/account — 個人檔案頁面（遊戲端接合）：把遊戲的資料與動作包成 ProfileBridge，交給 ProfilePage 顯示 */
+import { API_BASE } from "../account/config.js";
 import { AccountView, accountService } from "../account/index.js";
-import { mountAccountFeatures } from "../account/account-features.js";
+import { settings } from "../core/settings-store.js";
 import { G } from "../core/game-state.js";
+import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
 import { STG, SV, SV_DEFAULTS, mergeSave, save } from "../game/progress.js";
+import { startTutorial } from "../game/tutorial.js";
 import { ALLW, applyLO } from "../game/weapons.js";
-import { xGo, xbt, xh } from "./menu.js";
-
-/* =====================================================================
- * 帳號頁面（遊戲端接合）：顯示玩家資料與進度，雲端同步交給 AccountView。
- * 這裡只處理「遊戲存檔」的讀取與套用；網路、加密、登入狀態都在 account/ 底下。
- * ===================================================================== */
+import { ProfilePage } from "../profile/profile-page.js";
+import { AAH, setAA } from "./hud.js";
+import { xGo } from "./menu.js";
 
 /** 把雲端存檔安全地套用到本機：以預設值為底，只接受型別相符的欄位，並刷新畫面與出戰配置 */
 export function applyRemoteSave(remoteSave) {
@@ -24,79 +24,31 @@ export function applyRemoteSave(remoteSave) {
   if (window.upd) window.upd();
 }
 
-const ACCOUNT_STATUS_TEXT = (svc) => !svc.signedIn ? "本機存檔 · 尚未連結線上帳號" : svc.unlocked ? "雲端帳號 · 金鑰已解鎖" : "雲端帳號 · 需要密碼解鎖";
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-// 功能：建立玩家帳號頁面，顯示個人資料、遊戲進度與雲端同步功能。
+/** 個人檔案頁面需要的遊戲資料與動作（頁面本身不直接碰遊戲內部） */
+const profileBridge = {
+  getSave: () => JSON.parse(JSON.stringify(SV)),
+  applySave: applyRemoteSave,
+  getProgress: () => ({
+    clearedStages: (Array.isArray(SV.clr) ? SV.clr : []).filter(Boolean).length, // 存檔欄位被改壞時也不會讓頁面崩潰
+    totalStages: STG.length,
+    bestScore: G.best ?? 0,
+    ownedWeapons: (SV.own || []).length,
+    totalWeapons: ALLW.length,
+    ownedCharacters: (SV.chars || []).length,
+    totalCharacters: CHS.length,
+  }),
+  getRoleColor: () => (HEX_COLOR.test(G.CHR?.c) ? G.CHR.c : "#22e6ff"),
+  getAutoAim: () => G.AA,
+  setAutoAim: (mode) => setAA(mode),
+  get autoAimLabels() { return AAH; }, // 用到時才讀取（避免模組載入順序問題）
+  replayTutorial: () => startTutorial(),
+  goTo: (tab) => xGo(tab),
+  getPlayerPosition: () => (G.pl ? { x: Math.max(0, Math.min(1, G.pl.x / MW)), y: Math.max(0, Math.min(1, G.pl.y / MW)) } : null),
+};
+
+// 功能：建立「個人檔案」頁面（個人檔案、設定、外觀、雲端同步、線上聯機）。
 export function xAccount(v) {
-  const box = xh("x-doc ns-account-doc");
-  box.style.display = "grid";
-  box.style.gap = "12px";
-  v.append(box);
-
-  // 1. 玩家資料（名稱與狀態會隨登入狀態更新）
-  const profile = xh("x-pn");
-  profile.append(xh("x-h", "玩家資料"));
-  const nameValue = xh("");
-  nameValue.style.fontSize = "1.5rem";
-  nameValue.style.fontWeight = "bold";
-  const nameBox = xh("x-tx");
-  nameBox.append(xh("", "玩家名稱"), nameValue);
-  const status = xh("x-tag");
-  profile.append(nameBox, status);
-  box.append(profile);
-
-  // 2. 遊戲進度（存檔欄位被改壞時也不會讓頁面崩潰）
-  const cleared = (Array.isArray(SV.clr) ? SV.clr : []).filter(Boolean).length;
-  const stats = xh("x-pn");
-  stats.append(xh("x-h", "遊戲進度"));
-  const grid = xh("x-kv4");
-  [
-    ["已通關", `${cleared} / ${STG.length}`],
-    ["最高分", String(G.best)],
-    ["已解鎖槍械", `${(SV.own || []).length} / ${ALLW.length}`],
-    ["已解鎖角色", `${(SV.chars || []).length} / ${CHS.length}`],
-  ].forEach(([label, value]) => {
-    const item = xh("");
-    item.append(xh("span", label));
-    const number = xh("b");
-    number.textContent = value;
-    item.append(number);
-    grid.append(item);
-  });
-  stats.append(grid);
-  box.append(stats);
-
-  // 4. 雲端帳號與加密存檔
-  const cloud = xh("x-pn");
-  cloud.append(xh("x-h", "雲端同步"));
-  const cloudHost = xh("");
-  cloud.append(cloudHost);
-  box.append(cloud);
-
-  const view = AccountView.mount(cloudHost, accountService, {
-    getSave: () => JSON.parse(JSON.stringify(SV)),
-    applySave: applyRemoteSave,
-  });
-
-  // 5. 登入後的個人功能：外觀設計與線上聯機固定放在帳號頁面，不再漂浮於遊戲畫面。
-  const featureHost = xh("");
-  box.append(featureHost);
-  const features = mountAccountFeatures(featureHost);
-  let wasSignedIn = accountService.signedIn;
-  const syncProfile = () => {
-    const signedIn = accountService.signedIn;
-    nameValue.textContent = accountService.displayName; // textContent：暱稱不會被當成 HTML
-    status.textContent = ACCOUNT_STATUS_TEXT(accountService);
-    const subtitle = document.querySelector("#xT small");
-    if (subtitle) subtitle.textContent = `歡迎回來，${accountService.displayName}`;
-    featureHost.style.display = "block";
-    features.refresh(signedIn);
-    // 登入完成後留在帳號頁，並將外觀／聯機功能帶到可視範圍。
-    if (signedIn && !wasSignedIn) {
-      requestAnimationFrame(() => featureHost.scrollIntoView({ behavior: "smooth", block: "start" }));
-    }
-    wasSignedIn = signedIn;
-  };
-  view.onChange(syncProfile);
-  syncProfile();
+  ProfilePage.mount(v, { bridge: profileBridge, accountService, AccountView, settings, apiBase: API_BASE });
 }

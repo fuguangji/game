@@ -3,7 +3,7 @@ import { G } from "../core/game-state.js";
 import { KEYS, store } from "../core/save-store.js";
 import { fsm } from "../core/state-machine.js";
 import { TAU, cx } from "../core/viewport.js";
-import { NE, PC, PSPD, TH } from "../game-config.js";
+import { PC, PSPD } from "../game-config.js";
 import { blocked, burst } from "./battle.js";
 import { isB } from "./boss.js";
 import { chipToast } from "./chips.js";
@@ -11,6 +11,7 @@ import { explode } from "./physics.js";
 import { SV, UB, UC, WPC, WPR, save } from "./progress.js";
 import { WP } from "./weapons.js";
 import { icon } from "../icons.js";
+import { enemyCatalog } from "../config/index.js";
 
 // 功能：處理「jit」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function jit(x, y) {
@@ -83,10 +84,7 @@ export function coin(x, y, v) {
   cur("coin", x, y, v);
 }
 export const AIMR = 170,
-  NEWT = () =>
-    TH.map((v, i) => (v === G.wave ? i : -1))
-      .filter((i) => i >= 0)
-      .concat(NE.filter((x) => x[1] === G.wave).map((x) => x[0])),
+  NEWT = () => enemyCatalog.typesIntroducedAt(G.wave),
   EN = [
     "追擊",
     "狙擊",
