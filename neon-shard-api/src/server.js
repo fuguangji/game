@@ -171,15 +171,24 @@ app.post("/api/auth/signup", authLimiter, async (req, res, next) => {
     const { data, error } = await authClient().auth.signUp({
       email: input.email,
       password: input.password,
+      options: {
+        // The auth.users trigger can create the profile before this request continues.
+        // Keep the selected display name on the Auth user as a reliable fallback.
+        data: { display_name: input.displayName },
+      },
     });
     if (error || !data.user) {
       throw new HttpError(400, "SIGNUP_FAILED", "Unable to create this account. Check the details or try another email.");
     }
 
-    const { error: profileError } = await admin.from("profiles").insert({
+    // A database trigger may already have created this row from auth.users.
+    // Upsert by user_id makes signup safe with or without that trigger and avoids
+    // misreporting the trigger's duplicate-row conflict as a taken display name.
+    const { error: profileError } = await admin.from("profiles").upsert({
       user_id: data.user.id,
       display_name: input.displayName,
-    });
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
     if (profileError) {
       if (profileError.code === "23505") {
         // Do not delete the Auth account automatically; email confirmation or retries may be in flight.

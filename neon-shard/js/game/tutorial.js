@@ -70,6 +70,8 @@ export class TutorialController {
   #backBtn = null;
   #skipBtn = null;
   #startBtn = null;
+  #guide = null;
+  #guideBtn = null;
 
   constructor() {
     this.#seen = store.getString(KEYS.tutorialDone) === "1";
@@ -112,6 +114,7 @@ export class TutorialController {
       if (e.code === "KeyN") this.advance();
       else if (e.code === "KeyB") this.back();
       else if (e.code === "KeyX") this.exit();
+      else if (e.code === "KeyH") this.#toggleGuide();
       else if (e.code === "Enter" && this.#done) this.toBattle();
     });
     if (!this.#seen) this.start(); // 第一次遊玩：自動進入教學
@@ -225,8 +228,64 @@ export class TutorialController {
     this.#skipBtn = mk("跳過此步 (N)", () => this.advance());
     mk("離開教學 (X)", () => this.exit());
     this.#startBtn = mk("開始戰鬥 (Enter)", () => this.toBattle());
+    this.#guideBtn = mk("操作指南 (H)", () => this.#toggleGuide());
     document.body.append(box);
     this.#box = box;
+
+    // Keep the full reference guide separate from the short, step-by-step combat prompts.
+    const guide = document.createElement("section");
+    guide.setAttribute("role", "dialog");
+    guide.setAttribute("aria-modal", "true");
+    guide.setAttribute("aria-label", "NEON SHARD 完整操作指南");
+    guide.style.cssText = "position:fixed;z-index:40;inset:0;display:none;align-items:center;justify-content:center;padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:#02040de8;touch-action:pan-y";
+    guide.innerHTML = `
+      <div style="width:min(760px,100%);max-height:100%;overflow:auto;padding:18px;background:#0d1328;border:1px solid #22e6ff88;border-radius:14px;color:#d8f4ff;touch-action:pan-y">
+        <div style="display:flex;align-items:center;gap:12px;position:sticky;top:-18px;padding:8px 0;background:#0d1328">
+          <strong style="font-size:20px;flex:1">NEON SHARD｜完整操作指南</strong>
+          <button type="button" data-guide-close class="sb">關閉 ✕</button>
+        </div>
+        <p style="color:#8795c4;margin-top:4px">按 H 開關本指南。以下是常用操作；不同武器的彈匣、裝填速度與效果可能不同。</p>
+        <h3 style="color:#22e6ff">一、戰鬥操作</h3>
+        <ul>
+          <li><b>移動：</b>電腦使用 W/A/S/D；觸控裝置使用左側虛擬搖桿。</li>
+          <li><b>瞄準與射擊：</b>電腦移動滑鼠瞄準、按住滑鼠左鍵射擊；觸控裝置在右側拖曳瞄準，放開射擊。</li>
+          <li><b>切換武器：</b>使用數字鍵、Q 或滑鼠滾輪；觸控裝置點選下方武器欄。可用武器與按鍵以畫面提示為準。</li>
+          <li><b>彈藥／裝填：</b>留意 HUD 的彈藥數量與裝填狀態。彈匣耗盡時，等待該武器完成裝填後再射擊；各武器裝填時間不同。若畫面沒有手動裝填提示，不必假設 R 是裝填鍵。</li>
+          <li><b>自動瞄準：</b>按 R 切換自動瞄準；設定頁也能調整模式。</li>
+          <li><b>衝刺：</b>按 Shift 或觸控畫面上的 DASH；注意冷卻時間。</li>
+          <li><b>SUPER：</b>命中敵人累積能量，蓄滿後按空白鍵或點 SUPER 施放。</li>
+          <li><b>暫停／離開：</b>按 P 或 Esc 暫停；暫停選單可繼續或放棄本局。</li>
+        </ul>
+        <h3 style="color:#22e6ff">二、戰鬥以外：補給、商城與背包</h3>
+        <ul>
+          <li><b>補給站：</b>每波結束後查看補給選項，用本局取得的戰利品補強當前配置；購買前先看效果與價格。</li>
+          <li><b>商城：</b>回到主選單開啟「商城」，可購買武器、角色、芯片或永久升級。金幣不足時先完成戰鬥累積資源。</li>
+          <li><b>背包：</b>在「背包」查看已擁有的裝備、芯片與消耗品；依遊戲畫面操作裝備、改裝或選擇出戰攜帶的消耗品。</li>
+          <li><b>訓練場：</b>從主選單進入，可自由試槍和練習，不必把每次測試都當成正式戰鬥。</li>
+        </ul>
+        <h3 style="color:#22e6ff">三、帳號、登入與雲端存檔</h3>
+        <ul>
+          <li><b>開啟個人檔案／帳號頁：</b>從主畫面進入個人檔案，再開啟雲端同步／帳號區。</li>
+          <li><b>註冊：</b>填寫電子郵件、密碼與顯示名稱；若系統要求驗證郵件，先完成郵件驗證，再回來登入。</li>
+          <li><b>登入：</b>使用註冊的電子郵件與密碼。首次設定或解鎖加密金鑰時，請妥善記住密碼；不要把密碼或金鑰交給他人。</li>
+          <li><b>雲端存檔：</b>登入並解鎖後，依帳號頁的提示上傳或下載存檔。上傳前確認目前進度，避免覆蓋想保留的資料。</li>
+          <li><b>登出：</b>在帳號頁使用登出功能；登出不等於刪除帳號。</li>
+        </ul>
+        <h3 style="color:#22e6ff">四、設定與外觀</h3>
+        <ul>
+          <li><b>設定：</b>從個人檔案頁切換到「設定」，調整自動瞄準、職業光環與自訂外觀顯示。</li>
+          <li><b>重看教學：</b>設定頁有「重新觀看教學」；也可從主選單再次開啟教學模式。</li>
+          <li><b>外觀：</b>到「外觀」分頁編輯角色圖樣；儲存後可在設定中選擇是否顯示。</li>
+          <li><b>疑難排解：</b>若操作按鍵與裝置不符，優先看當前畫面提示；若雲端功能顯示未登入或金鑰未解鎖，先完成登入／解鎖再重試。</li>
+        </ul>
+        <p style="color:#ffd23a">小提醒：購買與出戰配置會影響可用武器；雲端帳號和本機遊戲進度是不同功能，請看清畫面提示再確認操作。</p>
+      </div>`;
+    guide.querySelector("[data-guide-close]").addEventListener("click", () => this.#toggleGuide(false));
+    guide.addEventListener("click", (event) => {
+      if (event.target === guide) this.#toggleGuide(false);
+    });
+    document.body.append(guide);
+    this.#guide = guide;
     this.#syncUi();
   }
 
@@ -236,6 +295,15 @@ export class TutorialController {
     this.#backBtn.style.display = this.#active && (this.#step > 0 || this.#done) ? "block" : "none";
     this.#skipBtn.style.display = this.#active && !this.#done ? "block" : "none";
     this.#startBtn.style.display = this.#active && this.#done ? "block" : "none";
+    this.#guideBtn.style.display = this.#active ? "block" : "none";
+  }
+
+  #toggleGuide(force) {
+    if (!this.#guide) return;
+    const open = typeof force === "boolean" ? force : this.#guide.style.display === "none";
+    this.#guide.style.display = open ? "flex" : "none";
+    if (open) this.#guide.querySelector("[data-guide-close]")?.focus();
+    else this.#guideBtn?.focus();
   }
 
   #wrap(text, maxWidth) {
@@ -257,7 +325,7 @@ export class TutorialController {
     cx.save();
     cx.font = 13 * u + "px " + TUTORIAL_FONT;
     const body = this.#done
-      ? "你已學會所有基本操作！正式戰鬥小提醒：每波結束會進補給站，用戰利品強化；金幣可到商城永久升級；想自由試槍、練習打各種敵人，可到「訓練場」。"
+      ? "你已學會基本戰鬥！按 H 或點「操作指南」查看完整說明，包含彈藥裝填、武器切換、補給站、商城、背包、登入／雲端存檔與設定。正式戰鬥可隨時從主選單返回。"
       : G.touchOn && step.mb ? step.mb : step.text;
     const lines = this.#wrap(body, w - 24 * u);
     const h = (46 + lines.length * 19 + (this.#done ? 4 : 18)) * u;
