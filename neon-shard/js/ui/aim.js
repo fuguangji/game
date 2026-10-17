@@ -7,6 +7,10 @@ import { BMR, aimT } from "../game/physics.js";
 import { cone } from "../game/pickups.js";
 import { WP } from "../game/weapons.js";
 
+function aimOrigin(a) {
+  return [G.pl.x + Math.cos(a) * G.pl.r, G.pl.y + Math.sin(a) * G.pl.r];
+}
+
 // 精確格線射線(DDA)：回傳到第一個擋住的方塊「邊界」的精確距離，線尾會剛好貼在牆面上
 // RAYAX: 0=撞到左右面, 1=撞到上下面 (彈跳反射用)
 export function rayK(x, y, a, m, pu) {
@@ -183,8 +187,7 @@ export function bouncePath(x, y, a, len, nb) {
 }
 // 功能：處理「aimBullet」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function aimBullet(w, a, c, pu, Rt) {
-  const x = G.pl.x,
-    y = G.pl.y,
+  const [x, y] = aimOrigin(a),
     half = w.n1 > 1 ? w.sp / 2 + c : c,
     cone = w.ad === "c" || !!w.fl,
     L = rayK(x, y, a, Rt, pu),
@@ -285,9 +288,10 @@ export function aimBullet(w, a, c, pu, Rt) {
     cx.beginPath();
     for (const sg of [-1, 1]) {
       const aa = a + sg * half,
-        l2 = rayK(x, y, aa, Rt, pu);
-      cx.moveTo(x, y);
-      cx.lineTo(x + Math.cos(aa) * l2, y + Math.sin(aa) * l2);
+        [sx, sy] = aimOrigin(aa),
+        l2 = rayK(sx, sy, aa, Rt, pu);
+      cx.moveTo(sx, sy);
+      cx.lineTo(sx + Math.cos(aa) * l2, sy + Math.sin(aa) * l2);
     }
     cx.stroke();
     cx.setLineDash([]);
@@ -346,12 +350,13 @@ export function drawAimLegacy() {
           : Math.max(0, Math.min(G.pl.q * 260, ray(G.pl.x, G.pl.y, a, 260) - 12)),
       mx0 = G.pl.x + Math.cos(a) * d,
       my0 = G.pl.y + Math.sin(a) * d,
+      [sx, sy] = aimOrigin(a),
       [mx, my] = w.tur ? turLand(mx0, my0, 18) : [mx0, my0];
     cx.globalAlpha = 0.5;
     cx.lineWidth = 2;
     cx.setLineDash([6, 8]);
     cx.beginPath();
-    cx.moveTo(G.pl.x, G.pl.y);
+    cx.moveTo(sx, sy);
     cx.lineTo(mx, my);
     cx.stroke();
     cx.setLineDash([]);

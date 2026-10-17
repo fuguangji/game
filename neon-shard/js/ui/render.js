@@ -762,7 +762,10 @@ export function render() {
       cx.setLineDash([3, 6]);
       cx.globalAlpha = 0.5;
       cx.beginPath();
-      cx.moveTo(G.pl.x, G.pl.y);
+      const dx = t.x - G.pl.x,
+        dy = t.y - G.pl.y,
+        d = Math.hypot(dx, dy) || 1;
+      cx.moveTo(G.pl.x + (dx / d) * G.pl.r, G.pl.y + (dy / d) * G.pl.r);
       cx.lineTo(t.x, t.y);
       cx.stroke();
     }
@@ -854,14 +857,6 @@ export function render() {
     // 職業光環與自訂外觀：只影響視覺，可在「個人檔案 → 設定」關閉
     if (settings.get("showAura")) drawRoleAura(cx, p.r, /^#[0-9a-f]{6}$/i.test(G.CHR?.c) ? G.CHR.c : col, G.time);
     if (settings.get("showSkin")) skinRenderer.draw(cx, p.r, G.S * G.DPR);
-    cx.rotate(p.aim);
-    cx.beginPath();
-    cx.moveTo(p.r + 9, 0);
-    cx.lineTo(2, -7);
-    cx.lineTo(2, 7);
-    cx.closePath();
-    cx.stroke();
-    cx.rotate(-p.aim);
     if (p.sh > 0) {
       cx.strokeStyle = "#4d9bff";
       cx.globalAlpha = 0.5 + 0.3 * Math.sin(G.time * 6);
