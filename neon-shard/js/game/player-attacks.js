@@ -10,7 +10,7 @@ import { aimT, angD, explode, quickT } from "./physics.js";
 import { AIMR, cone } from "./pickups.js";
 import { UL } from "./progress.js";
 import { ULTS, laserFire, slashHit, ultRing, zfl } from "./ultimates.js";
-import { ALLW, WP } from "./weapons.js";
+import { ALLWEAPON, WP } from "./weapons.js";
 import { burst, ray, turLand } from "./world-helpers.js";
 
 // 開火：檢查彈藥與冷卻，依武器產生子彈（含自動瞄準與散佈）
@@ -53,7 +53,7 @@ export function shoot(f, qk) {
     return;
   }
   if (w.mine || w.web || w.gren || w.tur || w.tox) {
-    const W0 = ALLW[w.id] || w,
+    const W0 = ALLWEAPON.getWeapon()[w.id] || w,
       RGm = Math.max(0.5, (w.life || 1) / (W0.life || 1)),
       RG = 260 * RGm,
       N1 = Math.max(1, w.n1 || 1),
@@ -336,7 +336,7 @@ export function ub(a, v, o) {
 // 功能：處理「ultMods」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function ultMods() {
   const c = WP[G.pl.w],
-    b = c && ALLW[c.id];
+    b = c && ALLWEAPON.getWeapon()[c.id];
   if (!b) return null;
   // 功能：計算兩個武器屬性之間的倍率；分母無效時回傳預設倍率。
   const g = (x, y) => (y > 0 ? x / y : 1),

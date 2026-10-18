@@ -1,0 +1,26 @@
+name: Neon Shard Frontend Tests
+
+on:
+  pull_request:
+    paths:
+      - "neon-shard/**"
+      - ".github/workflows/neon-shard-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "neon-shard/**"
+      - ".github/workflows/neon-shard-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Neon Shard tests
+        working-directory: neon-shard
+        run: node --import ./test/stubs.mjs --test test/*.test.mjs

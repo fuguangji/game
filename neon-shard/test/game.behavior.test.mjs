@@ -15,13 +15,16 @@ G.pl.hp = G.pl.mhp = 1e6; run(900);
 ok(G.en.length >= 0 && Number.isFinite(G.pl.x), "正式戰鬥模擬 900 幀無例外");
 // 24 把槍的大招
 let ultOk = 0;
-for (let i = 0; i < X.ALLW.length; i++) {
+ok(Object.isFrozen(X.ALLWEAPON) && Object.isFrozen(X.ALLWEAPON.getWeapon()) && Object.isFrozen(X.ALLWEAPON.getWeapon(0)), "武器定義 API、陣列與單筆資料皆唯讀");
+const weaponDefinitions = X.ALLWEAPON.getWeapon();
+ok(weaponDefinitions.length === 24 && weaponDefinitions.every((w, i) => w.id === i && typeof w.description === "string" && Number.isFinite(w.magazineCapacity) && Number.isFinite(w.reloadDuration)), "24 把武器的 ID、描述、彈匣與裝填資料均已整合");
+for (let i = 0; i < X.ALLWEAPON.getWeapon().length; i++) {
   if (fsm.state !== "play") fsm.transition("play");
-  X.WP[0] = X.ALLW[i]; G.pl.w = 0; X.WP[0].um = 100; G.pl.ult = 100;
+  X.WP[0] = X.modW(X.ALLWEAPON.getWeapon(i)); G.pl.w = 0; X.WP[0].um = 100; G.pl.ult = 100;
   G.en.length = 0; for (let k = 0; k < 4; k++) G.en.push(X.mkEn(0, G.pl.x + 100 + k * 30, G.pl.y));
-  try { X.ult(); run(200); ultOk++; } catch (e) { console.log("  大招失敗", X.ALLW[i].name ?? i, e.message); }
+  try { X.ult(); run(200); ultOk++; } catch (e) { console.log("  大招失敗", X.ALLWEAPON.getWeapon()[i].name ?? i, e.message); }
 }
-ok(ultOk === X.ALLW.length, `${X.ALLW.length} 把槍的大招都能施放（${ultOk}）`);
+ok(ultOk === X.ALLWEAPON.getWeapon().length, `${X.ALLWEAPON.getWeapon().length} 把槍的大招都能施放（${ultOk}）`);
 // 狀態機
 fsm.transition("play"); const hits = [];
 const off = fsm.onEnter("pause", () => hits.push("enter"));

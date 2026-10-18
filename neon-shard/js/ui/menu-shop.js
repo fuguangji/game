@@ -3,7 +3,7 @@ import { G } from "../core/game-state.js";
 import { CH, CHS, RC, RN, TW, rollChip } from "../game/chips.js";
 import { ITK, ITM, buyW, ucost } from "../game/pickups.js";
 import { CC, CN, SV, UC, UPD, WPC, WPR, save } from "../game/progress.js";
-import { ALLW } from "../game/weapons.js";
+import { ALLWEAPON } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
 import { CI, XCAT, XPK, XS, wCat, wMode, wNote, xChipTotal, xFlt, xSub, xbt, xh, xic } from "./menu.js";
 
@@ -63,11 +63,11 @@ export function xShop(v) {
     });
     box.append(l);
   } else if (XS.sh === "wp") {
-    const miss = ALLW.map((w, i) => i).filter((i) => !SV.own.includes(i));
+    const miss = ALLWEAPON.getWeapon().map((w, i) => i).filter((i) => !SV.own.includes(i));
     box.append(
       xh(
         "x-sub",
-        `用金幣解鎖新槍械，已解鎖 ${SV.own.length} / ${ALLW.length}。`,
+        `用金幣解鎖新槍械，已解鎖 ${SV.own.length} / ${ALLWEAPON.getWeapon().length}。`,
       ),
     );
     box.append(
@@ -78,7 +78,7 @@ export function xShop(v) {
     if (!miss.length) l.append(xh("x-empty", "已全部解鎖"));
     else if (!sh.length) l.append(xh("x-empty", "這個分類已全部解鎖"));
     sh.forEach((i) => {
-      const w = ALLW[i],
+      const w = ALLWEAPON.getWeapon()[i],
         can = SV[WPC[i]] >= WPR[i],
         d = xh("x-cd");
       d.style.setProperty("--a", w.c);
