@@ -17,12 +17,22 @@ const ALLW = [
     ammoCost: 1,
     knockback: 220,
     projectileRadius: 4,
+    id: 0,
+    magazineCapacity: 8,
+    ammoInMagazine: 8,
+    reloadDuration: 0.9,
+    description: "均衡",
+    accuracySpread: 0.025,
+    muzzleParameter: 0.06,
+    wallDamage: 1,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
     name: "霰彈",
     color: "#ffb03d",
     projectilesPerShot: 5,
-    spreadAngle: 0.45,
+    spreadAngle: 0.26,
     damage: 15,
     projectileSpeed: 600,
     projectileLifetime: 0.38,
@@ -30,6 +40,16 @@ const ALLW = [
     ammoCost: 2,
     knockback: 200,
     projectileRadius: 3.5,
+    id: 1,
+    magazineCapacity: 4,
+    ammoInMagazine: 4,
+    reloadDuration: 2.2,
+    description: "近距大擊退",
+    accuracySpread: 0.015,
+    muzzleParameter: 0.045,
+    wallDamage: 0.6,
+    automaticFire: 0,
+    aimPreviewMode: "c",
   },
   {
     name: "狙擊",
@@ -44,12 +64,22 @@ const ALLW = [
     knockback: 700,
     projectileRadius: 4,
     pierceCount: 1,
+    id: 2,
+    magazineCapacity: 3,
+    ammoInMagazine: 3,
+    reloadDuration: 2.3,
+    description: "穿透·強擊退",
+    accuracySpread: 0,
+    muzzleParameter: 0.09,
+    wallDamage: 2,
+    automaticFire: 0,
+    aimPreviewMode: "s",
   },
   {
     name: "衝鋒",
     color: "#9dff3d",
     projectilesPerShot: 1,
-    spreadAngle: 0.14,
+    spreadAngle: 0,
     damage: 11,
     projectileSpeed: 720,
     projectileLifetime: 0.6,
@@ -57,13 +87,24 @@ const ALLW = [
     ammoCost: 0.45,
     knockback: 90,
     projectileRadius: 3,
+    id: 3,
+    magazineCapacity: 24,
+    ammoInMagazine: 24,
+    reloadDuration: 0.33,
+    description: "連射·輕擊退",
+    accuracySpread: 0.04,
+    muzzleParameter: 0.075,
+    legacyRcg: 0.018,
+    wallDamage: 0.5,
+    automaticFire: 1,
+    aimPreviewMode: "l",
   },
   {
     name: "噴火",
     color: "#ff7a3d",
     projectilesPerShot: 1,
     spreadAngle: 0.22,
-    damage: 5,
+    damage: 6,
     projectileSpeed: 260,
     projectileLifetime: 0.7,
     fireCooldown: 0.06,
@@ -71,6 +112,17 @@ const ALLW = [
     knockback: 35,
     projectileRadius: 6,
     pierceCount: 1,
+    id: 4,
+    magazineCapacity: 36,
+    ammoInMagazine: 36,
+    reloadDuration: 0.2,
+    description: "短程噴射",
+    flameMode: 1,
+    accuracySpread: 0.015,
+    muzzleParameter: 0.03,
+    wallDamage: 0.07,
+    automaticFire: 1,
+    aimPreviewMode: "c",
   },
   {
     name: "重炮",
@@ -84,13 +136,23 @@ const ALLW = [
     ammoCost: 2.5,
     knockback: 650,
     projectileRadius: 8,
+    id: 5,
+    magazineCapacity: 3,
+    ammoInMagazine: 3,
+    reloadDuration: 2.5,
+    description: "慢速重擊退",
+    accuracySpread: 0.015,
+    muzzleParameter: 0.04,
+    wallDamage: 3,
+    automaticFire: 0,
+    aimPreviewMode: "l",
   },
   {
     name: "導引",
     color: "#4dffd8",
     projectilesPerShot: 1,
-    spreadAngle: 0.3,
-    damage: 20,
+    spreadAngle: 0.08,
+    damage: 24,
     projectileSpeed: 440,
     projectileLifetime: 1.2,
     fireCooldown: 0.35,
@@ -98,6 +160,16 @@ const ALLW = [
     knockback: 120,
     projectileRadius: 4,
     homingEnabled: 1,
+    id: 6,
+    magazineCapacity: 10,
+    ammoInMagazine: 10,
+    reloadDuration: 0.8,
+    description: "自動追蹤",
+    accuracySpread: 0.03,
+    muzzleParameter: 0.04,
+    wallDamage: 0.5,
+    automaticFire: 1,
+    aimPreviewMode: "l",
   },
   {
     name: "環爆",
@@ -111,51 +183,20 @@ const ALLW = [
     ammoCost: 2.5,
     knockback: 130,
     projectileRadius: 3.5,
+    id: 7,
+    magazineCapacity: 3,
+    ammoInMagazine: 3,
+    reloadDuration: 2.8,
+    description: "環狀 10 發",
+    accuracySpread: 0,
+    muzzleParameter: 0,
+    wallDamage: 0.5,
+    automaticFire: 0,
+    aimPreviewMode: "r",
   },
 ];
 export const WP = [];
 export let WD = Object.freeze([]);
-const XW = [
-  { accuracySpread: 0.025, muzzleParameter: 0.06, wallDamage: 1, automaticFire: 0, aimPreviewMode: "l" },
-  { spreadAngle: 0.26, accuracySpread: 0.015, muzzleParameter: 0.045, wallDamage: 0.6, automaticFire: 0, aimPreviewMode: "c" },
-  { accuracySpread: 0, muzzleParameter: 0.09, wallDamage: 2, automaticFire: 0, aimPreviewMode: "s" },
-  { spreadAngle: 0, accuracySpread: 0.04, muzzleParameter: 0.075, legacyRcg: 0.018, wallDamage: 0.5, automaticFire: 1, aimPreviewMode: "l" },
-  { flameMode: 1, accuracySpread: 0.015, muzzleParameter: 0.03, wallDamage: 0.07, automaticFire: 1, aimPreviewMode: "c" },
-  { accuracySpread: 0.015, muzzleParameter: 0.04, wallDamage: 3, automaticFire: 0, aimPreviewMode: "l" },
-  { spreadAngle: 0.08, accuracySpread: 0.03, muzzleParameter: 0.04, wallDamage: 0.5, automaticFire: 1, aimPreviewMode: "l" },
-  { accuracySpread: 0, muzzleParameter: 0, wallDamage: 0.5, automaticFire: 0, aimPreviewMode: "r" },
-];
-const AM = [
-  [8, 0.9],
-  [4, 2.2],
-  [3, 2.3],
-  [24, 0.33],
-  [36, 0.2],
-  [3, 2.5],
-  [10, 0.8],
-  [3, 2.8],
-  [30, 0.22],
-  [8, 1],
-  [4, 2.2],
-  [6, 1.3],
-  [12, 0.6],
-  [20, 0.34],
-  [4, 2.5],
-  [5, 1.4],
-  [40, 0.2],
-  [6, 1.7],
-  [8, 1],
-  [4, 3],
-];
-const BAL = {
-  10: { grenadeMode: 1, damage: 58 },
-  4: { damage: 6 },
-  6: { damage: 24 },
-  8: { damage: 7 },
-  11: { damage: 36 },
-  17: { damage: 30, reloadDuration: 1.5 },
-};
-
 // 武器設定採用可讀性較高的正名；舊欄位以 getter/setter 暫時相容既有戰鬥程式。
 let WEAPON_PROPERTY_ALIASES; // 初始化在 init()
 export function normalizeWeaponProperties(weapon) {
@@ -217,6 +258,11 @@ ALLW.push(
     automaticFire: 1,
     aimPreviewMode: "l",
     laserMode: 1,
+    id: 8,
+    magazineCapacity: 30,
+    ammoInMagazine: 30,
+    reloadDuration: 0.22,
+    description: "自動·高速穿透敵人",
   },
   {
     name: "雙槍",
@@ -235,13 +281,18 @@ ALLW.push(
     wallDamage: 0.8,
     automaticFire: 1,
     aimPreviewMode: "c",
+    id: 9,
+    magazineCapacity: 8,
+    ammoInMagazine: 8,
+    reloadDuration: 1,
+    description: "自動·雙發",
   },
   {
     name: "榴彈",
     color: "#ffd23a",
     projectilesPerShot: 1,
     spreadAngle: 0,
-    damage: 32,
+    damage: 58,
     projectileSpeed: 380,
     projectileLifetime: 0.9,
     fireCooldown: 0.9,
@@ -254,13 +305,19 @@ ALLW.push(
     wallDamage: 2,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 10,
+    magazineCapacity: 4,
+    ammoInMagazine: 4,
+    reloadDuration: 2.2,
+    description: "手動·投擲·可越過牆壁，落地爆炸",
+    grenadeMode: 1,
   },
   {
     name: "穿甲",
     color: "#e0e0ff",
     projectilesPerShot: 1,
     spreadAngle: 0,
-    damage: 32,
+    damage: 36,
     projectileSpeed: 900,
     projectileLifetime: 0.7,
     fireCooldown: 0.35,
@@ -273,12 +330,15 @@ ALLW.push(
     wallDamage: 2,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 11,
+    magazineCapacity: 6,
+    ammoInMagazine: 6,
+    reloadDuration: 1.3,
+    description: "手動·穿透敵人與牆",
   },
 );
 
-ALLW.forEach((w, i) => {
-  if (XW[i]) Object.assign(w, XW[i]);
-});
+
 
 ALLW.push(
   {
@@ -286,7 +346,7 @@ ALLW.push(
     color: "#8dff7a",
     projectilesPerShot: 1,
     spreadAngle: 0,
-    damage: 17,
+    damage: 7,
     projectileSpeed: 600,
     projectileLifetime: 1.5,
     fireCooldown: 0.18,
@@ -298,6 +358,11 @@ ALLW.push(
     wallDamage: 0.8,
     automaticFire: 1,
     aimPreviewMode: "l",
+    id: 12,
+    magazineCapacity: 12,
+    ammoInMagazine: 12,
+    reloadDuration: 0.6,
+    description: "自動·碰牆反彈",
   },
   {
     name: "電弧",
@@ -316,6 +381,11 @@ ALLW.push(
     wallDamage: 0.3,
     automaticFire: 1,
     aimPreviewMode: "l",
+    id: 13,
+    magazineCapacity: 20,
+    ammoInMagazine: 20,
+    reloadDuration: 0.34,
+    description: "自動·連鎖電擊",
   },
   {
     name: "地雷",
@@ -334,6 +404,11 @@ ALLW.push(
     wallDamage: 2,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 14,
+    magazineCapacity: 4,
+    ammoInMagazine: 4,
+    reloadDuration: 2.5,
+    description: "手動·放置地雷",
   },
   {
     name: "迴旋",
@@ -353,6 +428,11 @@ ALLW.push(
     wallDamage: 1,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 15,
+    magazineCapacity: 5,
+    ammoInMagazine: 5,
+    reloadDuration: 1.4,
+    description: "手動·飛出又飛回來",
   },
 );
 
@@ -374,13 +454,18 @@ ALLW.push(
     wallDamage: 0.1,
     automaticFire: 1,
     aimPreviewMode: "c",
+    id: 16,
+    magazineCapacity: 40,
+    ammoInMagazine: 40,
+    reloadDuration: 0.2,
+    description: "自動·噴流累積凍結值，凍成冰塊後受傷 +50%",
   },
   {
     name: "重力",
     color: "#b0a0ff",
     projectilesPerShot: 1,
     spreadAngle: 0,
-    damage: 26,
+    damage: 30,
     projectileSpeed: 420,
     projectileLifetime: 0.9,
     fireCooldown: 0.7,
@@ -392,6 +477,11 @@ ALLW.push(
     wallDamage: 0.5,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 17,
+    magazineCapacity: 6,
+    ammoInMagazine: 6,
+    reloadDuration: 1.5,
+    description: "手動·命中處產生引力場拉攝敵人",
   },
   {
     name: "電荷",
@@ -410,6 +500,11 @@ ALLW.push(
     wallDamage: 0.3,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 18,
+    magazineCapacity: 8,
+    ammoInMagazine: 8,
+    reloadDuration: 1,
+    description: "手動·命中疊 3 層電荷後引爆，範圍暈眩",
   },
   {
     name: "蛛網",
@@ -428,15 +523,15 @@ ALLW.push(
     wallDamage: 0,
     automaticFire: 0,
     aimPreviewMode: "l",
+    id: 19,
+    magazineCapacity: 4,
+    ammoInMagazine: 4,
+    reloadDuration: 3,
+    description: "手動·放置蛛網，距離可控；範圍內敵人與敵方子彈大幅減速",
   },
 );
 
-ALLW.forEach((w, i) => {
-  w.id = i;
-  w.magazineCapacity = AM[i][0];
-  w.ammoInMagazine = w.magazineCapacity;
-  w.reloadDuration = AM[i][1];
-});
+
 
 ALLW.push(
   {
@@ -456,6 +551,11 @@ ALLW.push(
     automaticFire: 0,
     aimPreviewMode: "l",
     turretMode: 1,
+    id: 20,
+    magazineCapacity: 2,
+    ammoInMagazine: 2,
+    reloadDuration: 4,
+    description: "手動·投擲部署自動砲塔，持續自動攻擊範圍內敵人（最多同時 2 座）",
   },
   {
     name: "毒罐",
@@ -474,6 +574,11 @@ ALLW.push(
     automaticFire: 0,
     aimPreviewMode: "l",
     poisonCloudMode: 1,
+    id: 21,
+    magazineCapacity: 4,
+    ammoInMagazine: 4,
+    reloadDuration: 3,
+    description: "手動·投擲毒罐，落地產生持續傷害的毒雲，可越過牆壁",
   },
   {
     name: "斬擊",
@@ -494,6 +599,11 @@ ALLW.push(
     meleeArcEnabled: 1,
     meleeRange: 102,
     meleeSweepAngle: 2.1,
+    id: 22,
+    magazineCapacity: 6,
+    ammoInMagazine: 6,
+    reloadDuration: 1.2,
+    description: "手動·近戰由左向右揮砍，大範圍強擊退，同時擊落範圍內的敵方子彈",
   },
   {
     name: "集束彈",
@@ -512,32 +622,13 @@ ALLW.push(
     automaticFire: 0,
     aimPreviewMode: "l",
     clusterShotEnabled: 1,
+    id: 23,
+    magazineCapacity: 5,
+    ammoInMagazine: 5,
+    reloadDuration: 1.5,
+    description: "手動·飛行一段距離或命中後爆開成碎片",
   },
 );
-
-{
-  const NM = [
-    [3, 4],
-    [4, 3],
-    [6, 1.2],
-    [5, 1.5],
-  ];
-  for (let i = 20; i < 24; i++) {
-    const w = ALLW[i];
-    w.id = i;
-    w.magazineCapacity = NM[i - 20][0];
-    w.ammoInMagazine = w.magazineCapacity;
-    w.reloadDuration = NM[i - 20][1];
-  }
-}
-
-for (const k in BAL) Object.assign(ALLW[k], BAL[k]);
-
-ALLW[20].magazineCapacity = 2;
-
-ALLW[20].ammoInMagazine = 2;
-
-const WEAPON_DESCRIPTIONS = ["均衡","近距大擊退","穿透·強擊退","連射·輕擊退","短程噴射","慢速重擊退","自動追蹤","環狀 10 發","自動·高速穿透敵人","自動·雙發","手動·投擲·可越過牆壁，落地爆炸","手動·穿透敵人與牆","自動·碰牆反彈","自動·連鎖電擊","手動·放置地雷","手動·飛出又飛回來","自動·噴流累積凍結值，凍成冰塊後受傷 +50%","手動·命中處產生引力場拉攝敵人","手動·命中疊 3 層電荷後引爆，範圍暈眩","手動·放置蛛網，距離可控；範圍內敵人與敵方子彈大幅減速","手動·投擲部署自動砲塔，持續自動攻擊範圍內敵人（最多同時 2 座）","手動·投擲毒罐，落地產生持續傷害的毒雲，可越過牆壁","手動·近戰由左向右揮砍，大範圍強擊退，同時擊落範圍內的敵方子彈","手動·飛行一段距離或命中後爆開成碎片"];
 
 WEAPON_PROPERTY_ALIASES = Object.freeze({
   "n": "name",
@@ -582,10 +673,7 @@ WEAPON_PROPERTY_ALIASES = Object.freeze({
   "ms": "ammoInMagazine",
   "rs": "reloadDuration"
 });
-for (const [i, weaponDefinition] of ALLW.entries()) {
-  weaponDefinition.description = WEAPON_DESCRIPTIONS[i] || "";
-  normalizeWeaponProperties(weaponDefinition);
-}
+for (const weaponDefinition of ALLW) normalizeWeaponProperties(weaponDefinition);
 for (const weaponDefinition of ALLW) Object.freeze(weaponDefinition);
 WEAPON_DEFINITIONS = Object.freeze(ALLW.slice());
 WD = Object.freeze(WEAPON_DEFINITIONS.map((weapon) => weapon.description));
