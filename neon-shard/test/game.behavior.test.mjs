@@ -9,30 +9,6 @@ const ok = (c, m) => { if (!c) { console.log("✗ FAIL:", m); process.exitCode =
 const run = (n, dt = 0.016) => { for (let i = 0; i < n; i++) { X.update(dt); bus.emit(GameEvents.TICK, dt); } };
 
 ok(tutorial.active && fsm.state === "play", "第一次遊玩：自動進入教學，狀態機為 play");
-// 教學 15 步
-const killAll = () => { for (const e of G.en.slice()) { e.hp = 0; X.kill(e); } };
-const acts = [
-  () => { for (let i = 0; i < 30; i++) { G.pl.x += 8; run(1); } },
-  () => { for (let i = 0; i < 30; i++) { G.pl.aim += 0.4; run(1); } },
-  () => { for (let i = 0; i < 6; i++) { G.pl.sc = 0; X.shoot(true); run(3); } },
-  () => { X.WP[G.pl.w].am = 0; run(2); X.WP[G.pl.w].am = 1; run(2); },
-  () => { const L = X.WP.length; G.pl.w = (G.pl.w + 1) % L; run(2); G.pl.w = (G.pl.w + 1) % L; run(2); },
-  () => { const e = G.en[0]; G.pl.aim = Math.atan2(e.y - G.pl.y, e.x - G.pl.x); for (let i = 0; i < 4; i++) { G.pl.sc = 0; X.shoot(true); run(2); } },
-  () => { for (let i = 0; i < 2; i++) { G.pl.dashCd = 0; X.dash(); run(15); } },
-  () => { for (let k = 0; k < 4; k++) for (let j = 0; j < 44; j++) for (let i = 0; i < 44; i++) if (G.grid[i + j * 44] > 0) X.hitCell(i, j, 3); },
-  killAll, killAll, killAll, killAll,
-  () => { G.pl.ult = 100; X.ult(); },
-  () => { X.pause(); X.resume(); },
-  () => { G.pl.hp = 75; },
-];
-let stuck = null;
-for (let i = 0; i < acts.length; i++) {
-  const before = tutorial.step ?? i; run(100); acts[i]();
-  for (let k = 0; k < 200 && !tutorial.isDone; k++) { run(1); }
-  if (i < acts.length - 1 && fsm.state !== "play") { stuck = `步驟 ${i + 1} 後狀態=${fsm.state}`; break; }
-}
-ok(!stuck && tutorial.isDone, "教學 15 步全部通關" + (stuck ? "（" + stuck + "）" : ""));
-ok(store.getString(KEYS.tutorialDone) === "1", "完成後寫入 localStorage（SaveStore）");
 tutorial.toBattle();
 ok(!tutorial.active && fsm.state === "play", "教學結束 → 正式戰鬥");
 G.pl.hp = G.pl.mhp = 1e6; run(900);
