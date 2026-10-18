@@ -469,9 +469,12 @@ TUTORIAL_STEPS = Object.freeze([
     setup: (ctl) => {
       const a = aheadOfPlayer(260);
       spawnTutorialEnemy(2, a.x, a.y, false);
+      spawnTutorialEnemy(2, a.x, a.y, false);
+      spawnTutorialEnemy(2, a.x, a.y, false);
+      spawnTutorialEnemy(2, a.x, a.y, false);
     },
-    keep: (ctl) => {respawnUntilKilled(2,3, false)},
-    progress: (s) => s.kills / 3,
+    keep: (ctl) => {respawnUntilKilled(2,4, false)},
+    progress: (s) => s.kills / 4,
   },
   {
     title: "補血",
