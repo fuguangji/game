@@ -582,10 +582,13 @@ WEAPON_PROPERTY_ALIASES = Object.freeze({
   "ms": "ammoInMagazine",
   "rs": "reloadDuration"
 });
-for (const weaponDefinition of ALLW) normalizeWeaponProperties(weaponDefinition);
+for (const [i, weaponDefinition] of ALLW.entries()) {
+  weaponDefinition.description = WEAPON_DESCRIPTIONS[i] || "";
+  normalizeWeaponProperties(weaponDefinition);
+}
 for (const weaponDefinition of ALLW) Object.freeze(weaponDefinition);
 WEAPON_DEFINITIONS = Object.freeze(ALLW.slice());
-Object.freeze(WD);
+WD = Object.freeze(WEAPON_DEFINITIONS.map((weapon) => weapon.description));
 initialized = true;
 
 G.LO = [0, 1, 2];
