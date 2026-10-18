@@ -153,13 +153,19 @@ export class TutorialController {
           [...document.querySelectorAll("#xV .x-f.on")].some((el) => el.textContent.trim() === "槍械"),
       },
     ];
-    if (!SV.own.includes(3)) {
-      steps.push({
-        title: "第二步：購買衝鋒槍",
-        body: "在槍械清單找到「衝鋒」，按下它的購買按鈕。這把新手教學用槍價格為 0 金幣，但仍須親自完成購買；教學不會直接把它塞進庫存。",
-        match: () => SV.own.includes(3),
-      });
-    }
+    steps.push(
+      SV.own.includes(3)
+        ? {
+            title: "第二步：確認武器庫存",
+            body: "這個存檔已經擁有「衝鋒」，因此不會重複購買或扣款。請繼續前往備戰並確認裝備。",
+            match: () => true,
+          }
+        : {
+            title: "第二步：購買衝鋒槍",
+            body: "在槍械清單找到「衝鋒」，按下它的購買按鈕。這把新手教學用槍價格為 0 金幣，但仍須親自完成購買；教學不會直接把它塞進庫存。",
+            match: () => SV.own.includes(3),
+          },
+    );
     steps.push(
       {
         title: "前往備戰",
@@ -372,6 +378,7 @@ export class TutorialController {
   }
 
   #showMenuTourStep() {
+    this.#tour.querySelector("[data-tour-skip]").textContent = "結束導覽";
     const steps = this.#menuTourSteps();
     const step = steps[this.#tourStep];
     if (!step) return this.#endMenuTour();
