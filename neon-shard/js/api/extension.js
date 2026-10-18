@@ -1,6 +1,6 @@
 /** api/extension — 對外擴充 API（window.NEON_SHARD_API） */
 import { fsm, registerStateGuard, registerStateHook, registerStateTransition } from "../core/state-machine.js";
-import { WEAPON_DEFINITIONS } from "../game/weapons.js";
+import { ALLWEAPON } from "../game/weapons.js";
 import { registerAimLineExtension } from "../ui/aim.js";
 
 
@@ -12,7 +12,7 @@ export function init() {
 /*
  * NEON SHARD 擴充 API。
  * 其他模組載入完成後可透過 window.NEON_SHARD_API 註冊狀態與瞄準線擴充。
- * getWeaponDefinitions() 回傳原始設定陣列；請在正式玩法規則中加入必要的伺服器端驗證。
+ * getWeaponDefinitions() 回傳凍結的武器定義；前端封裝不是伺服器端防作弊機制。
  */
 Object.defineProperty(window, "NEON_SHARD_API", {
   configurable: true,
@@ -22,7 +22,7 @@ Object.defineProperty(window, "NEON_SHARD_API", {
     registerStateGuard,
     registerAimLineExtension,
     getState: () => fsm.state,
-    getWeaponDefinitions: () => WEAPON_DEFINITIONS,
+    getWeaponDefinitions: () => ALLWEAPON.getWeapon(),
   }),
 });
 }
