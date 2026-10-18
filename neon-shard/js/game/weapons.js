@@ -4,7 +4,7 @@ import { KEYS, store } from "../core/save-store.js";
 import { modW } from "./chips.js";
 import { SV } from "./progress.js";
 
-export const ALLW = [
+const ALLW = [
   {
     name: "手槍",
     color: "#22e6ff",
@@ -184,7 +184,16 @@ export function normalizeWeaponProperties(weapon) {
   }
   return weapon;
 }
-export let WEAPON_DEFINITIONS; // 初始化在 init()
+export let WEAPON_DEFINITIONS; // init() 完成後發布唯讀快照
+
+export const ALLWEAPON = Object.freeze({
+  getWeapon(id) {
+    if (!WEAPON_DEFINITIONS) return id === undefined ? Object.freeze([]) : null;
+    return id === undefined ? WEAPON_DEFINITIONS : (WEAPON_DEFINITIONS[id] || null);
+  },
+  getWeaponById(id) { return this.getWeapon(id); },
+  getWeaponCount() { return WEAPON_DEFINITIONS ? WEAPON_DEFINITIONS.length : 0; }
+});
 // 功能：讀取並套用保存的武器配置。
 export function applyLO() {
   G.LO = G.LO.filter((i) => SV.own.includes(i));
@@ -193,7 +202,9 @@ export function applyLO() {
 }
 
 /** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
+let initialized = false;
 export function init() {
+  if (initialized) return;
 
 ALLW.push(
   {
@@ -610,9 +621,11 @@ WEAPON_PROPERTY_ALIASES = Object.freeze({
   "ms": "ammoInMagazine",
   "rs": "reloadDuration"
 });
-WEAPON_DEFINITIONS = ALLW;
-
-for (const weaponDefinition of WEAPON_DEFINITIONS) normalizeWeaponProperties(weaponDefinition);
+for (const weaponDefinition of ALLW) normalizeWeaponProperties(weaponDefinition);
+for (const weaponDefinition of ALLW) Object.freeze(weaponDefinition);
+WEAPON_DEFINITIONS = Object.freeze(ALLW.slice());
+Object.freeze(WD);
+initialized = true;
 
 G.LO = [0, 1, 2];
 
