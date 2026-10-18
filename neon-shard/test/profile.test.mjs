@@ -26,7 +26,7 @@ const panel = (host, id) => host.find((e) => e.id === `ns-panel-${id}`);
 
 test("頁面有 5 個分頁，預設顯示「個人檔案」，aria 狀態正確", () => {
   const { deps } = makeDeps(); const { host, page } = mount(deps);
-  assert.deepEqual(tabs(host).map((t) => t.textContent), ["個人檔案", "設定", "外觀", "雲端同步", "線上聯機"]);
+  assert.deepEqual(tabs(host).map((t) => t.textContent), ["個人檔案", "設定", "角色外觀", "雲端同步", "線上聯機"]);
   assert.equal(page.activeId, "overview");
   assert.equal(tabs(host)[0].attrs["aria-selected"], "true");
   assert.equal(tabs(host)[1].attrs["aria-selected"], "false");
