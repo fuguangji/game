@@ -13,7 +13,7 @@ import { showOv } from "../ui/render.js";
 export const SV = {
   coins: 0,
   up: {},
-  own: [0, 1, 3],
+  own: [0, 1],
   clr: [],
   sb: [],
   sel: 0,
