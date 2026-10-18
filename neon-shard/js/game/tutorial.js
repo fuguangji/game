@@ -378,7 +378,7 @@ export function startTutorial() {
 /** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
 export function init() {
 TUTORIAL_STEPS = Object.freeze([
-  { title: "移動", text: "按 W A S D 在場地中移動，走一小段路。", mb: "用左半邊螢幕的虛擬搖桿移動，走一小段路。", progress: (s) => s.moved / 200 },
+  { title: "移動", text: "按 W A S D 在場地中移動，嘗試走一小段路吧！", mb: "用左半邊螢幕的虛擬搖桿移動，嘗試走一小段路吧", progress: (s) => s.moved / 200 },
   { title: "瞄準", text: "移動滑鼠，讓角色前方的三角形箭頭跟著轉，轉約一圈。", mb: "在右半邊螢幕拖曳手指，箭頭會朝拖曳方向轉動，轉約一圈。", progress: (s) => s.aimed / 6 },
   { title: "射擊", text: "按滑鼠左鍵射擊 5 次（按住可連射的槍會持續開火）。", mb: "在右半邊螢幕拖曳瞄準，放開手指就會發射，射擊 5 次。", progress: (s) => s.shots / 5 },
   {
@@ -404,7 +404,7 @@ TUTORIAL_STEPS = Object.freeze([
   { title: "衝刺", text: "按 Shift 衝刺 2 次。衝刺期間完全無敵，能直接穿過子彈，但有冷卻時間。", mb: "點右下角 DASH 鈕衝刺 2 次（按住並拖曳可指定方向）。", progress: (s) => s.dashes / 2 },
   {
     title: "破牆",
-    text: "彩色方塊能被子彈打碎，顏色越暖越脆弱；紫色叉叉牆打不壞。打碎前方 3 塊牆。",
+    text: "彩色方塊能被子彈打碎。顏色越偏暖色，牆壁的損壞度越高；紫色叉叉牆無論任何武器都打不壞。嘗試看看打碎前方 3 塊牆吧！",
     setup: (ctl) => {
       const a = aheadOfPlayer(T * 3);
       const ci = Math.floor(a.x / T), cj = Math.floor(a.y / T);
