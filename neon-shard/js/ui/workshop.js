@@ -2,13 +2,13 @@
 import { G } from "../core/game-state.js";
 import { CH, RC, RN, TW, chipApply, chipAvail, chipEl, chipWhere, modW, rollChip } from "../game/chips.js";
 import { CC, SV, UL, save } from "../game/progress.js";
-import { ALLW, WP } from "../game/weapons.js";
+import { ALLWEAPON, WP } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
 
 // 功能：處理「trRebuild」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function trRebuild() {
   const id = WP[G.pl.w].id,
-    m = modW(ALLW[id]);
+    m = modW(ALLWEAPON.getWeapon()[id]);
   m.ms = Math.round(m.ms0 * (1 + 0.1 * UL("mag")));
   m.am = m.ms;
   WP[G.pl.w] = m;
@@ -68,10 +68,10 @@ export function wsR(el) {
   for (const i of own) {
     const mm = gm(i),
       b = dv("chp" + (i === G.MWI ? " on" : ""));
-    b.style.setProperty("--wc", ALLW[i].c);
-    b.append(mkIcon("ammo", ALLW[i].c, 16));
+    b.style.setProperty("--wc", ALLWEAPON.getWeapon()[i].c);
+    b.append(mkIcon("ammo", ALLWEAPON.getWeapon()[i].c, 16));
     const nm = document.createElement("span");
-    nm.textContent = ALLW[i].n;
+    nm.textContent = ALLWEAPON.getWeapon()[i].n;
     b.append(nm);
     const pips = dv("pips");
     mm.forEach((ci) => {
@@ -144,7 +144,7 @@ export function wsR(el) {
     sl.append(d);
   }
   el.append(sl);
-  const base = ALLW[G.MWI],
+  const base = ALLWEAPON.getWeapon()[G.MWI],
     cur = chipApply(base, m.filter(has));
   // 功能：計算並顯示武器的屬性統計。
   const stat = (o) => {
