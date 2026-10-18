@@ -378,30 +378,30 @@ export function startTutorial() {
 /** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
 export function init() {
 TUTORIAL_STEPS = Object.freeze([
-  { title: "移動", text: "按 W A S D 在場地中移動，嘗試走一小段路吧！", mb: "用左半邊螢幕的虛擬搖桿移動，嘗試走一小段路吧", progress: (s) => s.moved / 200 },
-  { title: "瞄準", text: "移動滑鼠，讓角色前方的三角形箭頭跟著轉，轉約一圈。", mb: "在右半邊螢幕拖曳手指，箭頭會朝拖曳方向轉動，轉約一圈。", progress: (s) => s.aimed / 6 },
-  { title: "射擊", text: "按滑鼠左鍵射擊 5 次（按住可連射的槍會持續開火）。", mb: "在右半邊螢幕拖曳瞄準，放開手指就會發射，射擊 5 次。", progress: (s) => s.shots / 5 },
+  { title: "移動", text: "按 W A S D 在場地中移動。嘗試走一小段路吧！", mb: "用左半邊螢幕的虛擬搖桿移動。嘗試走一小段路吧！", progress: (s) => s.moved / 200 },
+  { title: "瞄準", text: "移動滑鼠可以讓角色前方的瞄準線跟著轉，試著轉約一圈吧！", mb: "在右半邊螢幕拖曳手指，瞄準線就會朝拖曳方向轉動，試著轉約一圈！", progress: (s) => s.aimed / 6 },
+  { title: "射擊", text: "按滑鼠左鍵就能射擊（按住的話可連射的槍會持續開火）。嘗試開火五次吧！", mb: "在右半邊螢幕拖曳瞄準，放開手指就會發射，嘗試射擊 5 次吧！", progress: (s) => s.shots / 5 },
   {
-    title: "彈藥",
-    text: "每次射擊都會消耗彈藥（畫面下方右側的彈藥條）。把目前彈匣打光，再等它自動回復一發。",
+    title: "彈藥數量",
+    text: "每次射擊都會消耗彈藥（畫面下方右側的彈藥條）！。試著把目前彈匣打光，再等它自動回復一發！",
     noRefill: true,
     setup: () => { const w = WP[G.pl.w]; w.am = w.ms; },
     progress: (s) => s.emptied ? (WP[G.pl.w].am >= 1 ? 1 : 0.7) : Math.min(0.6, (s.shots / WP[G.pl.w].ms) * 0.6),
   },
   {
     title: "換槍",
-    text: "按 1 / 2 / 3、Q 或滑鼠滾輪切換武器，切換 2 次。每把槍的射速、彈匣與擊退都不同（只裝備 1 把槍會自動略過）。",
-    mb: "點畫面下方的槍欄切換武器（可拖曳互換位置），切換 2 次。",
+    text: "按 1 / 2 / 3、Q 或滑鼠滾輪切換武器，每把槍的射速、彈匣、擊退與特殊效果都不同（只裝備 1 把槍會自動略過）。嘗試換幾次槍吧！",
+    mb: "點畫面下方的槍欄切換武器（可拖曳互換位置），試著切換 2 次。",
     progress: (s) => (WP.length < 2 ? 1 : s.switches / 2),
   },
   {
     title: "自動瞄準",
-    text: "角色周圍的虛線圈內，會自動瞄準最近的敵人（黃色圈標示）。大致朝靶射擊 3 次；按 R 可切換自動瞄準模式。",
+    text: "角色周圍的瞄準虛線圈內，會自動瞄準最近的敵人（顯示黃色圈）。試著大致朝靶射擊 3 次；按 R 可切換自動瞄準模式，也可以到「個人檔案→設定」來設置",
     setup: () => { G.AA = 1; const a = aheadOfPlayer(130); spawnTutorialEnemy(0, a.x, a.y, true); },
     keep: respawnUntilKilled(0, 99, true),
     progress: (s) => s.auto / 3,
   },
-  { title: "衝刺", text: "按 Shift 衝刺 2 次。衝刺期間完全無敵，能直接穿過子彈，但有冷卻時間。", mb: "點右下角 DASH 鈕衝刺 2 次（按住並拖曳可指定方向）。", progress: (s) => s.dashes / 2 },
+  { title: "衝刺", text: "按 Shift 就可以衝刺！衝刺期間完全無敵，能直接穿過槍林彈雨，但有冷卻時間，按 Shift 衝刺 2 次試試吧！", mb: "點右下角 DASH 鈕可以衝刺（按住並拖曳可指定方向），試著衝刺 2 次！", progress: (s) => s.dashes / 2 },
   {
     title: "破牆",
     text: "彩色方塊能被子彈打碎。顏色越偏暖色，牆壁的損壞度越高；紫色叉叉牆無論任何武器都打不壞。嘗試看看打碎前方 3 塊牆吧！",
@@ -427,14 +427,14 @@ TUTORIAL_STEPS = Object.freeze([
   },
   {
     title: "擊敗敵人",
-    text: "擊敗 2 個靜止的追擊靶。命中會把敵人擊退，擊退力強的武器更容易拉開距離。",
+    text: "我們來試著擊敗 2 個靜止的追擊靶！命中會把敵人擊退，擊退力強的武器更容易拉開距離喔！",
     setup: () => spawnDummies(2),
     keep: (ctl) => { if (G.en.length === 0 && (ctl.stats.kills || 0) < 2) spawnDummies(2 - (ctl.stats.kills || 0)); },
     progress: (s) => s.kills / 2,
   },
   {
     title: "閃避狙擊",
-    text: "狙擊敵人開火前會出現紅色虛線（約 0.45 秒）。看到就側移或衝刺閃開，再把它擊倒。",
+    text: "狙擊敵人開火前會出現紅色虛線（約 0.45 秒）。看到就移動或衝刺閃開，再把它擊倒！",
     setup: () => { const a = aheadOfPlayer(260); spawnTutorialEnemy(1, a.x, a.y, false); },
     keep: respawnUntilKilled(1, 1, false),
     progress: (s) => s.kills,
@@ -465,6 +465,14 @@ TUTORIAL_STEPS = Object.freeze([
     progress: (s) => s.supers,
   },
   { title: "暫停", text: "按 P 或 Esc 暫停，再按一次繼續。暫停選單可放棄本局。這一步請暫停後繼續遊戲。", mb: "點左上角的暫停鈕，再按「繼續」。", progress: (s) => s.pauses },
+  { title: "彈幕", text: "來體驗看看用衝刺和移動來閃避彈幕吧！我們已經鎖住你的血量了，試試看擊敗他們！",
+    setup: (ctl) => {
+      const a = aheadOfPlayer(260);
+      spawnTutorialEnemy(2, a.x, a.y, false);
+    },
+    keep: (ctl) => {respawnUntilKilled(2,3, false)},
+    progress: (s) => s.kills / 3,
+  },
   {
     title: "補血",
     text: "血量被降低了。走到綠色十字上回復血量，撿取物掉在地上一段時間後會消失。",
