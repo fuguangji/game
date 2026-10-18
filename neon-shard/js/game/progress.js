@@ -129,6 +129,28 @@ mergeSave(SV, store.getJSON(KEYS.save, isPlainObject, {}));
 save = () => {
     store.setJSON(KEYS.save, SV);
   };
+// 舊版初始存檔曾免費附贈衝鋒槍；只遷移完全未遊玩的舊預設存檔，不動既有玩家的正常進度。
+const legacyStarterSave =
+  JSON.stringify(SV.own) === "[0,1,3]" &&
+  SV.coins === 0 &&
+  SV.clr.length === 0 &&
+  SV.sb.length === 0 &&
+  SV.sh === 0 &&
+  SV.co === 0 &&
+  Object.keys(SV.up).length === 0 &&
+  Object.keys(SV.chips).length === 0 &&
+  Object.keys(SV.mods).length === 0 &&
+  SV.chars.length === 1 &&
+  SV.chars[0] === 0 &&
+  SV.char === 0 &&
+  SV.items.heal === 2 &&
+  SV.items.shield === 1 &&
+  SV.items.ammo === 1;
+if (legacyStarterSave) {
+  SV.own = [0, 1];
+  SV.coins = 100;
+  save();
+}
 UL = (k) => (SV.up[k] || 0) + ((G.CHR && G.CHR["L" + k]) || 0);
 WPR = [
     0, 0, 300, 100, 250, 600, 200, 450, 500, 250, 700, 550, 350, 650, 500, 400,
