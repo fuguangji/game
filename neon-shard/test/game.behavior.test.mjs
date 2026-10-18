@@ -15,9 +15,10 @@ G.pl.hp = G.pl.mhp = 1e6; run(900);
 ok(G.en.length >= 0 && Number.isFinite(G.pl.x), "正式戰鬥模擬 900 幀無例外");
 // 24 把槍的大招
 let ultOk = 0;
+ok(Object.isFrozen(X.ALLWEAPON) && Object.isFrozen(X.ALLWEAPON.getWeapon()) && Object.isFrozen(X.ALLWEAPON.getWeapon(0)), "武器定義 API、陣列與單筆資料皆唯讀");
 for (let i = 0; i < X.ALLWEAPON.getWeapon().length; i++) {
   if (fsm.state !== "play") fsm.transition("play");
-  X.WP[0] = X.ALLWEAPON.getWeapon()[i]; G.pl.w = 0; X.WP[0].um = 100; G.pl.ult = 100;
+  X.WP[0] = X.modW(X.ALLWEAPON.getWeapon(i)); G.pl.w = 0; X.WP[0].um = 100; G.pl.ult = 100;
   G.en.length = 0; for (let k = 0; k < 4; k++) G.en.push(X.mkEn(0, G.pl.x + 100 + k * 30, G.pl.y));
   try { X.ult(); run(200); ultOk++; } catch (e) { console.log("  大招失敗", X.ALLWEAPON.getWeapon()[i].name ?? i, e.message); }
 }
