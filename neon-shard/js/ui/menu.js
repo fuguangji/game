@@ -10,7 +10,7 @@ import { CHS } from "../game/chips.js";
 
 import { CC, CN, SV, UL } from "../game/progress.js";
 
-import { ALLW, WD } from "../game/weapons.js";
+import { ALLWEAPON, WD } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
 import { xAccount } from "./account.js";
 
@@ -118,7 +118,7 @@ export const wStat = (o) => {
 export const xmax = () =>
   G.XM ||
   (G.XM = (() => {
-    const a = ALLW.map((w) => wStat(w)),
+    const a = ALLWEAPON.getWeapon().map((w) => wStat(w)),
       mx = (k) => Math.max(...a.map((s) => s[k])) || 1;
     return {
       dmg: mx("dmg"),
