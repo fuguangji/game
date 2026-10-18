@@ -21,7 +21,7 @@ export class AppearanceSection extends ProfileSection {
 
   /** @param {import('../profile-page.js').ProfileDeps} deps */
   constructor(deps) {
-    super({ id: "appearance", title: "外觀" });
+    super({ id: "appearance", title: "角色外觀" });
     this.#deps = deps;
     const btn = (label, fn, primary) => h("button", { type: "button", class: "ns-feature-btn" + (primary ? " primary" : ""), onclick: fn }, label);
     this.#el = h("section", { class: "ns-feature-card ns-appearance" },

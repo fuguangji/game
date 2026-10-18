@@ -165,19 +165,57 @@ export class SkinRenderer {
 export function drawRoleAura(ctx, radius, color, time) {
   const TAU = Math.PI * 2;
   ctx.save();
+
+  // 1. 輕微發光融合，維持炭火餘燼的紅光質感
+  ctx.globalCompositeOperation = "lighter"; 
   ctx.shadowColor = color;
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 8; 
   ctx.fillStyle = color;
+
   for (let i = 0; i < 12; i++) {
-    const angle = time * 0.9 + (i * TAU) / 12;
-    const r = radius + 8 + 2.5 * Math.sin(time * 2.4 + i * 1.7);
-    ctx.globalAlpha = 0.42 + 0.5 * (0.5 + 0.5 * Math.sin(time * 2.5 + i));
+    // 2. 維持極慢的時間步調 (0.32)，讓炭火有足夠的滯留感
+    const life = (time * 0.32 + i * 0.618033) % 1.0;
+
+    // 3. 核心：決定每個粒子「各自獨立、完全散亂」的飄移角度
+    // 徹底打碎空間，讓 i=0, 1, 2 分散到不同的象限，達成四面八方散射
+    const randomAngle = Math.sin(i * 14.2314) * 43758.5453;
+    const moveAngle = randomAngle % TAU;
+
+    // 4. 慢速滑行距離 (拿掉了激烈的噴發與純垂直向上力)
+    // 粒子隨著生命週期，溫柔地從圓周邊緣向外滑行最多 16px 的物理距離
+    const maxSlide = 16;
+    const slideDist = radius + 2 + (life * maxSlide);
+
+    // 5. 亂流微風 (左右上下蛇行)：模擬空氣阻力造成的飄忽感
+    // 讓粒子在往各自方向前進時，產生微幅的不規則扭動
+    const driftX = Math.sin(time * 1.6 + i * 4.5) * 5.0 * life;
+    const driftY = Math.cos(time * 1.3 + i * 3.5) * 5.0 * life;
+
+    // 6. 計算核心座標：由各自的隨機角度向外延伸 + 溫柔的亂流偏移
+    const posX = Math.cos(moveAngle) * slideDist + driftX;
+    const posY = Math.sin(moveAngle) * slideDist + driftY;
+
+    // 7. 明滅閃爍：炭火忽明忽暗（time * 12 的中慢速閃爍）
+    const glowFlicker = 0.6 + 0.4 * Math.sin(time * 12 + i * 13);
+    const alphaFade = Math.sin(life * Math.PI); // 拱形曲線，完美淡入、高空淡出
+    ctx.globalAlpha = Math.max(0, alphaFade * glowFlicker * 0.85);
+
+    // 8. 微型碎屑尺寸：在空中會慢慢燃盡縮小
+    const baseSize = 0.6 + (Math.abs(Math.sin(i * 77)) * 1.4); // 0.6px ~ 2.0px
+    const pRadius = Math.max(0.15, baseSize * (1.0 - life * 0.4)); // 稍微縮小
+
+    // 9. 繪製四面八方慢速飄移的餘燼
     ctx.beginPath();
-    ctx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 1.1 + 0.65 * (0.5 + 0.5 * Math.sin(time * 3 + i)), 0, TAU);
+    ctx.arc(posX, posY, pRadius, 0, TAU);
     ctx.fill();
   }
   ctx.restore();
 }
+
+
+
+
+
 
 /** 全域共用的皮膚資料與繪製器 */
 export const skinStore = new SkinStore();
