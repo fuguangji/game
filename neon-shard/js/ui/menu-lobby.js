@@ -8,7 +8,7 @@ import { CC, ST, STG, SV, WPC, WPR, save } from "../game/progress.js";
 import { rdOpen } from "../game/redeem.js";
 import { startTrain } from "../game/training.js";
 import { startTutorial } from "../game/tutorial.js";
-import { ALLW, WD } from "../game/weapons.js";
+import { ALLWEAPON, WD } from "../game/weapons.js";
 import { XB, xEmb, xEquip, xUnequip } from "./menu-bag.js";
 import { XCAT, XS, wCat, wMode, wNote, wStat, xFlt, xGo, xSide, xSub, xbt, xfmt, xh, xic, xmax } from "./menu.js";
 import { start } from "./render.js";
@@ -19,7 +19,7 @@ export function xLobby(v) {
     ch = CHS[SV.char] || CHS[0],
     cl = SV.clr.filter(Boolean).length;
   const cols = [0, 1, 2].map((k) =>
-    G.LO[k] !== undefined ? ALLW[G.LO[k]].c : "#3a4573",
+    G.LO[k] !== undefined ? ALLWEAPON.getWeapon()[G.LO[k]].c : "#3a4573",
   );
   const pt = [0, 1, 2, 3, 4, 5].map((k) => {
     const a = ((-90 + 60 * k) * Math.PI) / 180;
@@ -37,7 +37,7 @@ export function xLobby(v) {
   }
   const hero = xh(
     "x-pn x-hero",
-    `${xEmb()}<div class="x-wm">NEON SHARD</div><div class="x-tag">霓虹幾何，瞄準與閃避</div><div class="x-hs"><span><b>${G.best}</b>最高分</span><span><b>${cl}/8</b>關卡通關</span><span><b>${SV.own.length}/${ALLW.length}</b>槍械解鎖</span></div>`,
+    `${xEmb()}<div class="x-wm">NEON SHARD</div><div class="x-tag">霓虹幾何，瞄準與閃避</div><div class="x-hs"><span><b>${G.best}</b>最高分</span><span><b>${cl}/8</b>關卡通關</span><span><b>${SV.own.length}/${ALLWEAPON.getWeapon().length}</b>槍械解鎖</span></div>`,
   );
   const lst = xh("x-pair");
   const r1 = xbt(
@@ -56,7 +56,7 @@ export function xLobby(v) {
   const sl = xh("x-slots");
   for (let k = 0; k < 3; k++) {
     const i = G.LO[k],
-      w = i !== undefined ? ALLW[i] : null,
+      w = i !== undefined ? ALLWEAPON.getWeapon()[i] : null,
       d = xbt("x-sl" + (w ? "" : " em"), "", () => {
         XS.sl = k;
         if (w) XS.ws = i;
@@ -101,7 +101,7 @@ export function xLobby(v) {
 /* ---------- 備戰 ---------- */
 export function xLoad(v) {
   const own = SV.own;
-  if (!ALLW[XS.ws]) XS.ws = G.LO[0] || 0;
+  if (!ALLWEAPON.getWeapon()[XS.ws]) XS.ws = G.LO[0] || 0;
   if (XS.sl > 2 || XS.sl < 0) XS.sl = 0;
   const L = xh("x-sc");
   L.dataset.sc = "l";
@@ -134,7 +134,7 @@ export function xLoad(v) {
   const sl = xh("x-slots");
   for (let k = 0; k < 3; k++) {
     const i = G.LO[k],
-      w = i !== undefined ? ALLW[i] : null,
+      w = i !== undefined ? ALLWEAPON.getWeapon()[i] : null,
       d = xbt(
         "x-sl" + (w ? "" : " em") + (k === XS.sl ? " on" : ""),
         "",
@@ -152,7 +152,7 @@ export function xLoad(v) {
   }
   L.append(
     sl,
-    xh("x-h", `槍械庫<small>${own.length} / ${ALLW.length} 已解鎖</small>`),
+    xh("x-h", `槍械庫<small>${own.length} / ${ALLWEAPON.getWeapon().length} 已解鎖</small>`),
   );
   L.append(
     xFlt(["全部", "已擁有", "未解鎖", ...XCAT.map((c) => c[0])], XS.lc, (n) =>
@@ -161,7 +161,7 @@ export function xLoad(v) {
   );
   const wg = xh("x-grid"),
     isCat = XCAT.some((c) => c[0] === XS.lc);
-  ALLW.forEach((w, i) => {
+  ALLWEAPON.getWeapon().forEach((w, i) => {
     const ow = own.includes(i),
       k = G.LO.indexOf(i);
     if (XS.lc === "已擁有" && !ow) return;
@@ -193,7 +193,7 @@ export function xLoad(v) {
   if (!wg.children.length) wg.append(xh("x-empty", "沒有符合條件的槍械"));
   L.append(wg);
   const i = XS.ws,
-    w = ALLW[i],
+    w = ALLWEAPON.getWeapon()[i],
     ow = own.includes(i),
     k = G.LO.indexOf(i),
     s = wStat(modW(w)),
