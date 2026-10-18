@@ -184,7 +184,7 @@ export function normalizeWeaponProperties(weapon) {
   }
   return weapon;
 }
-export let WEAPON_DEFINITIONS; // init() 完成後發布唯讀快照
+let WEAPON_DEFINITIONS; // 私有快照，只能經 ALLWEAPON 查詢
 
 export const ALLWEAPON = Object.freeze({
   getWeapon(id) {
