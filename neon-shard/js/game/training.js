@@ -9,7 +9,7 @@ import { elify } from "./elite.js";
 import { EN } from "./pickups.js";
 import { SV, UL, quit } from "./progress.js";
 import { spawnDummy } from "./ultimates.js";
-import { ALLW, WP } from "./weapons.js";
+import { ALLWEAPON, WP } from "./weapons.js";
 import { mkIcon } from "../icons.js";
 import { ECOL, trPick } from "../ui/menu.js";
 import { trChip } from "../ui/workshop.js";
@@ -29,7 +29,7 @@ export function startTrain() {
   G.god = true;
   G.fz = false;
   G.inf = true;
-  WP.splice(0, WP.length, modW(ALLW[0]), modW(ALLW[1]), modW(ALLW[3]));
+  WP.splice(0, WP.length, modW(ALLWEAPON.getWeapon()[0]), modW(ALLWEAPON.getWeapon()[1]), modW(ALLWEAPON.getWeapon()[3]));
   setup();
   G.en.length = 0;
   G.pk.length = 0;
@@ -115,7 +115,7 @@ export function trBuild() {
   }
   sec("武器");
   let g = grid();
-  ALLW.forEach((w, i) =>
+  ALLWEAPON.getWeapon().forEach((w, i) =>
     btn(g, "ammo", w.c, w.n, () => {
       const m = modW(w);
       m.ms = Math.round(m.ms0 * (1 + 0.1 * UL("mag")));
