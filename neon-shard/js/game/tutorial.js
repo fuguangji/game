@@ -1,6 +1,7 @@
 /** game/tutorial — 教學模式（TutorialController） */
 import { GameEvents, bus } from "../core/event-bus.js";
 import { G } from "../core/game-state.js";
+import { SV } from "./progress.js";
 import { KEYS, store } from "../core/save-store.js";
 import { fsm } from "../core/state-machine.js";
 import { $, N, T, cx } from "../core/viewport.js";
@@ -75,6 +76,8 @@ export class TutorialController {
   #tourStep = 0;
   #tourSeenTab = false;
   #tourPage = "menu";
+  #purchaseTour = false;
+  #purchaseTourStep = 0;
 
   constructor() {
     this.#seen = store.getString(KEYS.tutorialDone) === "1";
@@ -123,6 +126,82 @@ export class TutorialController {
   }
 
   start() {
+    this.#startPurchaseTour();
+  }
+
+  /** 新玩家先在真正的選單中購買並裝備衝鋒槍，再開始戰鬥操作教學。 */
+  #startPurchaseTour() {
+    this.#active = false;
+    this.#done = false;
+    this.#purchaseTour = true;
+    this.#purchaseTourStep = 0;
+    this.#tourStep = 0;
+    window.showTab?.("h");
+    showOv(0);
+    this.#tour.style.display = "flex";
+    this.#showPurchaseTourStep();
+    this.#syncUi();
+  }
+
+  #purchaseTourSteps() {
+    const steps = [
+      {
+        title: "第一步：前往商城",
+        body: "先點選上方「商城」，再選擇「槍械」分類。接下來要親自解鎖一把衝鋒槍。",
+        match: () =>
+          document.querySelector("#xn .x-tab.on")?.dataset.t === "m" &&
+          [...document.querySelectorAll("#xV .x-f.on")].some((el) => el.textContent.trim() === "槍械"),
+      },
+    ];
+    if (!SV.own.includes(3)) {
+      steps.push({
+        title: "第二步：購買衝鋒槍",
+        body: "在槍械清單找到「衝鋒」，按下它的購買按鈕。這把新手教學用槍價格為 0 金幣，但仍須親自完成購買；教學不會直接把它塞進庫存。",
+        match: () => SV.own.includes(3),
+      });
+    }
+    steps.push(
+      {
+        title: "前往備戰",
+        body: "購買成功後，點選上方「備戰」。你會在槍械庫看到剛解鎖的衝鋒槍。",
+        match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "b",
+      },
+      {
+        title: "裝備衝鋒槍",
+        body: "在槍械庫選擇「衝鋒」，再按「裝入 1 號位」（若該槍已在出戰配置中，確認它仍顯示在出戰欄位即可）。教學會檢查實際出戰配置，而不只是檢查你有沒有點按鈕。",
+        match: () => G.LO.includes(3),
+      },
+      {
+        title: "準備完成",
+        body: "很好！衝鋒槍已經在你的庫存與出戰配置中。接下來開始戰鬥操作教學。",
+        match: () => SV.own.includes(3) && G.LO.includes(3),
+      },
+    );
+    return steps;
+  }
+
+  #showPurchaseTourStep() {
+    const steps = this.#purchaseTourSteps();
+    const step = steps[this.#purchaseTourStep];
+    if (!step) {
+      this.#purchaseTour = false;
+      this.#tour.style.display = "none";
+      this.#beginCombatTutorial();
+      return;
+    }
+    this.#tour.querySelector("[data-tour-title]").textContent = step.title;
+    this.#tour.querySelector("[data-tour-body]").textContent = step.body;
+    this.#tour.querySelector("[data-tour-status]").textContent =
+      `購買與裝備教學 · 步驟 ${this.#purchaseTourStep + 1} / ${steps.length} · 請先完成畫面上的操作，再按「我已操作，下一步」。`;
+    const next = this.#tour.querySelector("[data-tour-next]");
+    next.textContent = this.#purchaseTourStep === steps.length - 1 ? "開始戰鬥教學" : "我已操作，下一步";
+    this.#tour.querySelector("[data-tour-skip]").textContent = "跳過教學";
+    next.focus();
+  }
+
+  #beginCombatTutorial() {
+    this.#purchaseTour = false;
+    this.#tour.style.display = "none";
     applyLO();
     setup();
     G.AA = 1;
@@ -307,6 +386,25 @@ export class TutorialController {
   }
 
   #nextMenuTour() {
+    if (this.#purchaseTour) {
+      const steps = this.#purchaseTourSteps();
+      const step = steps[this.#purchaseTourStep];
+      if (!step) {
+        this.#purchaseTour = false;
+        return this.#beginCombatTutorial();
+      }
+      if (!step.match()) {
+        this.#tour.querySelector("[data-tour-status]").textContent =
+          "還沒完成這一步喔！請依提示在遊戲介面操作，系統會確認實際購買或裝備狀態。";
+        return;
+      }
+      if (this.#purchaseTourStep >= steps.length - 1) {
+        this.#purchaseTour = false;
+        return this.#beginCombatTutorial();
+      }
+      this.#purchaseTourStep += 1;
+      return this.#showPurchaseTourStep();
+    }
     const step = this.#menuTourSteps()[this.#tourStep];
     if (!step) return this.#endMenuTour();
     // 個人檔案頁是延後渲染，切換分頁後再檢查，避免把未載入誤判成完成。
@@ -321,6 +419,12 @@ export class TutorialController {
 
   #endMenuTour() {
     if (this.#tour) this.#tour.style.display = "none";
+    if (this.#purchaseTour) {
+      this.#purchaseTour = false;
+      this.#markDone();
+      this.#active = false;
+      this.#syncUi();
+    }
     window.showTab?.("h");
   }
 
