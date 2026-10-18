@@ -2,7 +2,7 @@
 import { G } from "../core/game-state.js";
 import { flash } from "./boss.js";
 import { CC, SV, save } from "./progress.js";
-import { ALLW, normalizeWeaponProperties } from "./weapons.js";
+import { ALLWEAPON, normalizeWeaponProperties } from "./weapons.js";
 import { mkIcon } from "../icons.js";
 
 export const CH = [
@@ -239,7 +239,7 @@ export function chipSum() {
 export function chipWhere(i) {
   return Object.keys(SV.mods)
     .filter((k) => (SV.mods[k] || []).includes(i))
-    .map((k) => (ALLW[+k] ? ALLW[+k].n : ""))
+    .map((k) => (ALLWEAPON.getWeapon()[+k] ? ALLWEAPON.getWeapon()[+k].n : ""))
     .filter(Boolean)
     .join("、");
 }
