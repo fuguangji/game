@@ -479,7 +479,7 @@ TUTORIAL_STEPS = Object.freeze([
   {
     title: "補血",
     text: "血量被降低了。走到綠色十字上回復血量，撿取物掉在地上一段時間後會消失。",
-    setup: () => { G.pl.hp = 40; spawnHealPack(); },
+    setup: () => { if (G.pl.hp >= 100) G.pl.hp = 40; spawnHealPack(); },
     keep: () => { if (G.pl.hp < 65 && !G.pk.some((q) => q.t === "heal")) spawnHealPack(); },
     progress: () => Math.max(0, (G.pl.hp - 40) / 25),
   },
