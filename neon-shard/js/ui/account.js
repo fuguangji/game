@@ -7,7 +7,7 @@ import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
 import { STG, SV, SV_DEFAULTS, mergeSave, save } from "../game/progress.js";
 import { startTutorial } from "../game/tutorial.js";
-import { ALLW, applyLO } from "../game/weapons.js";
+import { ALLWEAPON, applyLO } from "../game/weapons.js";
 import { ProfilePage } from "../profile/profile-page.js";
 import { AAH, setAA } from "./hud.js";
 import { xGo } from "./menu.js";
@@ -35,7 +35,7 @@ const profileBridge = {
     totalStages: STG.length,
     bestScore: G.best ?? 0,
     ownedWeapons: (SV.own || []).length,
-    totalWeapons: ALLW.length,
+    totalWeapons: ALLWEAPON.getWeapon().length,
     ownedCharacters: (SV.chars || []).length,
     totalCharacters: CHS.length,
   }),
