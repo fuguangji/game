@@ -3,7 +3,7 @@ import { G } from "../core/game-state.js";
 import { CH, RC, RN, chipApply, chipAvail, chipWhere } from "../game/chips.js";
 import { ITK, ITM } from "../game/pickups.js";
 import { SV, save } from "../game/progress.js";
-import { ALLW } from "../game/weapons.js";
+import { ALLWEAPON } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
 import { XS, wStat, xChipTotal, xGo, xSaveLO, xSub, xbt, xfmt, xh, xic } from "./menu.js";
 
@@ -95,15 +95,15 @@ export function xBag(v) {
         G.wsNote = "";
         window.upd();
       });
-    b.style.setProperty("--a", ALLW[i].c);
-    b.append(mkIcon("ammo", i === G.MWI ? "#06101a" : ALLW[i].c, 16));
+    b.style.setProperty("--a", ALLWEAPON.getWeapon()[i].c);
+    b.append(mkIcon("ammo", i === G.MWI ? "#06101a" : ALLWEAPON.getWeapon()[i].c, 16));
     b.insertAdjacentHTML(
       "beforeend",
-      `<span>${ALLW[i].n}</span><span class="x-pp">${mm.map((c) => `<i class="${has(c) ? "f" : ""}" style="${has(c) ? "--p:" + RC[CH[c].r] : ""}"></i>`).join("")}</span>${G.LO.includes(i) ? `<em>${G.LO.indexOf(i) + 1}</em>` : ""}`,
+      `<span>${ALLWEAPON.getWeapon()[i].n}</span><span class="x-pp">${mm.map((c) => `<i class="${has(c) ? "f" : ""}" style="${has(c) ? "--p:" + RC[CH[c].r] : ""}"></i>`).join("")}</span>${G.LO.includes(i) ? `<em>${G.LO.indexOf(i) + 1}</em>` : ""}`,
     );
     wl.append(b);
   }
-  L.append(wl, xh("x-h", `槽位<small>${ALLW[G.MWI].n}</small>`));
+  L.append(wl, xh("x-h", `槽位<small>${ALLWEAPON.getWeapon()[G.MWI].n}</small>`));
   const sg = xh("x-lst");
   for (let k = 0; k < 2; k++) {
     const ci = m[k],
@@ -145,7 +145,7 @@ export function xBag(v) {
     };
     sg.append(d);
   }
-  const base = ALLW[G.MWI],
+  const base = ALLWEAPON.getWeapon()[G.MWI],
     cur = chipApply(base, m.filter(has)),
     sb = wStat(base),
     sc = wStat(cur),
