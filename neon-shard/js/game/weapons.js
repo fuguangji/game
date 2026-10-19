@@ -628,11 +628,11 @@ class WeaponCatalog {
   /** 將舊欄位轉為正式欄位，並保留非列舉的 getter/setter 相容別名。 */
   static normalize(weapon) {
     for (const [legacyName, canonicalName] of Object.entries(this.#aliases)) {
-      if (Object.hasOwn(weapon, legacyName)) {
+      if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
         if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
         delete weapon[legacyName];
       }
-      if (!Object.hasOwn(weapon, legacyName)) {
+      if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
         Object.defineProperty(weapon, legacyName, {
           configurable: true,
           enumerable: false,
@@ -686,7 +686,7 @@ export const ALLWEAPON = Object.freeze({
 /** 依擁有清單清理出戰配置，再建立戰鬥專用副本。 */
 export function applyLO() {
   G.LO = G.LO.filter((id) => SV.own.includes(id));
-  if (!G.LO.length && SV.own.length) G.LO = [SV.own[0]];
+  if (!G.LO.length) G.LO = [SV.own[0]];
   WP.splice(0, WP.length, ...G.LO.map((id) => modW(WeaponCatalog.get(id))));
 }
 
