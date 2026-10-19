@@ -1,11 +1,20 @@
-/** game/weapons — 武器資料表與出戰配置 */
+/** game/weapons — 私有武器資料庫與出戰配置 */
 import { G } from "../core/game-state.js";
 import { KEYS, store } from "../core/save-store.js";
 import { modW } from "./chips.js";
 import { SV } from "./progress.js";
 
-const ALLW = [
-  {
+/** 對戰鬥系統維持穩定的公開介面；WP 刻意保留可變陣列。 */
+export const WP = [];
+export let WD = Object.freeze([]);
+
+/**
+ * 武器定義完全封裝在私有欄位中。
+ * 不提供原始資料表的讀寫入口；單筆定義初始化後凍結。
+ */
+class WeaponRegistry {
+  static #definitions = [
+    {
     name: "手槍",
     color: "#22e6ff",
     projectilesPerShot: 1,
@@ -27,8 +36,8 @@ const ALLW = [
     wallDamage: 1,
     automaticFire: 0,
     aimPreviewMode: "l",
-  },
-  {
+    },
+    {
     name: "霰彈",
     color: "#ffb03d",
     projectilesPerShot: 5,
@@ -50,8 +59,8 @@ const ALLW = [
     wallDamage: 0.6,
     automaticFire: 0,
     aimPreviewMode: "c",
-  },
-  {
+    },
+    {
     name: "狙擊",
     color: "#ff5fd0",
     projectilesPerShot: 1,
@@ -74,8 +83,8 @@ const ALLW = [
     wallDamage: 2,
     automaticFire: 0,
     aimPreviewMode: "s",
-  },
-  {
+    },
+    {
     name: "衝鋒",
     color: "#9dff3d",
     projectilesPerShot: 1,
@@ -98,8 +107,8 @@ const ALLW = [
     wallDamage: 0.5,
     automaticFire: 1,
     aimPreviewMode: "l",
-  },
-  {
+    },
+    {
     name: "噴火",
     color: "#ff7a3d",
     projectilesPerShot: 1,
@@ -123,8 +132,8 @@ const ALLW = [
     wallDamage: 0.07,
     automaticFire: 1,
     aimPreviewMode: "c",
-  },
-  {
+    },
+    {
     name: "重炮",
     color: "#b45cff",
     projectilesPerShot: 1,
@@ -146,8 +155,8 @@ const ALLW = [
     wallDamage: 3,
     automaticFire: 0,
     aimPreviewMode: "l",
-  },
-  {
+    },
+    {
     name: "導引",
     color: "#4dffd8",
     projectilesPerShot: 1,
@@ -170,8 +179,8 @@ const ALLW = [
     wallDamage: 0.5,
     automaticFire: 1,
     aimPreviewMode: "l",
-  },
-  {
+    },
+    {
     name: "環爆",
     color: "#ffe14a",
     projectilesPerShot: 10,
@@ -193,53 +202,8 @@ const ALLW = [
     wallDamage: 0.5,
     automaticFire: 0,
     aimPreviewMode: "r",
-  },
-];
-export const WP = [];
-export let WD = Object.freeze([]);
-// 武器設定採用可讀性較高的正名；舊欄位以 getter/setter 暫時相容既有戰鬥程式。
-let WEAPON_PROPERTY_ALIASES; // 初始化在 init()
-export function normalizeWeaponProperties(weapon) {
-  for (const [legacyName, canonicalName] of Object.entries(WEAPON_PROPERTY_ALIASES)) {
-    if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
-      if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
-      delete weapon[legacyName];
-    }
-    if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
-      Object.defineProperty(weapon, legacyName, {
-        configurable: true,
-        enumerable: false,
-        get() { return this[canonicalName]; },
-        set(value) { this[canonicalName] = value; },
-      });
-    }
-  }
-  return weapon;
-}
-let WEAPON_DEFINITIONS; // 私有快照，只能經 ALLWEAPON 查詢
-
-export const ALLWEAPON = Object.freeze({
-  getWeapon(id) {
-    if (!WEAPON_DEFINITIONS) return id === undefined ? Object.freeze([]) : null;
-    return id === undefined ? WEAPON_DEFINITIONS : (WEAPON_DEFINITIONS[id] || null);
-  },
-  getWeaponById(id) { return this.getWeapon(id); },
-  getWeaponCount() { return WEAPON_DEFINITIONS ? WEAPON_DEFINITIONS.length : 0; }
-});
-// 功能：讀取並套用保存的武器配置。
-export function applyLO() {
-  G.LO = G.LO.filter((i) => SV.own.includes(i));
-  if (!G.LO.length) G.LO = [SV.own[0]];
-  WP.splice(0, WP.length, ...G.LO.map((i) => modW(ALLW[i])));
-}
-
-/** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
-let initialized = false;
-export function init() {
-  if (initialized) return;
-
-ALLW.push(
-  {
+    },
+    {
     name: "光線",
     color: "#7af0ff",
     projectilesPerShot: 1,
@@ -263,8 +227,8 @@ ALLW.push(
     ammoInMagazine: 30,
     reloadDuration: 0.22,
     description: "自動·高速穿透敵人",
-  },
-  {
+    },
+    {
     name: "雙槍",
     color: "#ff9ad5",
     projectilesPerShot: 2,
@@ -286,8 +250,8 @@ ALLW.push(
     ammoInMagazine: 8,
     reloadDuration: 1,
     description: "自動·雙發",
-  },
-  {
+    },
+    {
     name: "榴彈",
     color: "#ffd23a",
     projectilesPerShot: 1,
@@ -311,8 +275,8 @@ ALLW.push(
     reloadDuration: 2.2,
     description: "手動·投擲·可越過牆壁，落地爆炸",
     grenadeMode: 1,
-  },
-  {
+    },
+    {
     name: "穿甲",
     color: "#e0e0ff",
     projectilesPerShot: 1,
@@ -335,13 +299,8 @@ ALLW.push(
     ammoInMagazine: 6,
     reloadDuration: 1.3,
     description: "手動·穿透敵人與牆",
-  },
-);
-
-
-
-ALLW.push(
-  {
+    },
+    {
     name: "彈跳",
     color: "#8dff7a",
     projectilesPerShot: 1,
@@ -363,8 +322,8 @@ ALLW.push(
     ammoInMagazine: 12,
     reloadDuration: 0.6,
     description: "自動·碰牆反彈",
-  },
-  {
+    },
+    {
     name: "電弧",
     color: "#7ab8ff",
     projectilesPerShot: 1,
@@ -386,8 +345,8 @@ ALLW.push(
     ammoInMagazine: 20,
     reloadDuration: 0.34,
     description: "自動·連鎖電擊",
-  },
-  {
+    },
+    {
     name: "地雷",
     color: "#ff8a5c",
     projectilesPerShot: 1,
@@ -409,8 +368,8 @@ ALLW.push(
     ammoInMagazine: 4,
     reloadDuration: 2.5,
     description: "手動·放置地雷",
-  },
-  {
+    },
+    {
     name: "迴旋",
     color: "#ffb3e6",
     projectilesPerShot: 1,
@@ -433,11 +392,8 @@ ALLW.push(
     ammoInMagazine: 5,
     reloadDuration: 1.4,
     description: "手動·飛出又飛回來",
-  },
-);
-
-ALLW.push(
-  {
+    },
+    {
     name: "寒霜",
     color: "#9ae6ff",
     projectilesPerShot: 1,
@@ -459,8 +415,8 @@ ALLW.push(
     ammoInMagazine: 40,
     reloadDuration: 0.2,
     description: "自動·噴流累積凍結值，凍成冰塊後受傷 +50%",
-  },
-  {
+    },
+    {
     name: "重力",
     color: "#b0a0ff",
     projectilesPerShot: 1,
@@ -482,8 +438,8 @@ ALLW.push(
     ammoInMagazine: 6,
     reloadDuration: 1.5,
     description: "手動·命中處產生引力場拉攝敵人",
-  },
-  {
+    },
+    {
     name: "電荷",
     color: "#ffe14a",
     projectilesPerShot: 1,
@@ -505,8 +461,8 @@ ALLW.push(
     ammoInMagazine: 8,
     reloadDuration: 1,
     description: "手動·命中疊 3 層電荷後引爆，範圍暈眩",
-  },
-  {
+    },
+    {
     name: "蛛網",
     color: "#c0a060",
     projectilesPerShot: 1,
@@ -528,13 +484,8 @@ ALLW.push(
     ammoInMagazine: 4,
     reloadDuration: 3,
     description: "手動·放置蛛網，距離可控；範圍內敵人與敵方子彈大幅減速",
-  },
-);
-
-
-
-ALLW.push(
-  {
+    },
+    {
     name: "砲塔",
     color: "#7affc0",
     projectilesPerShot: 1,
@@ -556,8 +507,8 @@ ALLW.push(
     ammoInMagazine: 2,
     reloadDuration: 4,
     description: "手動·投擲部署自動砲塔，持續自動攻擊範圍內敵人（最多同時 2 座）",
-  },
-  {
+    },
+    {
     name: "毒罐",
     color: "#8dff3d",
     projectilesPerShot: 1,
@@ -579,8 +530,8 @@ ALLW.push(
     ammoInMagazine: 4,
     reloadDuration: 3,
     description: "手動·投擲毒罐，落地產生持續傷害的毒雲，可越過牆壁",
-  },
-  {
+    },
+    {
     name: "斬擊",
     color: "#ff9a4d",
     projectilesPerShot: 1,
@@ -604,8 +555,8 @@ ALLW.push(
     ammoInMagazine: 6,
     reloadDuration: 1.2,
     description: "手動·近戰由左向右揮砍，大範圍強擊退，同時擊落範圍內的敵方子彈",
-  },
-  {
+    },
+    {
     name: "集束彈",
     color: "#ffb84d",
     projectilesPerShot: 1,
@@ -627,66 +578,136 @@ ALLW.push(
     ammoInMagazine: 5,
     reloadDuration: 1.5,
     description: "手動·飛行一段距離或命中後爆開成碎片",
-  },
-);
+    }
+  ];
 
-WEAPON_PROPERTY_ALIASES = Object.freeze({
-  "n": "name",
-  "c": "color",
-  "n1": "projectilesPerShot",
-  "sp": "spreadAngle",
-  "dmg": "damage",
-  "v": "projectileSpeed",
-  "life": "projectileLifetime",
-  "cd": "fireCooldown",
-  "cost": "ammoCost",
-  "kb": "knockback",
-  "r": "projectileRadius",
-  "pierce": "pierceCount",
-  "hm": "homingEnabled",
-  "acc": "accuracySpread",
-  "mp": "muzzleParameter",
-  "wd": "wallDamage",
-  "auto": "automaticFire",
-  "ad": "aimPreviewMode",
-  "laser": "laserMode",
-  "ex": "explosionRadius",
-  "pa": "pierceWalls",
-  "bn": "bounceCount",
-  "bm": "boomerangEnabled",
-  "ch": "chainLightningEnabled",
-  "mine": "mineMode",
-  "fz4": "freezeOnHit",
-  "gp": "gravityFieldEnabled",
-  "cg": "chargeStackEnabled",
-  "web": "webMode",
-  "tur": "turretMode",
-  "tox": "poisonCloudMode",
-  "slash": "meleeArcEnabled",
-  "rg": "meleeRange",
-  "sw": "meleeSweepAngle",
-  "cs": "clusterShotEnabled",
-  "gren": "grenadeMode",
-  "fl": "flameMode",
-  "rcg": "legacyRcg",
-  "ms0": "magazineCapacity",
-  "ms": "ammoInMagazine",
-  "rs": "reloadDuration"
+  /** 舊欄位縮寫只透過非列舉 accessor 相容，不污染正式欄位清單。 */
+  static #aliases = Object.freeze({
+    "n": "name",
+    "c": "color",
+    "n1": "projectilesPerShot",
+    "sp": "spreadAngle",
+    "dmg": "damage",
+    "v": "projectileSpeed",
+    "life": "projectileLifetime",
+    "cd": "fireCooldown",
+    "cost": "ammoCost",
+    "kb": "knockback",
+    "r": "projectileRadius",
+    "pierce": "pierceCount",
+    "hm": "homingEnabled",
+    "acc": "accuracySpread",
+    "mp": "muzzleParameter",
+    "wd": "wallDamage",
+    "auto": "automaticFire",
+    "ad": "aimPreviewMode",
+    "laser": "laserMode",
+    "ex": "explosionRadius",
+    "pa": "pierceWalls",
+    "bn": "bounceCount",
+    "bm": "boomerangEnabled",
+    "ch": "chainLightningEnabled",
+    "mine": "mineMode",
+    "fz4": "freezeOnHit",
+    "gp": "gravityFieldEnabled",
+    "cg": "chargeStackEnabled",
+    "web": "webMode",
+    "tur": "turretMode",
+    "tox": "poisonCloudMode",
+    "slash": "meleeArcEnabled",
+    "rg": "meleeRange",
+    "sw": "meleeSweepAngle",
+    "cs": "clusterShotEnabled",
+    "gren": "grenadeMode",
+    "fl": "flameMode",
+    "rcg": "legacyRcg",
+    "ms0": "magazineCapacity",
+    "ms": "ammoInMagazine",
+    "rs": "reloadDuration"
+  });
+
+  static #initialized = false;
+
+  static normalize(weapon) {
+    for (const [legacyName, canonicalName] of Object.entries(this.#aliases)) {
+      if (Object.hasOwn(weapon, legacyName)) {
+        if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
+        delete weapon[legacyName];
+      }
+      if (!Object.hasOwn(weapon, legacyName)) {
+        Object.defineProperty(weapon, legacyName, {
+          configurable: true,
+          enumerable: false,
+          get() { return this[canonicalName]; },
+          set(value) { this[canonicalName] = value; },
+        });
+      }
+    }
+    return weapon;
+  }
+
+  /** 只初始化一次：正規化後凍結每把武器與整份定義表。 */
+  static initialize() {
+    if (this.#initialized) return;
+    for (const weapon of this.#definitions) {
+      this.normalize(weapon);
+      Object.freeze(weapon);
+    }
+    Object.freeze(this.#definitions);
+    this.#initialized = true;
+  }
+
+  /** 僅提供唯讀查詢；不回傳可修改的資料表。 */
+  static get(id) {
+    if (!this.#initialized) return id === undefined ? Object.freeze([]) : null;
+    return id === undefined
+      ? Object.freeze(this.#definitions.slice())
+      : (this.#definitions[id] ?? null);
+  }
+
+  static count() {
+    return this.#initialized ? this.#definitions.length : 0;
+  }
+}
+
+/** 保留既有匯出，避免其他模組必須同步改寫。 */
+export function normalizeWeaponProperties(weapon) {
+  return WeaponRegistry.normalize(weapon);
+}
+
+/** 唯讀查詢 API：不公開私有陣列，也不提供寫入方法。 */
+export const ALLWEAPON = Object.freeze({
+  getWeapon(id) { return WeaponRegistry.get(id); },
+  getWeaponById(id) { return WeaponRegistry.get(id); },
+  getWeaponCount() { return WeaponRegistry.count(); },
 });
-for (const weaponDefinition of ALLW) normalizeWeaponProperties(weaponDefinition);
-for (const weaponDefinition of ALLW) Object.freeze(weaponDefinition);
-WEAPON_DEFINITIONS = Object.freeze(ALLW.slice());
-WD = Object.freeze(WEAPON_DEFINITIONS.map((weapon) => weapon.description));
-initialized = true;
 
-G.LO = [0, 1, 2];
+/** 過濾未擁有的武器，重建戰鬥用武器實例。 */
+export function applyLO() {
+  const loadout = G.LO.filter(
+    (id) => SV.own.includes(id) && ALLWEAPON.getWeapon(id),
+  );
+  G.LO = loadout.length ? loadout : [SV.own[0]];
+  WP.splice(0, WP.length, ...G.LO.map((id) => modW(ALLWEAPON.getWeapon(id))));
+}
 
-{
+/** 由 main.js 按既定順序呼叫，集中完成資料與存檔配置初始化。 */
+let initialized = false;
+export function init() {
+  if (initialized) return;
+  WeaponRegistry.initialize();
+  WD = Object.freeze(ALLWEAPON.getWeapon().map((weapon) => weapon.description));
+
+  // 以預設配置為底，再用合法存檔覆蓋。
+  G.LO = [0, 1, 2];
   const saved = store.getJSON(
     KEYS.loadout,
-    (v) => Array.isArray(v) && v.length > 0 && v.length <= 3 && v.every((i) => ALLW[i]),
+    (value) =>
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value.length <= 3 &&
+      value.every((id) => Number.isInteger(id) && ALLWEAPON.getWeapon(id)),
   );
   if (saved) G.LO = saved;
+  initialized = true;
 }
-}
-
