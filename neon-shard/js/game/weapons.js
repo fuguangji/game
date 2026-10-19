@@ -1,11 +1,17 @@
-/** game/weapons — 武器資料表與出戰配置 */
+/** game/weapons — 私有武器資料庫、舊欄位相容與出戰配置 */
 import { G } from "../core/game-state.js";
 import { KEYS, store } from "../core/save-store.js";
 import { modW } from "./chips.js";
 import { SV } from "./progress.js";
 
-const ALLW = [
-  {
+/**
+ * 武器資料庫。
+ * 定義表與別名表皆為 class 私有靜態欄位，外部無法直接取得或修改。
+ * 公開查詢只回傳凍結資料；戰鬥中的可變副本由 modW() 產生。
+ */
+class WeaponCatalog {
+  static #definitions = [
+{
     name: "手槍",
     color: "#22e6ff",
     projectilesPerShot: 1,
@@ -194,52 +200,7 @@ const ALLW = [
     automaticFire: 0,
     aimPreviewMode: "r",
   },
-];
-export const WP = [];
-export let WD = Object.freeze([]);
-// 武器設定採用可讀性較高的正名；舊欄位以 getter/setter 暫時相容既有戰鬥程式。
-let WEAPON_PROPERTY_ALIASES; // 初始化在 init()
-export function normalizeWeaponProperties(weapon) {
-  for (const [legacyName, canonicalName] of Object.entries(WEAPON_PROPERTY_ALIASES)) {
-    if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
-      if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
-      delete weapon[legacyName];
-    }
-    if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
-      Object.defineProperty(weapon, legacyName, {
-        configurable: true,
-        enumerable: false,
-        get() { return this[canonicalName]; },
-        set(value) { this[canonicalName] = value; },
-      });
-    }
-  }
-  return weapon;
-}
-let WEAPON_DEFINITIONS; // 私有快照，只能經 ALLWEAPON 查詢
-
-export const ALLWEAPON = Object.freeze({
-  getWeapon(id) {
-    if (!WEAPON_DEFINITIONS) return id === undefined ? Object.freeze([]) : null;
-    return id === undefined ? WEAPON_DEFINITIONS : (WEAPON_DEFINITIONS[id] || null);
-  },
-  getWeaponById(id) { return this.getWeapon(id); },
-  getWeaponCount() { return WEAPON_DEFINITIONS ? WEAPON_DEFINITIONS.length : 0; }
-});
-// 功能：讀取並套用保存的武器配置。
-export function applyLO() {
-  G.LO = G.LO.filter((i) => SV.own.includes(i));
-  if (!G.LO.length) G.LO = [SV.own[0]];
-  WP.splice(0, WP.length, ...G.LO.map((i) => modW(ALLW[i])));
-}
-
-/** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
-let initialized = false;
-export function init() {
-  if (initialized) return;
-
-ALLW.push(
-  {
+{
     name: "光線",
     color: "#7af0ff",
     projectilesPerShot: 1,
@@ -336,12 +297,7 @@ ALLW.push(
     reloadDuration: 1.3,
     description: "手動·穿透敵人與牆",
   },
-);
-
-
-
-ALLW.push(
-  {
+{
     name: "彈跳",
     color: "#8dff7a",
     projectilesPerShot: 1,
@@ -434,10 +390,7 @@ ALLW.push(
     reloadDuration: 1.4,
     description: "手動·飛出又飛回來",
   },
-);
-
-ALLW.push(
-  {
+{
     name: "寒霜",
     color: "#9ae6ff",
     projectilesPerShot: 1,
@@ -529,12 +482,7 @@ ALLW.push(
     reloadDuration: 3,
     description: "手動·放置蛛網，距離可控；範圍內敵人與敵方子彈大幅減速",
   },
-);
-
-
-
-ALLW.push(
-  {
+{
     name: "砲塔",
     color: "#7affc0",
     projectilesPerShot: 1,
@@ -627,11 +575,12 @@ ALLW.push(
     ammoInMagazine: 5,
     reloadDuration: 1.5,
     description: "手動·飛行一段距離或命中後爆開成碎片",
-  },
-);
+  }
+  ];
 
-WEAPON_PROPERTY_ALIASES = Object.freeze({
-  "n": "name",
+  // 舊欄位縮寫 → 正式欄位名稱；僅供本 class 內部正規化。
+  static #aliases = {
+"n": "name",
   "c": "color",
   "n1": "projectilesPerShot",
   "sp": "spreadAngle",
@@ -672,21 +621,94 @@ WEAPON_PROPERTY_ALIASES = Object.freeze({
   "ms0": "magazineCapacity",
   "ms": "ammoInMagazine",
   "rs": "reloadDuration"
+  };
+
+  static #initialized = false;
+  static #empty = Object.freeze([]);
+
+  /** 將舊欄位轉為正式欄位，並保留非列舉的 getter/setter 相容別名。 */
+  static normalize(weapon) {
+    for (const [legacyName, canonicalName] of Object.entries(this.#aliases)) {
+      if (Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+        if (weapon[canonicalName] === undefined) weapon[canonicalName] = weapon[legacyName];
+        delete weapon[legacyName];
+      }
+      if (!Object.prototype.hasOwnProperty.call(weapon, legacyName)) {
+        Object.defineProperty(weapon, legacyName, {
+          configurable: true,
+          enumerable: false,
+          get() { return this[canonicalName]; },
+          set(value) { this[canonicalName] = value; },
+        });
+      }
+    }
+    return weapon;
+  }
+
+  /** 完成一次性正規化與凍結；重複呼叫不會重複處理。 */
+  static initialize() {
+    if (this.#initialized) return;
+    for (const weapon of this.#definitions) {
+      this.normalize(weapon);
+      Object.freeze(weapon);
+    }
+    Object.freeze(this.#definitions);
+    this.#initialized = true;
+  }
+
+  /** 唯讀查詢：回傳凍結陣列或單筆凍結定義，不暴露可變資料表。 */
+  static get(id) {
+    if (!this.#initialized) return id === undefined ? this.#empty : null;
+    return id === undefined ? this.#definitions : (this.#definitions[id] ?? null);
+  }
+
+  static get count() {
+    return this.#initialized ? this.#definitions.length : 0;
+  }
+}
+
+/** 戰鬥用可變武器副本；維持原陣列參照以相容既有模組。 */
+export const WP = [];
+export let WD = Object.freeze([]);
+
+/** 舊戰鬥程式仍可使用縮寫欄位，但定義資料本身不可修改。 */
+export function normalizeWeaponProperties(weapon) {
+  return WeaponCatalog.normalize(weapon);
+}
+
+/** 對外提供唯讀查詢介面；定義陣列與每筆定義皆已凍結。 */
+export const ALLWEAPON = Object.freeze({
+  getWeapon(id) { return WeaponCatalog.get(id); },
+  getWeaponById(id) { return WeaponCatalog.get(id); },
+  getWeaponCount() { return WeaponCatalog.count; },
 });
-for (const weaponDefinition of ALLW) normalizeWeaponProperties(weaponDefinition);
-for (const weaponDefinition of ALLW) Object.freeze(weaponDefinition);
-WEAPON_DEFINITIONS = Object.freeze(ALLW.slice());
-WD = Object.freeze(WEAPON_DEFINITIONS.map((weapon) => weapon.description));
-initialized = true;
 
-G.LO = [0, 1, 2];
+/** 依擁有清單清理出戰配置，再建立戰鬥專用副本。 */
+export function applyLO() {
+  G.LO = G.LO.filter((id) => SV.own.includes(id));
+  if (!G.LO.length) G.LO = [SV.own[0]];
+  WP.splice(0, WP.length, ...G.LO.map((id) => modW(WeaponCatalog.get(id))));
+}
 
-{
+/** 由 main.js 按既有順序呼叫，避免模組循環引用造成初始化順序問題。 */
+let initialized = false;
+export function init() {
+  if (initialized) return;
+
+  WeaponCatalog.initialize();
+  WD = Object.freeze(WeaponCatalog.get().map((weapon) => weapon.description));
+
+  // 預設出戰配置；若有合法存檔，則以存檔覆蓋。
+  G.LO = [0, 1, 2];
   const saved = store.getJSON(
     KEYS.loadout,
-    (v) => Array.isArray(v) && v.length > 0 && v.length <= 3 && v.every((i) => ALLW[i]),
+    (value) =>
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value.length <= 3 &&
+      value.every((id) => WeaponCatalog.get(id) !== null),
   );
   if (saved) G.LO = saved;
-}
-}
 
+  initialized = true;
+}
