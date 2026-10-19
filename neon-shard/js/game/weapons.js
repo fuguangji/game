@@ -624,6 +624,7 @@ class WeaponCatalog {
   };
 
   static #initialized = false;
+  static #empty = Object.freeze([]);
 
   /** 將舊欄位轉為正式欄位，並保留非列舉的 getter/setter 相容別名。 */
   static normalize(weapon) {
@@ -657,13 +658,12 @@ class WeaponCatalog {
 
   /** 唯讀查詢：回傳凍結陣列或單筆凍結定義，不暴露可變資料表。 */
   static get(id) {
-    this.initialize();
+    if (!this.#initialized) return id === undefined ? this.#empty : null;
     return id === undefined ? this.#definitions : (this.#definitions[id] ?? null);
   }
 
   static get count() {
-    this.initialize();
-    return this.#definitions.length;
+    return this.#initialized ? this.#definitions.length : 0;
   }
 }
 
