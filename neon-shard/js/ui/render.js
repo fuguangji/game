@@ -888,7 +888,7 @@ export function render() {
     
     // 4. 定位文字與矩形
     // 原本文字的基準點 Y 軸
-    const y = p.y - p.r - 16;                           // 16 是留給職業光環的空間，可自行調整
+    const y = p.y - p.r - 16;                           // 16 是留給職業光環的空間
     
     // 因為文字是置中且底部對齊，所以矩形的左上角 (X, Y) 座標如下計算：
     const rectX = p.x - rectWidth / 2;
@@ -900,7 +900,7 @@ export function render() {
     cx.fillStyle = "rgba(5, 6, 13, 0.65)";               // 65% 透明度的深色背景
     cx.fill();
     
-    // 6. 再畫字（因為有了背景，描邊通常可省略，如果你想保留也可以取消註解）
+    // 6. 再畫字（因為有了背景，描邊通常可省略）
     cx.textAlign = "center";
     cx.textBaseline = "bottom";
     cx.lineJoin = "round";

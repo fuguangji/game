@@ -94,6 +94,9 @@ export class EnemyCatalog {
       shape: { sides: 4, innerRatio: 0.55 }, telegraphRadius: 90, preferredDistance: 280, attackCooldown: 4, recoveryTime: 1 },
     { typeId: 29, name: "陷阱師", radius: 14, maxHealth: 55, moveSpeed: 65, color: "#c0a060", scoreValue: 240, mass: 1, unlockWave: 13,
       shape: { sides: 6, innerRatio: 0.5 }, telegraphRadius: 60, preferredDistance: 260, attackCooldown: 4.5, recoveryTime: 0.9 },
+      { typeId: 30, name: "毒霧", radius: 15, maxHealth: 45, moveSpeed: 60, color: "#3dff67", scoreValue: 280, mass: 2.3, unlockWave: 1,
+      shape: { sides: 15, innerRatio: 1 }, telegraphRadius: 90, preferredDistance: 340, attackCooldown: 5, recoveryTime: 1.4,
+      dodge: { skill: 0.2, mistakeChance: 0.7 } },
   ];
 
   /** @type {Map<number, EnemyDefinition>} */
