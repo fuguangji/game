@@ -1,5 +1,6 @@
 /** game/training — 訓練場 */
 import { G } from "../core/game-state.js";
+import { KEYS, store } from "../core/save-store.js";
 import { fsm } from "../core/state-machine.js";
 import { $ } from "../core/viewport.js";
 import { ELITE, EL_COL } from "../enemy-config.js";
@@ -14,6 +15,7 @@ import { mkIcon } from "../icons.js";
 import { ECOL, trPick } from "../ui/menu.js";
 import { trChip } from "../ui/workshop.js";
 import { bossCatalog } from "../config/index.js";
+import { toast } from "../ui/feedback.js";
 
 // 功能：處理「endTrain」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function endTrain() {
@@ -42,6 +44,8 @@ export function startTrain() {
   trBuild();
   $("tr").classList.remove("h");
   $("trt").classList.remove("h");
+  $("trt").textContent = "收合訓練面板";
+  if (store.getString(KEYS.trainingTip) === "1") toast("進入訓練場：不會死亡、彈藥無限", { duration: 2400 });
 }
 // 功能：處理「trBuild」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function trBuild() {
@@ -71,6 +75,18 @@ export function trBuild() {
       b.append(txt);
       b.onclick = () => fn(b);
       g.append(b);
+      return b;
+    },
+    sep = (g, text) => {
+      const s = document.createElement("span");
+      s.className = "tr-sep";
+      s.textContent = text;
+      g.append(s);
+    },
+    // 開關型按鈕：用顏色表示開／關，並同步 aria-pressed（比只改文字好辨認）
+    paintToggle = (b, on) => {
+      b.classList.toggle("tg-on", on);
+      b.setAttribute("aria-pressed", String(on));
     };
   {
     const hd = document.createElement("div");
@@ -115,16 +131,19 @@ export function trBuild() {
   }
   sec("武器");
   let g = grid();
-  ALLWEAPON.getWeapon().forEach((w, i) =>
-    btn(g, "ammo", w.c, w.n, () => {
+  ALLWEAPON.getWeapon().forEach((w, i) => {
+    const b = btn(g, "ammo", w.c, w.n, () => {
       const m = modW(w);
       m.ms = Math.round(m.ms0 * (1 + 0.1 * UL("mag")));
       m.am = m.ms;
       WP[G.pl.w] = m;
-    }),
-  );
+    });
+    b.dataset.weapon = i; // 目前手上的槍會被標示出來（見 workshop.js 的 trMark）
+    b.title = w.n;
+  });
   sec("敵人");
   g = grid();
+  sep(g, "一般敵人");
   EN.forEach((n, i) =>
     btn(g, "e" + i, ECOL[i], n, () => {
       // 功能：處理「go」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
@@ -144,6 +163,7 @@ export function trBuild() {
       else go(0);
     }),
   );
+  sep(g, "Boss");
   bossCatalog.names().forEach((n, i) =>
     btn(
       g,
@@ -171,6 +191,7 @@ export function trBuild() {
       },
     ),
   );
+  sep(g, "其他");
   btn(g, "e22", "#9aa0ab", "肉盾", spawnDummy);
   sec("芯片");
   g = grid();
@@ -190,47 +211,93 @@ export function trBuild() {
   btn(g, null, "#3dff8f", "回血", () => {
     G.pl.hp = G.pl.mhp;
   });
-  btn(g, null, "#ffe14a", "無敵：開", (b) => {
+  paintToggle(btn(g, null, "#ffe14a", "無敵：" + (G.god ? "開" : "關"), (b) => {
     G.god = !G.god;
     b.textContent = "無敵：" + (G.god ? "開" : "關");
-  });
-  btn(g, null, "#4dffd8", "無限彈藥／大招：開", (b) => {
+    paintToggle(b, G.god);
+  }), G.god);
+  paintToggle(btn(g, null, "#4dffd8", "無限彈藥／大招：" + (G.inf ? "開" : "關"), (b) => {
     G.inf = !G.inf;
     b.textContent = "無限彈藥／大招：" + (G.inf ? "開" : "關");
-  });
-  btn(g, null, "#ff9a3d", "凍結：關", (b) => {
+    paintToggle(b, G.inf);
+  }), G.inf);
+  paintToggle(btn(g, null, "#ff9a3d", "凍結敵人：" + (G.fz ? "開" : "關"), (b) => {
     G.fz = !G.fz;
-    b.textContent = "凍結：" + (G.fz ? "開" : "關");
-  });
-  btn(g, null, "#ff3d9a", "離開", () => quit());
+    b.textContent = "凍結敵人：" + (G.fz ? "開" : "關");
+    paintToggle(b, G.fz);
+  }), G.fz);
   {
     const rows = [...el.querySelectorAll(".tr-row")],
       tb = document.createElement("div"),
-      tg = document.createElement("div");
-    tb.className = "tr-row";
-    tb.style.order = -1;
-    G.trHd.className = "tr-l";
-    G.trHd.style.cssText = "cursor:move;touch-action:none;color:#22e6ff";
-    G.trHd.textContent = "訓練 ≡";
-    tg.className = "tr-b";
-    tb.append(G.trHd, tg);
-    // 功能：處理「show」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+      tg = document.createElement("div"),
+      actions = document.createElement("div"),
+      hint = document.createElement("div"),
+      hints = [
+        "點一下武器，就換掉你手上這把（彈藥無限）。亮起的是你現在拿的槍。",
+        "點一下就會在你面前生成敵人；有精英版的會先問你要普通還是精英。",
+        "所有芯片都能免費試用，不用擁有。點一下裝到手上這把槍，再點一次拆下（最多 2 枚）；只在訓練場生效，不會動到你的背包。",
+        "隨時切換無敵、無限彈藥或凍結敵人，專心觀察攻擊與芯片的效果。",
+      ],
+      mkBtn = (text, col, fn, cls) => {
+        const b = document.createElement("button");
+        b.style.borderColor = col;
+        b.textContent = text;
+        if (cls) b.className = cls;
+        b.onclick = fn;
+        return b;
+      };
+    tb.className = "tr-row tr-head";
+    G.trHd.className = "tr-l tr-drag";
+    G.trHd.style.cssText = "cursor:move;touch-action:none";
+    G.trHd.textContent = "訓練場 ≡";
+    G.trHd.title = "拖曳可以移動面板";
+    tg.className = "tr-tabs";
+    tg.setAttribute("role", "tablist");
+    hint.className = "tr-hint";
+    actions.className = "tr-actions";
+    // 功能：切換分頁；同時更新分頁高亮與這一頁的操作說明。
     const show = (k) => {
       window._trTab = k;
       rows.forEach((r, i) => (r.style.display = i === k ? "flex" : "none"));
       [...tg.children].forEach((b, i) => {
-        b.style.background = i === k ? "#22e6ff33" : "#ffffff0d";
+        b.classList.toggle("on", i === k);
+        b.setAttribute("aria-selected", String(i === k));
       });
+      hint.textContent = hints[k];
     };
     ["武器", "敵人", "芯片", "控制"].forEach((n, i) => {
-      const b = document.createElement("button");
-      b.style.borderColor = "#22e6ff";
-      b.textContent = n;
-      b.onclick = () => show(i);
+      const b = mkBtn(n, "#22e6ff", () => show(i), "tr-tab");
+      b.setAttribute("role", "tab");
       tg.append(b);
     });
-    el.append(tb);
+    // 常用動作放在標題列，不必為了清場或離開切換分頁
+    actions.append(
+      mkBtn("清除敵人", "#22e6ff", () => {
+        G.en.length = 0;
+      }),
+      mkBtn("離開訓練場", "#ff3d9a", () => quit(), "tr-exit"),
+    );
+    tb.append(G.trHd, tg, actions);
+    el.prepend(tb, hint);
+    if (store.getString(KEYS.trainingTip) !== "1") {
+      const tip = document.createElement("div"),
+        msg = document.createElement("span");
+      tip.className = "tr-tip";
+      msg.textContent =
+        "歡迎來到訓練場！這裡不會死亡、彈藥無限。① 到「敵人」叫出靶子　② 到「芯片」試裝看看　③ 玩夠了按右上「離開訓練場」。";
+      tip.append(
+        msg,
+        mkBtn("知道了", "#3dff8f", () => {
+          store.setString(KEYS.trainingTip, "1");
+          tip.remove();
+        }),
+      );
+      el.prepend(tip);
+    }
     show(window._trTab || 0);
   }
-  $("trt").onclick = () => el.classList.toggle("h");
+  $("trt").onclick = () => {
+    const hidden = el.classList.toggle("h");
+    $("trt").textContent = hidden ? "展開訓練面板" : "收合訓練面板";
+  };
 }

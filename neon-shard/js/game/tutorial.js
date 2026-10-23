@@ -8,6 +8,7 @@ import { blocked, burst, cell, empty, mkEn, setup } from "./battle.js";
 import { SQ } from "./ultimates.js";
 import { WP, applyLO } from "./weapons.js";
 import { showOv, start } from "../ui/render.js";
+import { startShopGuide } from "../ui/shop-guide.js";
 
 /* =====================================================================
  * 教學模式（TutorialController）：15 步引導，完成條件由「操作統計」自動判定
@@ -70,11 +71,7 @@ export class TutorialController {
   #backBtn = null;
   #skipBtn = null;
   #startBtn = null;
-  #tourBtn = null;
-  #tour = null;
-  #tourStep = 0;
-  #tourSeenTab = false;
-  #tourPage = "menu";
+  #guideBtn = null;
 
   constructor() {
     this.#seen = store.getString(KEYS.tutorialDone) === "1";
@@ -230,30 +227,10 @@ export class TutorialController {
     this.#skipBtn = mk("跳過此步 (N)", () => this.advance());
     mk("離開教學 (X)", () => this.exit());
     this.#startBtn = mk("開始戰鬥 (Enter)", () => this.toBattle());
-    this.#tourBtn = mk("繼續：選單操作教學", () => this.#startMenuTour());
+    this.#guideBtn = mk("繼續：商店與芯片導覽", () => this.#startShopGuide());
     document.body.append(box);
     this.#box = box;
 
-    // 短句、實際點擊導向的選單教學；不再用長篇文字代替操作。
-    const tour = document.createElement("section");
-    tour.setAttribute("role", "dialog");
-    tour.setAttribute("aria-label", "NEON SHARD 選單操作教學");
-    tour.style.cssText = "position:fixed;z-index:40;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:none;width:min(480px,calc(100% - 24px));color:#d8f4ff;pointer-events:none";
-    tour.innerHTML = `
-      <div style="width:100%;padding:20px;background:#0d1328;border:1px solid #22e6ff88;border-radius:14px;box-shadow:0 12px 40px #0009;pointer-events:auto">
-        <div style="color:#22e6ff;font-size:12px;letter-spacing:.12em">FIELD GUIDE · 選單實作</div>
-        <h2 data-tour-title style="margin:8px 0;font-size:22px"></h2>
-        <p data-tour-body style="line-height:1.65;margin:8px 0 18px"></p>
-        <p data-tour-status style="font-size:12px;color:#a7bad7"></p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-          <button type="button" class="sb" data-tour-next>我已操作，下一步</button>
-          <button type="button" class="sb" data-tour-skip>結束導覽</button>
-        </div>
-      </div>`;
-    tour.querySelector("[data-tour-next]").addEventListener("click", () => this.#nextMenuTour());
-    tour.querySelector("[data-tour-skip]").addEventListener("click", () => this.#endMenuTour());
-    document.body.append(tour);
-    this.#tour = tour;
     this.#syncUi();
   }
 
@@ -263,65 +240,18 @@ export class TutorialController {
     this.#backBtn.style.display = this.#active && (this.#step > 0 || this.#done) ? "block" : "none";
     this.#skipBtn.style.display = this.#active && !this.#done ? "block" : "none";
     this.#startBtn.style.display = this.#active && this.#done ? "block" : "none";
-    this.#tourBtn.style.display = this.#active && this.#done ? "block" : "none";
+    this.#guideBtn.style.display = this.#active && this.#done ? "block" : "none";
   }
 
-  #menuTourSteps() {
-    return [
-      { page: "menu", tab: "b", title: "備戰：確認出戰配置", body: "點選上方「備戰」。看看目前裝備的武器與角色；這一步不要求購買或更換任何裝備。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "b" },
-      { page: "menu", tab: "i", title: "背包：查看已有物品", body: "點選「背包」，找找已擁有的槍械與芯片。先熟悉物品在哪裡，不需要消耗資源。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "i" },
-      { page: "menu", tab: "k", title: "關卡：查看進度", body: "點選「關卡」，看看目前的通關進度與可選關卡。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "k" },
-      { page: "menu", tab: "m", title: "商城：認識資源用途", body: "點選「商城」看看有哪些項目與價格；這裡只需瀏覽，不必購買。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "m" },
-      { page: "profile", tab: "a", sub: "ns-tab-settings", title: "個人檔案：調整設定", body: "點選「個人檔案」，再開啟「設定」。試著切換一項偏好；不想更動的話，看看選項後就可以繼續。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "a" && document.querySelector("#ns-tab-settings")?.getAttribute("aria-selected") === "true" },
-      { page: "profile", tab: "a", sub: "ns-tab-appearance", title: "外觀：自訂角色造型", body: "在個人檔案裡開啟「外觀」，可以繪製並預覽自己的圖樣。此步不要求儲存變更。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "a" && document.querySelector("#ns-tab-appearance")?.getAttribute("aria-selected") === "true" },
-      { page: "profile", tab: "a", sub: "ns-tab-cloud", title: "雲端同步：認識帳號功能", body: "開啟「雲端同步」查看登入、註冊與存檔功能。沒有帳號也沒關係；不需要註冊、登入或上傳任何資料。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "a" && document.querySelector("#ns-tab-cloud")?.getAttribute("aria-selected") === "true" },
-      { page: "menu", tab: "h", title: "導覽完成！", body: "你已經走過主要選單。現在可以自由探索，或返回大廳開始正式戰鬥。", match: () => document.querySelector("#xn .x-tab.on")?.dataset.t === "h" },
-    ];
-  }
-
-  #startMenuTour() {
+  /** 戰鬥教學結束後，回到選單並開始「商店與芯片」互動導覽（要真的買一次、裝一次） */
+  #startShopGuide() {
     if (!this.#active || !this.#done) return;
-    // 戰鬥教學結束後真正回到選單，讓玩家操作原本的介面。
     this.#markDone();
     this.#active = false;
     this.#syncUi();
     fsm.transition("menu");
     showOv(0);
-    this.#tourStep = 0;
-    this.#tour.style.display = "flex";
-    this.#showMenuTourStep();
-  }
-
-  #showMenuTourStep() {
-    const steps = this.#menuTourSteps();
-    const step = steps[this.#tourStep];
-    if (!step) return this.#endMenuTour();
-    this.#tourSeenTab = false;
-    // 不代替玩家點擊：每一步都由玩家在真實選單中完成。
-    this.#tour.querySelector("[data-tour-title]").textContent = step.title;
-    this.#tour.querySelector("[data-tour-body]").textContent = step.body;
-    this.#tour.querySelector("[data-tour-status]").textContent = `步驟 ${this.#tourStep + 1} / ${steps.length} · 請先在遊戲介面親自點選指定分頁，再按「我已操作，下一步」。`;
-    const next = this.#tour.querySelector("[data-tour-next]");
-    next.textContent = this.#tourStep === steps.length - 1 ? "完成導覽" : "我已操作，下一步";
-    next.focus();
-  }
-
-  #nextMenuTour() {
-    const step = this.#menuTourSteps()[this.#tourStep];
-    if (!step) return this.#endMenuTour();
-    // 個人檔案頁是延後渲染，切換分頁後再檢查，避免把未載入誤判成完成。
-    if (!step.match()) {
-      this.#tour.querySelector("[data-tour-status]").textContent = "還沒到這個頁面喔！請依提示點選指定分頁，再繼續。";
-      return;
-    }
-    if (this.#tourStep >= this.#menuTourSteps().length - 1) return this.#endMenuTour();
-    this.#tourStep += 1;
-    this.#showMenuTourStep();
-  }
-
-  #endMenuTour() {
-    if (this.#tour) this.#tour.style.display = "none";
-    window.showTab?.("h");
+    startShopGuide();
   }
 
   #wrap(text, maxWidth) {
@@ -343,7 +273,7 @@ export class TutorialController {
     cx.save();
     cx.font = 13 * u + "px " + TUTORIAL_FONT;
     const body = this.#done
-      ? "你已學會基本戰鬥！接著可點「繼續：選單操作教學」，實際走過備戰、背包、關卡、商城、設定、外觀與雲端同步；也可以直接開始正式戰鬥。"
+      ? "你已學會基本戰鬥！接著點「繼續：商店與芯片導覽」，我們會帶你實際買一包芯片並裝到槍上（約 1 分鐘）；也可以直接開始正式戰鬥。"
       : G.touchOn && step.mb ? step.mb : step.text;
     const lines = this.#wrap(body, w - 24 * u);
     const h = (46 + lines.length * 19 + (this.#done ? 4 : 18)) * u;

@@ -10,13 +10,13 @@ const { skinStore } = await import("../js/profile/appearance.js");
 const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
 function makeDeps(overrides = {}) {
   const account = Object.assign(new EventTarget(), { signedIn: false, unlocked: false, displayName: "訪客", profile: null, getFreshAccessToken: async () => null, restore() {} });
-  const calls = { autoAim: [], tutorial: 0, goTo: [], destroyed: 0 };
+  const calls = { autoAim: [], tutorial: 0, shopGuide: 0, goTo: [], destroyed: 0 };
   const settings = new SettingsStore(new SaveStore(memStorage()));
   const AccountView = { mount: () => ({ destroy: () => calls.destroyed++, onChange() {} }) };
   const bridge = {
     getSave: () => ({}), applySave() {}, getProgress: () => ({ clearedStages: 2, totalStages: 5, bestScore: 1234, ownedWeapons: 3, totalWeapons: 24, ownedCharacters: 1, totalCharacters: 8 }),
     getRoleColor: () => "#22e6ff", getAutoAim: () => 1, setAutoAim: (m) => calls.autoAim.push(m), autoAimLabels: ["手動", "修正附近", "較大範圍"],
-    replayTutorial: () => calls.tutorial++, goTo: (t) => calls.goTo.push(t), getPlayerPosition: () => ({ x: 0.5, y: 0.5 }),
+    replayTutorial: () => calls.tutorial++, replayShopGuide: () => calls.shopGuide++, goTo: (t) => calls.goTo.push(t), getPlayerPosition: () => ({ x: 0.5, y: 0.5 }),
   };
   return { deps: { bridge, accountService: account, AccountView, settings, apiBase: "https://api.test", ...overrides }, account, calls, settings };
 }
@@ -72,7 +72,7 @@ test("個人檔案：顯示進度，按鈕透過橋接切換大廳分頁", () =>
   page.destroy();
 });
 
-test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重新觀看教學呼叫橋接", () => {
+test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重看戰鬥教學與商店導覽都呼叫橋接", () => {
   const { deps, calls, settings } = makeDeps(); const { host, page } = mount(deps);
   page.show("settings");
   const radios = host.findAll((e) => e.type === "radio");
@@ -85,8 +85,10 @@ test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重�
   assert.equal(settings.get("showAura"), false);
   settings.reset();
   assert.equal(aura.checked, true, "還原設定後畫面同步");
-  host.findAll((e) => e.textContent === "重新觀看教學")[0].click();
+  host.findAll((e) => e.textContent === "重看戰鬥教學")[0].click();
   assert.equal(calls.tutorial, 1);
+  host.findAll((e) => e.textContent === "重看商店與芯片導覽")[0].click();
+  assert.equal(calls.shopGuide, 1);
   void skin; page.destroy();
 });
 

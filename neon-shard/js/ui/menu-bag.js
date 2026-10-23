@@ -5,6 +5,7 @@ import { ITK, ITM } from "../game/pickups.js";
 import { SV, save } from "../game/progress.js";
 import { ALLWEAPON } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
+import { toast } from "./feedback.js";
 import { XS, wStat, xChipTotal, xGo, xSaveLO, xSub, xbt, xfmt, xh, xic } from "./menu.js";
 
 // 功能：處理介面系統「xEquip」相關的資料、互動或顯示。
@@ -103,8 +104,10 @@ export function xBag(v) {
     );
     wl.append(b);
   }
+  wl.dataset.coach = "bag-weapons";
   L.append(wl, xh("x-h", `槽位<small>${ALLWEAPON.getWeapon()[G.MWI].n}</small>`));
   const sg = xh("x-lst");
+  sg.dataset.coach = "bag-slots";
   for (let k = 0; k < 2; k++) {
     const ci = m[k],
       c = has(ci) ? CH[ci] : null,
@@ -129,6 +132,7 @@ export function xBag(v) {
           G.wsNote = "";
           save();
           window.upd();
+          toast(`已拆下「${c.n}」，它回到庫存了`);
         }),
       );
     } else
@@ -168,6 +172,7 @@ export function xBag(v) {
       xh("v" + cl, cl ? (pc > 0 ? "+" : "") + Math.round(pc) + "%" : "—"),
     );
   }
+  st.dataset.coach = "bag-cmp";
   L.append(sg, xh("x-h", "效果對比<small>改裝前 → 改裝後</small>"), st);
   if (G.wsNote) L.append(xh("x-note", G.wsNote));
   const R = xh("x-sc");
@@ -255,16 +260,19 @@ export function xBag(v) {
             return;
           }
           const q = gm(G.MWI);
-          q[G.SLI] = i;
+          const slot = G.SLI;
+          q[slot] = i;
           SV.mods[G.MWI] = q;
           const k = ne(q);
           if (k >= 0) G.SLI = k;
           G.wsNote = "";
           save();
           window.upd();
+          toast(`已把「${c.n}」裝到${ALLWEAPON.getWeapon()[G.MWI].n}的槽位 ${slot + 1}`, { type: "success" });
         },
       );
       d.style.setProperty("--a", RC[c.r]);
+      d.dataset.coach = "bag-chip-" + i;
       d.append(
         xic("chip", c.c, 24),
         xh(

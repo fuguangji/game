@@ -19,6 +19,7 @@ import { SettingsSection } from "./sections/settings-section.js";
  * @property {(mode: number) => void} setAutoAim
  * @property {string[]} autoAimLabels 每種自動瞄準模式的說明
  * @property {() => void} replayTutorial
+ * @property {() => void} replayShopGuide 重看「商店與芯片」互動導覽
  * @property {(tab: string) => void} goTo 切換大廳分頁
  * @property {() => ({x:number,y:number}|null)} getPlayerPosition 玩家位置（0~1）
  *

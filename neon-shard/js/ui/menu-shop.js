@@ -5,7 +5,8 @@ import { ITK, ITM, buyW, ucost } from "../game/pickups.js";
 import { CC, CN, SV, UC, UPD, WPC, WPR, save } from "../game/progress.js";
 import { ALLWEAPON } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
-import { CI, XCAT, XPK, XS, wCat, wMode, wNote, xChipTotal, xFlt, xSub, xbt, xh, xic } from "./menu.js";
+import { toast } from "./feedback.js";
+import { CI, XCAT, XPK, XS, wCat, wMode, wNote, xChipTotal, xFlt, xGo, xSub, xbt, xh, xic } from "./menu.js";
 
 // 功能：處理介面系統「xShop」相關的資料、互動或顯示。
 export function xShop(v) {
@@ -17,16 +18,24 @@ export function xShop(v) {
     ["pk", "芯片包"],
   ];
   const fl = xh("x-flt");
-  subs.forEach(([k, n]) =>
-    fl.append(xbt("x-f" + (XS.sh === k ? " on" : ""), n, () => xSub("sh", k))),
-  );
+  fl.dataset.coach = "shop-subs"; // 新手導覽的聚光燈目標
+  subs.forEach(([k, n]) => {
+    const tab = xbt("x-f" + (XS.sh === k ? " on" : ""), n, () => xSub("sh", k));
+    tab.dataset.coach = "shop-sub-" + k;
+    fl.append(tab);
+  });
   v.append(fl);
   const box = xh("x-doc");
   v.append(box);
   // 功能：處理「cost」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
   const cost = (K, c, can, fn, txt) => {
+    const lack = c - SV[K];
     const b = xbt("x-btn sm " + (can ? "pri" : ""), `${c} ${CN[K]}`, fn, !can);
     b.prepend(mkIcon(CI[K], can ? "#04101a" : CC[K], 14));
+    if (!can && lack > 0) {
+      b.append(xh("x-short", `還差 ${lack}`, "span"));
+      b.title = `還差 ${lack} ${CN[K]}`;
+    }
     return b;
   };
   if (XS.sh === "up") {
@@ -57,6 +66,7 @@ export function xShop(v) {
               SV.up[u.k] = lv + 1;
               save();
               window.upd();
+              toast(`「${u.n}」升到 Lv ${lv + 1}`, { type: "success" });
             }),
       );
       l.append(d);
@@ -92,10 +102,18 @@ export function xShop(v) {
       const b = xbt(
         "x-btn sm " + (can ? "gld" : ""),
         `${WPR[i]} 金幣`,
-        () => buyW(i),
+        () => {
+          const before = SV.own.length;
+          buyW(i);
+          if (SV.own.length > before) toast(`已解鎖「${w.n}」，到「備戰」就能裝備`, { type: "success" });
+        },
         !can,
       );
       b.prepend(mkIcon("coin", can ? "#1a1200" : CC.coins, 14));
+      if (!can) {
+        b.append(xh("x-short", `還差 ${WPR[i] - SV[WPC[i]]}`, "span"));
+        b.title = `還差 ${WPR[i] - SV[WPC[i]]} ${CN[WPC[i]]}`;
+      }
       d.append(b);
       l.append(d);
     });
@@ -127,10 +145,15 @@ export function xShop(v) {
           SV.items[k] = (SV.items[k] || 0) + 1;
           save();
           window.upd();
+          toast(`購買「${t.n}」×1（持有 ${SV.items[k]}/9），記得到「背包」選擇攜帶`, { type: "success" });
         },
         !can,
       );
       b.prepend(mkIcon("coin", can ? "#1a1200" : CC.coins, 14));
+      if (!can && n < 9) {
+        b.append(xh("x-short", `還差 ${t.p - SV.coins}`, "span"));
+        b.title = `還差 ${t.p - SV.coins} 金幣`;
+      }
       d.append(b);
       l.append(d);
     }
@@ -165,10 +188,15 @@ export function xShop(v) {
             SV.char = i;
             save();
             window.upd();
+            toast(`已解鎖並選擇角色「${c.n}」`, { type: "success" });
           },
           !can,
         );
         b.prepend(mkIcon("coin", can ? "#1a1200" : CC.coins, 14));
+        if (!can) {
+          b.append(xh("x-short", `還差 ${c.p - SV.coins}`, "span"));
+          b.title = `還差 ${c.p - SV.coins} 金幣`;
+        }
         d.append(b);
       }
       l.append(d);
@@ -179,11 +207,12 @@ export function xShop(v) {
       xh("x-sub", `用晶核開芯片包，目前持有 ${xChipTotal()} 枚芯片。`),
     );
     const l = xh("x-lst");
-    for (const p of XPK) {
+    XPK.forEach((p, packIndex) => {
       const o = TW[p.b],
         sum = o.reduce((a, x) => a + x, 0),
         can = SV.co >= p.cost,
         d = xh("x-cd");
+      d.dataset.coach = "pack-card-" + packIndex;
       d.style.setProperty("--a", CC.co);
       d.append(
         xic("chip", "#ff4dff", 28),
@@ -214,13 +243,21 @@ export function xShop(v) {
           }
           save();
           window.upd();
+          const best = got.reduce((a, i) => (CH[i].r > CH[a].r ? i : a), got[0]);
+          toast(
+            `開出 ${got.length} 枚芯片，最稀有：${CH[best].n}（${RN[CH[best].r]}）`,
+            { type: CH[best].r >= 3 ? "success" : "info" },
+          );
         }),
       );
       l.append(d);
-    }
+    });
     box.append(l);
     if (G.lastPk && G.lastPk.length) {
-      box.append(xh("x-h", "本次獲得"));
+      const result = xh("x-res");
+      result.dataset.coach = "pack-result";
+      box.append(result);
+      result.append(xh("x-h", "本次獲得<small>芯片要裝到槍上才會生效</small>"));
       const g = xh("x-lst");
       for (const x of G.lastPk) {
         const c = CH[x.i],
@@ -236,7 +273,7 @@ export function xShop(v) {
         );
         g.append(d);
       }
-      box.append(g);
+      result.append(g, xbt("x-btn pri sm x-goBag", "到背包安裝芯片", () => xGo("i")));
     }
   }
 }

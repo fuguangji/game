@@ -37,6 +37,7 @@ export function trMark() {
     const i = +b.dataset.chip;
     b.style.background = on.includes(i) ? RC[CH[i].r] + "55" : "#ffffff0d";
   });
+  document.querySelectorAll("#tr [data-weapon]").forEach((b) => b.classList.toggle("tg-on", +b.dataset.weapon === id)); // 標示手上的槍
 }
 // 功能：處理「wsR」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function wsR(el) {

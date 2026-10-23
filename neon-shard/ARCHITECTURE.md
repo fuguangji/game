@@ -212,3 +212,15 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 - 少數 Boss 招式仍直接以數字呼叫 `eb(...)`（速度與傷害依階段變動，走 `bulletCatalog.custom`），尚未全部具名。
 - 線上聯機只在個人檔案頁面開啟期間連線；與實際戰鬥畫面的同步還沒有接上。
 - 真實瀏覽器中的視覺驗證（皮膚線寬、頭像、分頁排版）。
+
+## UI 人性化層（新增）
+
+| 檔案 | 職責 |
+|---|---|
+| `js/ui/feedback.js` | `toast()` 非阻擋提示、`confirmDialog()` 取代 `window.confirm` |
+| `js/ui/coach.js` | `Coach`：聚光燈導覽引擎（步驟可用條件自動前進、可跳過、Esc 離開） |
+| `js/ui/shop-guide.js` | 商店與芯片導覽的 11 個步驟、新手補給、大廳「下一步建議」 |
+| `css/ui-kit.css` | 上述元件、訓練場面板、雲端帳號畫面的樣式 |
+
+- 導覽靠 `data-coach="…"` 屬性找目標（商城、背包、芯片包卡片等），重繪後每幀重新定位。
+- 新增存檔鍵：`shopGuideDone`、`starterGift`（新手補給只送一次）、`trainingTip`。

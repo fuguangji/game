@@ -7,6 +7,7 @@ import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
 import { STG, SV, SV_DEFAULTS, mergeSave, save } from "../game/progress.js";
 import { startTutorial } from "../game/tutorial.js";
+import { startShopGuide } from "./shop-guide.js";
 import { ALLWEAPON, applyLO } from "../game/weapons.js";
 import { ProfilePage } from "../profile/profile-page.js";
 import { AAH, setAA } from "./hud.js";
@@ -44,6 +45,7 @@ const profileBridge = {
   setAutoAim: (mode) => setAA(mode),
   get autoAimLabels() { return AAH; }, // 用到時才讀取（避免模組載入順序問題）
   replayTutorial: () => startTutorial(),
+  replayShopGuide: () => startShopGuide(),
   goTo: (tab) => xGo(tab),
   getPlayerPosition: () => (G.pl ? { x: Math.max(0, Math.min(1, G.pl.x / MW)), y: Math.max(0, Math.min(1, G.pl.y / MW)) } : null),
 };

@@ -1,14 +1,43 @@
 /**
  * 雲端帳號畫面：只負責顯示與收集輸入，所有邏輯交給 AccountService。
+ *
+ * 設計重點（以「第一次看到這個頁面的玩家」為準）：
+ * - 先講清楚「這是選用功能」與「忘記密碼的後果」，再給表單
+ * - 登入／建立帳號用分頁切換；欄位即時提示，送出前先在本機檢查，不會白跑一趟伺服器
+ * - 錯誤訊息翻成白話（密碼錯、帳號已存在、太多次嘗試、伺服器喚醒中…）
+ * - 覆蓋本機存檔前，先把「雲端」與「本機」的進度並排給玩家比對
  * - 使用 <form>：按 Enter 可送出、瀏覽器能檢查必填、密碼管理員能辨識欄位
- * - 訊息（成功 / 錯誤）會保留，不會因為重新繪製而消失
- * - 所有使用者文字都走 textContent，不會有 XSS
+ * - 所有使用者文字都走 textContent，不會有 XSS；樣式在 css/ui-kit.css
  */
 import { h } from "../core/dom-utils.js";
+import { confirmDialog } from "../ui/feedback.js";
 
 const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
-const STYLE_ID = "ns-account-style";
-const CSS = ".ns-account{display:grid;gap:12px;max-width:620px}.ns-account h2{margin:0;color:var(--t)}.ns-form{display:grid;gap:12px}.ns-field{display:grid;gap:6px;color:var(--t);font-size:14px}.ns-input{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #ffffff30;border-radius:10px;background:#101923;color:var(--t);font:inherit}.ns-row{display:flex;gap:8px;flex-wrap:wrap}.ns-account button:disabled,.ns-account input:disabled{opacity:.55;cursor:wait}";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
+const SLOW_SERVER_MS = 6000; // 超過這麼久還沒回應，就說明可能是伺服器在喚醒
+
+/** 把存檔整理成一行白話摘要（用在覆蓋前的比對） */
+export function summarizeSave(save) {
+  const n = (v) => (Number.isFinite(v) ? v : 0);
+  const cleared = Array.isArray(save?.clr) ? save.clr.filter(Boolean).length : 0;
+  return `金幣 ${n(save?.coins)} · 碎片 ${n(save?.sh)} · 晶核 ${n(save?.co)} · 通關 ${cleared} 關`;
+}
+
+/**
+ * 把 API 錯誤翻成玩家看得懂的話。伺服器訊息不認得時照原文顯示（不要吞掉有用的資訊）。
+ * @param {unknown} error
+ * @param {"login"|"signup"|"other"} action
+ */
+export function friendlyError(error, action = "other") {
+  const message = error?.message || "操作失敗，請稍後再試。";
+  const status = Number(error?.status) || 0;
+  if (status === 429) return "嘗試次數太多了，請等幾分鐘再試一次。";
+  if (action === "login" && status === 401) return "電子郵件或密碼不正確，請再確認一次。";
+  if (action === "signup" && /already|exist|registered|已.*註冊|已存在/i.test(message)) return "這個電子郵件已經註冊過了，請切換到「登入」。";
+  if (status >= 500) return "伺服器暫時出了點問題，請稍後再試。你的本機存檔不受影響。";
+  return message;
+}
 
 export class AccountView {
   static #current = null;
@@ -21,6 +50,7 @@ export class AccountView {
   #busy = false;
   #notice = { text: "", error: false };
   #statusEl = null;
+  #lastSync = null;
   #listeners = new Set();
 
   /**
@@ -55,7 +85,6 @@ export class AccountView {
   }
 
   #start() {
-    if (!document.getElementById(STYLE_ID)) document.head.append(h("style", { id: STYLE_ID }, CSS));
     this.#service.addEventListener("change", (e) => {
       if (!this.#container.isConnected) return this.destroy();
       if (e.detail?.notice) this.#notice = { text: e.detail.notice, error: true };
@@ -70,100 +99,210 @@ export class AccountView {
     this.#notice = { text, error };
     if (this.#statusEl) {
       this.#statusEl.textContent = text;
-      this.#statusEl.style.color = error ? "#ff7b88" : "var(--t)";
+      this.#statusEl.classList.toggle("err", error);
     }
   }
 
-  /** 執行一個動作：期間鎖住所有控制項，錯誤顯示在狀態列 */
-  async #run(work) {
+  /**
+   * 執行一個動作：期間鎖住所有控制項並顯示進行中文字，錯誤翻成白話顯示在狀態列。
+   * @param {() => Promise<void>} work
+   * @param {{busyText?: string, action?: "login"|"signup"|"other"}} [options]
+   */
+  async #run(work, { busyText = "處理中…", action = "other" } = {}) {
     if (this.#busy) return;
     this.#busy = true;
-    const toggle = (disabled) => this.#container.querySelectorAll("button,input").forEach((el) => { el.disabled = disabled; });
-    toggle(true);
-    this.#setNotice("處理中…");
+    const buttons = [...this.#container.querySelectorAll("button,input")];
+    for (const el of buttons) el.disabled = true;
+    this.#container.classList.add("is-busy");
+    this.#setNotice(busyText);
+    const slowTimer = setTimeout(() => {
+      this.#setNotice("伺服器還在回應中。免費主機閒置後需要 30～60 秒才會醒來，請稍候，先不要關閉頁面。");
+    }, SLOW_SERVER_MS);
     try {
       await work();
     } catch (error) {
-      this.#setNotice(error?.message || "操作失敗，請稍後再試。", true);
+      this.#setNotice(friendlyError(error, action), true);
     } finally {
+      clearTimeout(slowTimer);
       this.#busy = false;
-      toggle(false);
+      this.#container.classList.remove("is-busy");
+      for (const el of buttons) el.disabled = false;
     }
   }
 
   render() {
-    const svc = this.#service;
-    this.#statusEl = h("p", { class: "x-sub", role: "status", "aria-live": "polite" }, this.#notice.text);
-    this.#statusEl.style.color = this.#notice.error ? "#ff7b88" : "var(--t)";
+    this.#statusEl = h("p", { class: "ns-status" + (this.#notice.error ? " err" : ""), role: "status", "aria-live": "polite" }, this.#notice.text);
     const panel = h("section", { class: "ns-account" });
-    if (!svc.signedIn) this.#renderSignedOut(panel);
+    if (!this.#service.signedIn) this.#renderSignedOut(panel);
     else this.#renderSignedIn(panel);
-    panel.append(h("p", { class: "x-hint" }, "安全提醒：忘記密碼且沒有舊密碼或其他恢復方式時，可能無法解密敏感存檔。不要在共用裝置上保持登入。"));
     this.#container.replaceChildren(panel);
   }
 
-  #field(label, type, autocomplete, extra = {}) {
-    const input = h("input", { class: "ns-input", type, autocomplete, required: true, ...extra });
-    return { wrap: h("label", { class: "ns-field" }, h("span", {}, label), input), input };
+  /* ---------- 共用小零件 ---------- */
+
+  /** 一個表單欄位：標籤、輸入框、說明、錯誤訊息（錯誤用 role=alert，螢幕閱讀器會唸） */
+  #field({ label, type, autocomplete, help = "", password = false, ...attrs }) {
+    const id = `ns-f-${Math.random().toString(36).slice(2, 8)}`;
+    const input = h("input", { class: "ns-input", id, type, autocomplete, required: true, "aria-describedby": `${id}-d`, ...attrs });
+    const note = h("small", { class: "ns-note", id: `${id}-d` }, help);
+    const error = h("small", { class: "ns-err", role: "alert" });
+    const row = h("div", { class: "ns-input-row" }, input);
+    if (password) {
+      const toggle = h("button", { type: "button", class: "ns-eye", "aria-pressed": "false", onclick: () => {
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        toggle.textContent = show ? "隱藏" : "顯示";
+        toggle.setAttribute("aria-pressed", String(show));
+      } }, "顯示");
+      row.append(toggle);
+    }
+    const wrap = h("div", { class: "ns-field" }, h("label", { class: "ns-label", for: id }, label), row, note, error);
+    return {
+      wrap, input, note,
+      setHelp: (text, ok = false) => { note.textContent = text; note.classList.toggle("ok", ok); },
+      fail: (message) => { error.textContent = message; input.setAttribute("aria-invalid", message ? "true" : "false"); },
+    };
   }
 
+  #seg() {
+    const options = [["login", "登入"], ["signup", "建立帳號"]];
+    return h("div", { class: "ns-seg", role: "tablist", "aria-label": "登入或建立帳號" },
+      ...options.map(([mode, text]) => h("button", {
+        type: "button", role: "tab", class: "ns-seg-btn" + (this.#mode === mode ? " on" : ""), "aria-selected": String(this.#mode === mode),
+        onclick: () => { if (this.#mode === mode) return; this.#mode = mode; this.#notice = { text: "", error: false }; this.render(); this.#container.querySelector("input")?.focus(); },
+      }, text)));
+  }
+
+  /* ---------- 未登入 ---------- */
   #renderSignedOut(panel) {
     const signup = this.#mode === "signup";
-    const email = this.#field("電子郵件", "email", "email", { maxLength: 254 });
-    const password = this.#field(signup ? "密碼（至少 8 字元）" : "密碼", "password", signup ? "new-password" : "current-password", { maxLength: 256, minLength: signup ? 8 : 1 });
-    const nickname = signup ? this.#field("遊戲暱稱（1–24 字元，不可含 < > & \" ' ` % _ \\）", "text", "nickname", { maxLength: 24 }) : null;
-    const form = h("form", { class: "ns-form", onsubmit: (e) => {
+    const email = this.#field({ label: "電子郵件", type: "email", autocomplete: "email", maxLength: 254, help: signup ? "用來登入與接收驗證信。" : "" });
+    const password = this.#field({
+      label: "密碼", type: "password", password: true, maxLength: 256, minLength: signup ? MIN_PASSWORD : 1,
+      autocomplete: signup ? "new-password" : "current-password",
+      help: signup ? `至少 ${MIN_PASSWORD} 個字元。這個密碼同時保護你的雲端存檔，請記好。` : "",
+    });
+    const nickname = signup ? this.#field({ label: "遊戲暱稱", type: "text", autocomplete: "nickname", maxLength: 24, help: "1～24 個字，會顯示在個人檔案。不能包含 < > & \" ' ` % _ \\" }) : null;
+
+    // 即時提示：邊打邊告訴玩家還缺什麼，而不是按下送出才被罵
+    if (signup) {
+      password.input.addEventListener("input", () => {
+        const left = MIN_PASSWORD - password.input.value.length;
+        password.fail("");
+        if (left > 0) password.setHelp(`還差 ${left} 個字元。`);
+        else password.setHelp("✓ 長度足夠。這個密碼同時保護你的雲端存檔，請記好。", true);
+      });
+      nickname.input.addEventListener("input", () => {
+        const value = nickname.input.value.trim();
+        nickname.fail("");
+        if (value && !NICKNAME_PATTERN.test(value)) nickname.setHelp("暱稱含有不允許的符號，請移除。");
+        else nickname.setHelp(`${value.length} / 24 字`, !!value);
+      });
+    }
+    email.input.addEventListener("input", () => email.fail(""));
+
+    const validate = () => {
+      const problems = [];
+      if (!EMAIL_PATTERN.test(email.input.value.trim())) problems.push([email, "請輸入正確的電子郵件，例如 name@example.com。"]);
+      if (!password.input.value) problems.push([password, "請輸入密碼。"]);
+      else if (signup && password.input.value.length < MIN_PASSWORD) problems.push([password, `密碼至少要 ${MIN_PASSWORD} 個字元。`]);
+      if (signup && !NICKNAME_PATTERN.test(nickname.input.value.trim())) problems.push([nickname, "暱稱需為 1～24 個字，且不能包含 < > & \" ' ` % _ \\ 或控制字元。"]);
+      for (const f of [email, password, nickname]) f?.fail("");
+      for (const [field, message] of problems) field.fail(message);
+      problems[0]?.[0].input.focus();
+      return problems.length === 0;
+    };
+
+    const submit = h("button", { type: "submit", class: "x-btn pri blk" }, signup ? "建立帳號" : "登入");
+    const form = h("form", { class: "ns-form", novalidate: true, onsubmit: (e) => {
       e.preventDefault();
+      if (!validate()) { this.#setNotice("請先修正標示的欄位。", true); return; }
       this.#run(async () => {
         const creds = { email: email.input.value.trim(), password: password.input.value };
         if (signup) {
-          const displayName = nickname.input.value.trim();
-          if (!NICKNAME_PATTERN.test(displayName)) throw new Error("暱稱需為 1–24 字元，且不可包含 < > & \" ' ` % _ \\ 或控制字元。");
-          const { needsEmailConfirmation } = await this.#service.signUp({ ...creds, displayName });
-          this.#setNotice(needsEmailConfirmation ? "帳號已建立。請先完成電子郵件驗證，再回到這裡登入。" : "帳號建立完成，金鑰已加密封裝。");
+          const { needsEmailConfirmation } = await this.#service.signUp({ ...creds, displayName: nickname.input.value.trim() });
+          this.#setNotice(needsEmailConfirmation ? "帳號已建立！請到信箱點擊驗證連結，完成後回到這裡「登入」。" : "帳號建立完成，存檔加密金鑰已準備好。");
         } else {
           await this.#service.logIn(creds);
-          this.#setNotice("登入成功，帳號加密金鑰已解鎖。");
+          this.#setNotice("登入成功，可以開始同步存檔了。");
         }
-      });
-    } },
-    h("h2", {}, "雲端帳號"),
-    h("p", { class: "x-sub" }, signup ? "建立帳號後可在其他裝置登入並同步存檔。私鑰只會以密碼衍生的金鑰加密後上傳。" : "登入後可同步雲端存檔。"),
-    email.wrap, password.wrap, nickname?.wrap,
-    h("div", { class: "ns-row" },
-      h("button", { type: "submit", class: "x-btn pri" }, signup ? "建立帳號" : "登入"),
-      h("button", { type: "button", class: "x-btn", onclick: () => { this.#mode = signup ? "login" : "signup"; this.#notice = { text: "", error: false }; this.render(); } },
-        signup ? "我已有帳號" : "建立新帳號")));
-    panel.append(form, this.#statusEl);
+      }, { busyText: signup ? "正在建立帳號並產生加密金鑰…" : "登入中…", action: signup ? "signup" : "login" });
+    } }, email.wrap, password.wrap, nickname?.wrap, submit);
+
+    panel.append(
+      h("header", { class: "ns-intro" },
+        h("h2", {}, "雲端存檔 ", h("span", { class: "ns-pill" }, "選用")),
+        h("p", {}, "不登入也能完整遊玩，進度會保存在這台裝置。登入後，可以在不同裝置之間接關。"),
+        h("ul", { class: "ns-points" },
+          h("li", {}, "🔒 存檔內容會先在這台裝置加密，再上傳。"),
+          h("li", {}, "📱 換手機或電腦時，登入後按「從雲端載入」就能接關。"),
+          h("li", { class: "warn" }, "⚠️ 忘記密碼可能就解不開雲端存檔，請把密碼記好。"))),
+      this.#seg(),
+      form,
+      this.#statusEl);
   }
 
+  /* ---------- 已登入 ---------- */
   #renderSignedIn(panel) {
     const svc = this.#service;
-    panel.append(h("h2", {}, "雲端存檔"),
-      h("p", { class: "x-sub" }, svc.profile?.displayName ? `已登入：${svc.profile.displayName}` : "已保留登入工作階段。"));
+    const name = svc.profile?.displayName || "玩家";
+    const badges = h("div", { class: "ns-badges" },
+      h("span", { class: "ns-badge ok" }, "已登入"),
+      h("span", { class: "ns-badge " + (svc.unlocked ? "ok" : "warn") }, svc.unlocked ? "金鑰已解鎖" : "需要輸入密碼解鎖"));
+    const head = h("header", { class: "ns-me" },
+      h("div", { class: "ns-avatar-dot", "aria-hidden": "true" }, [...name][0] ?? "?"),
+      h("div", {}, h("h2", {}, name), badges));
+    const logout = h("button", { type: "button", class: "x-btn sm", onclick: () => this.#run(async () => {
+      await svc.logOut();
+      this.#setNotice("已登出。這台裝置上的本機存檔仍然保留。");
+    }, { busyText: "登出中…" }) }, "登出");
+
     if (!svc.unlocked) {
-      const password = this.#field("登入密碼（只在本裝置記憶體中使用）", "password", "current-password", { maxLength: 256 });
-      panel.append(h("form", { class: "ns-form", onsubmit: (e) => {
+      const password = this.#field({ label: "登入密碼", type: "password", password: true, autocomplete: "current-password", maxLength: 256,
+        help: "重新整理頁面後，加密金鑰需要用密碼重新解鎖。密碼只在這台裝置的記憶體中使用，不會被儲存。" });
+      panel.append(head, h("form", { class: "ns-form", onsubmit: (e) => {
         e.preventDefault();
-        this.#run(async () => { await svc.unlock(password.input.value); this.#setNotice("金鑰已解鎖；可以同步存檔。"); });
-      } }, password.wrap, h("div", { class: "ns-row" },
-        h("button", { type: "submit", class: "x-btn pri" }, "解鎖金鑰"),
-        h("button", { type: "button", class: "x-btn", onclick: () => this.#run(() => svc.logOut()) }, "登出"))), this.#statusEl);
+        if (!password.input.value) { password.fail("請輸入密碼。"); password.input.focus(); return; }
+        this.#run(async () => {
+          await svc.unlock(password.input.value);
+          this.#setNotice("已解鎖，可以同步存檔了。");
+        }, { busyText: "解鎖中…" });
+      } }, password.wrap, h("div", { class: "ns-row" }, h("button", { type: "submit", class: "x-btn pri" }, "解鎖"), logout)), this.#statusEl);
       return;
     }
-    panel.append(h("p", { class: "x-sub" }, "加密金鑰已在目前分頁解鎖。存檔內容使用 ECDH + HKDF-SHA-256 + AES-256-GCM 加密。"),
-      h("div", { class: "ns-row" },
-        h("button", { type: "button", class: "x-btn pri", onclick: () => this.#run(async () => {
-          const revision = await svc.uploadSave(this.#bridge.getSave());
-          this.#setNotice(`雲端存檔完成（版本 ${revision}）。`);
-        }) }, "上傳目前存檔"),
-        h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
-          if (!window.confirm("這會用雲端存檔覆蓋本機存檔，確定嗎？")) return this.#setNotice("已取消。");
-          const { save, revision } = await svc.downloadSave();
-          this.#bridge.applySave(save);
-          this.#setNotice(`已下載雲端存檔（版本 ${revision}），本機存檔已更新。`);
-        }) }, "下載並覆蓋本機存檔"),
-        h("button", { type: "button", class: "x-btn", onclick: () => this.#run(() => svc.logOut()) }, "登出")),
-      this.#statusEl);
+
+    const upload = h("button", { type: "button", class: "x-btn pri", onclick: () => this.#run(async () => {
+      const revision = await svc.uploadSave(this.#bridge.getSave());
+      this.#lastSync = { text: `${this.#clock()} 已上傳（雲端版本 ${revision}）` };
+      this.#setNotice(`上傳完成：${summarizeSave(this.#bridge.getSave())}`);
+      this.render();
+    }, { busyText: "正在加密並上傳…" }) }, "上傳目前存檔");
+
+    const download = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
+      this.#setNotice("正在取得雲端存檔…");
+      const { save, revision } = await svc.downloadSave(); // 先取回並解密，此時還沒動到本機
+      const confirmed = await confirmDialog({
+        title: "用雲端存檔覆蓋本機？",
+        body: `雲端（版本 ${revision}）\n${summarizeSave(save)}\n\n這台裝置\n${summarizeSave(this.#bridge.getSave())}\n\n覆蓋後無法復原。如果這台裝置的進度比較新，請按取消，改用「上傳目前存檔」。`,
+        confirmText: "用雲端覆蓋本機", cancelText: "取消", danger: true,
+      });
+      if (!confirmed) return this.#setNotice("已取消，本機存檔沒有任何變動。");
+      this.#bridge.applySave(save);
+      this.#lastSync = { text: `${this.#clock()} 已載入雲端存檔（版本 ${revision}）` };
+      this.#setNotice(`已載入：${summarizeSave(save)}`);
+      this.render();
+    }, { busyText: "正在下載並解密…" }) }, "從雲端載入");
+
+    panel.append(head,
+      h("div", { class: "ns-sync" },
+        h("div", { class: "ns-sync-card" }, h("h3", {}, "備份到雲端"), h("p", {}, "把這台裝置目前的進度存到雲端，會取代雲端上較舊的版本。"), upload),
+        h("div", { class: "ns-sync-card" }, h("h3", {}, "從雲端載入"), h("p", {}, "把雲端的進度載入這台裝置（換裝置時用）。覆蓋前會先讓你比對兩邊的進度。"), download)),
+      h("p", { class: "ns-meta" }, `這台裝置：${summarizeSave(this.#bridge.getSave())}`, this.#lastSync ? h("br") : null, this.#lastSync?.text ?? null),
+      this.#statusEl,
+      h("div", { class: "ns-row ns-foot" }, logout, h("small", { class: "ns-note" }, "登出不會刪除這台裝置上的本機存檔。")));
+  }
+
+  #clock() {
+    return new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
   }
 }

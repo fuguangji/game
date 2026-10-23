@@ -9,6 +9,9 @@ export const KEYS = Object.freeze({
   save: "neonShardSave",
   autoAim: "neonShardAA",
   tutorialDone: "neonShardTutorialDone",
+  shopGuideDone: "neonShardShopGuideDone",
+  starterGift: "neonShardStarterGift",
+  trainingTip: "neonShardTrainingTip",
   settings: "neonShardSettings",
 });
 

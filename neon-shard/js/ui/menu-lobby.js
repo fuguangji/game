@@ -12,6 +12,7 @@ import { ALLWEAPON, WD } from "../game/weapons.js";
 import { XB, xEmb, xEquip, xUnequip } from "./menu-bag.js";
 import { XCAT, XS, wCat, wMode, wNote, wStat, xFlt, xGo, xSide, xSub, xbt, xfmt, xh, xic, xmax } from "./menu.js";
 import { start } from "./render.js";
+import { suggestNextStep } from "./shop-guide.js";
 
 /* ---------- 大廳 ---------- */
 export function xLobby(v) {
@@ -77,15 +78,22 @@ export function xLobby(v) {
   const two = xh("x-two");
   two.style.marginTop = "0";
   two.style.gridTemplateColumns = "1fr 1fr 1fr";
+  const tipped = (btn, tip) => ((btn.title = tip), btn);
   two.append(
-    xbt("x-btn", "教學模式", startTutorial),
-    xbt("x-btn", "訓練場", startTrain),
-    xbt("x-btn", "兌換碼", rdOpen),
+    tipped(xbt("x-btn", "教學模式", startTutorial), "重玩基礎操作教學"),
+    tipped(xbt("x-btn", "訓練場", startTrain), "自由試槍、試芯片，不會死亡"),
+    tipped(xbt("x-btn", "兌換碼", rdOpen), "輸入兌換碼領取獎勵"),
   );
   const foot = xh("x-foot");
   foot.append(go, two);
+  const next = suggestNextStep();
+  const nextCard = next && xh("x-next");
+  if (nextCard) {
+    nextCard.append(xh("x-tx", `<b>下一步建議</b><small>${next.text}</small>`), xbt("x-btn sm pri", next.label, next.run));
+  }
   const side = xSide(
     [
+      ...(nextCard ? [nextCard] : []),
       xh("x-h", "本次出戰"),
       lst,
       xh("x-h", "出戰槍械<small>點選前往備戰調整</small>"),
@@ -350,6 +358,8 @@ export function xResult(over) {
 
 // 功能：處理介面系統「xPause」相關的資料、互動或顯示。
 export function xPause() {
+  const quitBtn = $("qb");
+  if (quitBtn) quitBtn.textContent = G.train ? "離開訓練場" : "放棄本局，回到大廳";
   const e = $("psi");
   if (e)
     e.textContent = G.train

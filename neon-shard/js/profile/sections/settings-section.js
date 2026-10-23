@@ -33,7 +33,8 @@ export class SettingsSection extends ProfileSection {
       toggle("showSkin", "自訂外觀", "在角色身上顯示你繪製的圖樣（只在本機顯示）"),
       h("h3", {}, "其他"),
       h("div", { class: "ns-feature-row" },
-        h("button", { type: "button", class: "ns-feature-btn", onclick: () => bridge.replayTutorial() }, "重新觀看教學"),
+        h("button", { type: "button", class: "ns-feature-btn", onclick: () => bridge.replayTutorial() }, "重看戰鬥教學"),
+        h("button", { type: "button", class: "ns-feature-btn", onclick: () => bridge.replayShopGuide() }, "重看商店與芯片導覽"),
         h("button", { type: "button", class: "ns-feature-btn", onclick: () => settings.reset() }, "還原顯示設定")));
     this.onShow();
   }
