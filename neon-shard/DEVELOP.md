@@ -159,7 +159,76 @@ registerTile({
 欄位：`density(stage)` 每格出現機率（0 或省略 = 不自動生成）、`onStand(p, dt, api)`、`onBreak(x, y, api)`、`draw(cx, x, y, size, time)` 自訂繪製（省略就畫 `color` 色塊或外框）。
 玩家出生區（中心 5 格內）不會生成。教學關是乾淨的空地，不會有特殊方塊。
 
----
+
+
+【一、武器怎麼組成】
+
+武器全部寫在 `js/game/weapons.js` 的 `#definitions` 陣列裡，每把是一個物件。大部分武器不用寫新程式，只要把「旗標」組合起來就是新武器。
+
+基本欄位（每把都要有）：
+- `name` 名稱、`color` 顏色、`description` 說明
+- `damage` 傷害、`fireCooldown` 射擊間隔（秒）、`projectilesPerShot` 一次幾發、`spreadAngle` 扇形展開弧度
+- `projectileSpeed` 彈速、`projectileLifetime` 子彈存活秒數、`projectileRadius` 子彈大小、`knockback` 擊退、`wallDamage` 對方塊傷害
+- `magazineCapacity` 彈匣容量、`ammoInMagazine`（**必須等於彈匣容量**）、`reloadDuration` 裝填秒數、`ammoCost` 每發耗彈
+- `accuracySpread`、`muzzleParameter`、`automaticFire`（1 = 按住連射）、`aimPreviewMode`（瞄準線樣式，值有 "l"、"c"、"r"，請照現有武器抄）
+- `id`
+
+已經存在的特殊旗標（有寫就生效，要幾個疊幾個）：
+`pierceCount` 穿透敵人、`pierceWalls` 穿牆、`bounceCount` 彈跳、`homingEnabled` 追蹤、`boomerangEnabled` 迴旋、`chainLightningEnabled` 連鎖電弧、`freezeOnHit` 命中凍結、`gravityFieldEnabled` 重力場、`chargeStackEnabled` 蓄力、`explosionRadius` 爆炸、`clusterShotEnabled` 集束、`laserMode` 雷射、`mineMode` 地雷、`webMode` 蛛網、`turretMode` 砲塔、`poisonCloudMode` 毒雲、`grenadeMode` 榴彈、`flameMode` 噴火、`meleeArcEnabled` 近戰揮砍（搭配 `meleeRange`、`meleeSweepAngle`）。
+
+【二、新增一把武器（只用現有旗標，示範「雷霆連弩」）】
+
+步驟 1：在 `weapons.js` 的 `#definitions` 最後面加一個物件。`id` 一定要等於它在陣列裡的位置（現在有 24 把，新的就是 24）。**只能加在最後，不要插在中間或換順序**，因為存檔裡的擁有武器、出戰配置、芯片都是用這個編號記的。
+
+```js
+{
+  name: "雷霆連弩", color: "#9fd8ff", description: "自動連射·穿透·連鎖電弧",
+  projectilesPerShot: 1, spreadAngle: 0,
+  damage: 14, projectileSpeed: 820, projectileLifetime: 0.6,
+  fireCooldown: 0.12, ammoCost: 1, knockback: 120, projectileRadius: 3.5,
+  pierceCount: 1, chainLightningEnabled: 1,
+  accuracySpread: 0.02, muzzleParameter: 0.05, wallDamage: 0.5,
+  automaticFire: 1, aimPreviewMode: "l",
+  id: 24, magazineCapacity: 20, ammoInMagazine: 20, reloadDuration: 1.4,
+},
+```
+
+步驟 2：改 `js/game/progress.js`（約 148 行附近）的價格表，這是陷阱所在。
+
+```js
+WPR = [ ...原本 24 個數字..., 650 ];     // 最後補一個價格，索引 = 武器 id
+WPC = Array(WPR.length).fill("coins");   // 原本寫死 Array(24)，一定要改，不然第 25 把永遠買不起
+```
+
+步驟 3（選配）：大招。到 `js/game/ultimates.js` 的 `ULTS` 加一個以武器 id 為鍵的函式；沒寫會自動使用預設的環形大招。
+
+```js
+24(a) {                                  // a = 瞄準角度
+  for (let k = 0; k < 8; k++)
+    later(k * 0.06, () => ub(a + (k - 3.5) * 0.12, 800, { dmg: 30, r: 4, life: 0.8 / BULLET_SPEED_SCALE }));
+},
+```
+
+`later(秒數, 函式)` 是延遲執行，`ub(角度, 速度, { dmg, r, life, kb, wd })` 是發射大招子彈，需要震動可加 `G.shake = 10`。
+
+步驟 4：測試。進「訓練場 → 武器」分頁，新武器會自動出現，點一下就換上，彈藥無限。商城和大廳的槍械列表也是自動產生的，價格就是步驟 2 的那個數字。
+
+【三、新增全新的武器邏輯（現有旗標做不到時）】
+
+例如「命中後留下持續燃燒的地面」這種新機制：
+
+1. 在武器定義加一個新旗標，例如 `igniteGroundEnabled: 1`。戰鬥用的武器副本是由定義複製出來的，新欄位會一起帶進去；用的是完整欄位名稱，不用另外加縮寫。
+2. 射擊時怎麼生成子彈：改 `js/game/player-attacks.js` 的 `shoot()`。近戰、地雷、蛛網、榴彈、砲塔、毒雲這類「特殊武器」是在函式前段各自判斷旗標，處理完就 `return`，你的旗標可以仿照寫在同一區。若只是一般子彈的變化，就在約 274 行附近建立子彈的地方，把新旗標一起傳給子彈。
+3. 子彈在飛行中或命中時的行為：改 `js/game/simulation.js`（子彈更新與命中判斷）。
+4. 要產生地面效果、爆炸之類的區域，可以仿照 `shoot()` 裡榴彈、毒雲的寫法，把區域資料推進 `G.zones`（`k` 是區域種類，`zone-update.js` 負責每幀更新）。
+
+【四、容易出錯的地方】
+
+- `id` 沒有等於陣列位置，或中間插入、換順序：存檔與芯片會對錯武器。
+- `ammoInMagazine` 沒有等於 `magazineCapacity`：一開始彈匣數量不對。
+- 忘了補價格、沒改 `WPC` 的 24：該武器在商城買不到。
+- 欄位名稱打錯不會報錯，只是默默不生效。
+
 
 ## 人工檢查清單（改完請自己玩一遍）
 
