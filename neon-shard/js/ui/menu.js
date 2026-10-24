@@ -219,34 +219,14 @@ export function buildHome() {
   xRender();
 }
 
-export const ECOL = [
-  "#ff3d9a",
-  "#ff9a3d",
-  "#b45cff",
-  "#9dff3d",
-  "#4de1ff",
-  "#ff4dff",
-  "#3dffb0",
-  "#ff2a4a",
-  "#c0c8ff",
-  "#ffd23a",
-  "#ff9ad5",
-  "#7a7aff",
-  "#ff7a5a",
-  "#d4ff3d",
-];
 
 /** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
 export function init() {
 
 G.XM = null;
 
-ECOL[26] = "#ff9f2a";
 
-ECOL[27] = "#e04dff";
 
-ECOL[28] = "#6dffb0";
 
-ECOL[29] = "#c0a060";
 }
 

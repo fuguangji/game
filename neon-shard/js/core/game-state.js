@@ -20,6 +20,7 @@ export class GameState {
   fT = undefined;
   zones = undefined;
   grid = undefined;
+  tile = undefined; // 特殊方塊圖層（tiles.js）
   pl = undefined;
   en = undefined;
   bl = undefined;

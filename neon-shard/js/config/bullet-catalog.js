@@ -22,6 +22,7 @@ export class BulletDefinition {
   #lifetimeSeconds;
   #lifetimeScalesWithSpeedScale;
   #effect;
+  #status;
   #color;
 
   /**
@@ -33,6 +34,7 @@ export class BulletDefinition {
    * @param {number} [d.lifetimeSeconds] 存活時間（秒）
    * @param {boolean} [d.lifetimeScalesWithSpeedScale] 存活時間是否隨速度倍率調整（讓射程不變）
    * @param {number} [d.effect] BulletEffect 之一
+   * @param {{name: string, duration?: number, stack?: boolean}} [d.status] 命中玩家時施加的狀態（名稱見 game/status-effects.js 的 STATUS）
    * @param {string|null} [d.color] 固定顏色；null 表示沿用發射者的顏色
    */
   constructor(d) {
@@ -45,6 +47,11 @@ export class BulletDefinition {
     const effect = d.effect ?? BulletEffect.NONE;
     if (!Object.values(BulletEffect).includes(effect)) throw new RangeError(`子彈 ${d.id} effect = ${String(effect)}`);
     this.#effect = effect;
+    if (d.status != null) {
+      if (typeof d.status.name !== "string") throw new TypeError(`子彈 ${d.id} status.name 必須是狀態名稱`);
+      if (d.status.duration != null) assertNumber(`子彈 ${d.id} status.duration`, d.status.duration, { min: 0.1 });
+      this.#status = Object.freeze({ ...d.status });
+    } else this.#status = null;
     if (d.color != null && !HEX_COLOR.test(d.color)) throw new TypeError(`子彈 ${d.id} color = ${String(d.color)}`);
     this.#color = d.color ?? null;
   }
@@ -57,6 +64,8 @@ export class BulletDefinition {
   get lifetimeScalesWithSpeedScale() { return this.#lifetimeScalesWithSpeedScale; }
   get effect() { return this.#effect; }
   get color() { return this.#color; }
+  /** 命中玩家時施加的狀態；沒有則 null */
+  get status() { return this.#status; }
   get isHoming() { return this.#effect === BulletEffect.HOMING; }
 }
 
@@ -88,6 +97,8 @@ export class BulletCatalog {
     // 其他特殊來源
     { id: "WALL_TURRET_SHOT", speed: 160, damage: 6, radius: 4, color: "#ffb21a" }, // 精英築牆敵人的砲塔
     { id: "GHOST_SHOT", speed: 320, damage: 14 }, // 精英瞬移敵人留下的殘影
+    // 毒霧：命中施加劇毒（可疊 3 層）
+    { id: "POISON_ORB", speed: 200, damage: 4, radius: 6, color: "#3dff67", lifetimeSeconds: 3.5, status: { name: "poison", duration: 5, stack: true } },
     { id: "BOSS_ROCK", speed: 220, damage: 16, radius: 10, color: "#ffb040", lifetimeSeconds: 3, lifetimeScalesWithSpeedScale: true },
   ];
 

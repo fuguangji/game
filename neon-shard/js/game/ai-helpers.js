@@ -1,5 +1,5 @@
 /** game/ai-helpers — 敵人 AI 共用輔助：預判彈道、閃避玩家子彈 */
-import { BULLET_SPEED_SCALE, dodgeProfileOf } from "../config/index.js";
+import { BULLET_SPEED_SCALE, dodgeProfileOf, isMinionType } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { blocked, mv, ray } from "./battle.js";
 import { isB } from "./boss.js";
@@ -70,7 +70,7 @@ export function bLead(e, a) {
 
 // 功能：處理「aiExtra」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function aiExtra(e, dt) {
-  if (isB(e) || e.t >= 30 || dt <= 0) return;
+  if (isB(e) || isMinionType(e.t) || dt <= 0) return;
   if (e.iq === undefined) e.iq = Math.random();
   const dd = Math.hypot(G.pl.x - e.x, G.pl.y - e.y);
   if ((e.t === 0 || e.t === 12 || e.t === 26) && !(e.rec > 0) && !(e.un > 0)) {
@@ -103,7 +103,7 @@ export function aiExtra(e, dt) {
 
 // 敵人預判並閃避玩家子彈
 export function dodge(e, dt) {
-  if (isB(e) || e.t >= 30) return;
+  if (isB(e) || isMinionType(e.t)) return;
   if (e.dtm > 0) {
     e.dtm -= dt;
     mv(e, e.dvx * dt, e.dvy * dt);

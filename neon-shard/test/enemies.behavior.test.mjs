@@ -11,7 +11,7 @@ const ok = (c, m) => { if (!c) { console.log("✗ FAIL:", m); process.exitCode =
 if (tutorial.active) tutorial.exit(); // 離開教學
 X.start();
 G.pl.hp = G.pl.mhp = 1e9;
-const ids = [...enemyCatalog.all().map((d) => d.typeId), ...bossCatalog.all().map((b) => b.typeId), 30, 31];
+const ids = [...enemyCatalog.all().map((d) => d.typeId), ...bossCatalog.all().map((b) => b.typeId), ...bossCatalog.minions().map((m) => m.typeId)];
 let bullets = 0, failed = [];
 for (const t of ids) {
   if (fsm.state !== "play") fsm.transition("play");
@@ -26,7 +26,7 @@ for (const t of ids) {
     bullets += G.bl.filter((b) => b.own === 0).length;
   } catch (err) { failed.push(`${t}: ${err.message}`); }
 }
-ok(failed.length === 0, `全部 ${ids.length} 種敵方單位（一般 ${enemyCatalog.all().length} + Boss ${bossCatalog.count} + 小單位 2）都能生成並模擬 400 幀` + (failed.length ? "\n   " + failed.join("\n   ") : ""));
+ok(failed.length === 0, `全部 ${ids.length} 種敵方單位（一般 ${enemyCatalog.all().length} + Boss ${bossCatalog.count} + 小單位 ${bossCatalog.minions().length}）都能生成並模擬 400 幀` + (failed.length ? "\n   " + failed.join("\n   ") : ""));
 // 具名子彈：確認 fireBullet 產生的子彈欄位與設定一致
 G.bl.length = 0;
 const shooter = X.mkEn(1, G.pl.x + 300, G.pl.y);

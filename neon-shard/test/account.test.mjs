@@ -176,3 +176,18 @@ test("AccountService：未解鎖時上傳／下載會被擋下", async () => {
   const { svc } = makeService();
   await assert.rejects(svc.uploadSave({}), (e) => e.code === "NOT_SIGNED_IN");
 });
+
+test("friendlyError：常見錯誤翻成白話，不認得的保留原文", async () => {
+  const { friendlyError } = await import("../js/account/account-view.js");
+  assert.match(friendlyError({ status: 401, message: "Invalid login credentials" }, "login"), /電子郵件或密碼不正確/);
+  assert.match(friendlyError({ status: 429, message: "x" }), /次數太多/);
+  assert.match(friendlyError({ status: 400, message: "User already registered" }, "signup"), /已經註冊/);
+  assert.match(friendlyError({ status: 503, message: "x" }), /伺服器暫時/);
+  assert.equal(friendlyError({ status: 400, message: "暱稱不可用" }), "暱稱不可用");
+});
+
+test("summarizeSave：缺欄位或型別錯誤也不會丟錯", async () => {
+  const { summarizeSave } = await import("../js/account/account-view.js");
+  assert.equal(summarizeSave({ coins: 5, sh: 2, co: 1, clr: [1, 0, 1] }), "金幣 5 · 碎片 2 · 晶核 1 · 通關 2 關");
+  assert.equal(summarizeSave(null), "金幣 0 · 碎片 0 · 晶核 0 · 通關 0 關");
+});

@@ -9,7 +9,7 @@ import { rdOpen } from "../game/redeem.js";
 import { startTrain } from "../game/training.js";
 import { startTutorial } from "../game/tutorial.js";
 import { ALLWEAPON, WD } from "../game/weapons.js";
-import { XB, xEmb, xEquip, xUnequip } from "./menu-bag.js";
+import { bossRows, xEmb, xEquip, xUnequip } from "./menu-bag.js";
 import { XCAT, XS, wCat, wMode, wNote, wStat, xFlt, xGo, xSide, xSub, xbt, xfmt, xh, xic, xmax } from "./menu.js";
 import { start } from "./render.js";
 import { suggestNextStep } from "./shop-guide.js";
@@ -291,7 +291,7 @@ export function xStage(v) {
     const ok = i === 0 || SV.clr[i - 1];
     const d = xbt(
       "x-cd" + (SV.sel === i ? " on" : "") + (ok ? "" : " lk"),
-      `<span class="x-tx"><b>${s.n}</b><small>${s.g ? "目標 " + s.g + " 波 · BOSS " + (bossCatalog.find(i)?.name ?? "—") : "無盡模式 · 每 5 波一隻 BOSS"}</small></span><span class="rt">${ok ? (SV.clr[i] ? "已通關" : SV.sb[i] ? "最佳 " + SV.sb[i] + " 波" : "") : "通關上一關解鎖"}</span>`,
+      `<span class="x-tx"><b>${s.n}</b><small>${s.g ? "目標 " + s.g + " 波 · BOSS " + (bossCatalog.find(s.boss ?? i)?.name ?? "—") : "無盡模式 · 每 5 波一隻 BOSS"}</small></span><span class="rt">${ok ? (SV.clr[i] ? "已通關" : SV.sb[i] ? "最佳 " + SV.sb[i] + " 波" : "") : "通關上一關解鎖"}</span>`,
       () => {
         if (!ok) return;
         SV.sel = i;
@@ -308,11 +308,12 @@ export function xStage(v) {
   const dt = xh("x-pn x-dt");
   dt.style.setProperty("--a", s.c);
   dt.innerHTML = `<div class="x-stn">${s.n}</div><div class="x-kv4"><span>目標<b>${s.g ? s.g + " 波" : "無盡"}</b></span><span>敵人血量<b>×${s.hm}</b></span><span>金幣加成<b>×${s.cm}</b></span><span>最佳紀錄<b>${SV.sb[i] ? SV.sb[i] + " 波" : "—"}</b></span></div>`;
-  if (s.g && XB[i]) {
-    const b = XB[i],
-      bx = xh("x-boss");
+  const bi = s.boss ?? i,
+    b = s.g ? bossRows()[bi] : null;
+  if (b) {
+    const bx = xh("x-boss");
     bx.append(
-      xic("e" + (14 + i), b[1], 34),
+      xic("e" + bossCatalog.get(bi).typeId, b[1], 34),
       xh(
         "x-tx",
         `<b style="color:${b[1]}">${b[0]}</b><small>${b[2]}</small><p>${b[3]}</p>`,

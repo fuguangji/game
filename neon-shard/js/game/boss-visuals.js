@@ -1,5 +1,5 @@
 /** game/boss-visuals — Boss 登場、死亡、光環、氛圍等視覺效果與繪製 */
-import { FIRST_BOSS_TYPE_ID, bossCatalog } from "../config/index.js";
+import { bossCatalog, bossIndexOf } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
 import { TAU, cx } from "../core/viewport.js";
@@ -272,7 +272,7 @@ export function drawAtmos() {
 
 // 功能：繪製或建立「drawBossFx」所需的畫面元素。
 export function drawBossFx(e) {
-  const i = e.t - 14;
+  const i = bossIndexOf(e.t);
   bossAura(e);
   cx.save();
   if (i === 0 || (i === 7 && e.ph === 0)) {
@@ -348,7 +348,7 @@ export function drawBoss() {
   cx.font = `bold ${11 * u}px ui-monospace,monospace`;
   cx.textAlign = "center";
   cx.textBaseline = "bottom";
-  cx.fillText("BOSS " + bossCatalog.get(e.t - FIRST_BOSS_TYPE_ID).name, G.W / 2, y - 4);
+  cx.fillText("BOSS " + bossCatalog.findByType(e.t).name, G.W / 2, y - 4);
   const sgf = e.vul > 0 ? 1 : Math.min(1, (e.sg || 0) / (e.mhp * 0.12));
   cx.fillStyle = "#05060dcc";
   cx.fillRect(x, y + 12 * u + 4, w, 5 * u);

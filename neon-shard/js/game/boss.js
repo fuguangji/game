@@ -1,4 +1,5 @@
 /** game/boss — Boss 與特效 */
+import { isBossType } from "../config/index.js";
 import { G } from "../core/game-state.js";
 
 import { flash, phaseFx, slowmo } from "./boss-visuals.js";
@@ -8,7 +9,7 @@ export { bossAI3, bossFire3, bossPhase, chg, cloneAI, mvB, nodeAI } from "./boss
 export { bossAura, bossDeath, bossIntro, drawAtmos, drawBoss, drawBossFx, drawWarn, flash, flk, phaseFx, slowmo, zoneParticle } from "./boss-visuals.js";
 export { beam, bossTele, tCirc, tFan, tLine, tTiles, teleBeams } from "./boss-telegraph.js";
 export { LEAD, aiExtra, bLead, dodge, leadAt } from "./ai-helpers.js";
-export const isB = (e) => e.t >= 14 && e.t < 26;
+export const isB = (e) => isBossType(e.t);
 const BN_OLD = 0;
 // 功能：處理「thr」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function thr(z, x0, y0, d) {

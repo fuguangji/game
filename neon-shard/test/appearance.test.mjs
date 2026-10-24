@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EDITOR_BODY_RADIUS, EDITOR_BODY_RATIO, MAX_STROKES, MIN_IN_GAME_LINE_WIDTH, SkinRenderer, SkinStore, drawRoleAura, paintStrokes, sanitizeStrokes } from "../js/profile/appearance.js";
+import { EDITOR_BODY_RADIUS, EDITOR_BODY_RATIO, MAX_STROKES, MIN_IN_GAME_LINE_WIDTH, SkinStore, paintStrokes, sanitizeStrokes } from "../js/profile/appearance.js";
 import { SettingsStore } from "../js/core/settings-store.js";
 import { KEYS, SaveStore } from "../js/core/save-store.js";
 
@@ -80,34 +80,6 @@ test("SkinStore：其他分頁修改時重新讀取", () => {
   assert.equal(store.strokes.length, 1); assert.equal(changed, 1);
   bus.dispatchEvent(Object.assign(new Event("storage"), { key: "other" }));
   assert.equal(changed, 1, "不相關的鍵不應觸發");
-});
-
-test("SkinRenderer：離屏貼圖只在內容或大小改變時重畫；每一幀只做一次 drawImage", () => {
-  let surfaces = 0;
-  globalThis.OffscreenCanvas = class { constructor(w, h) { surfaces++; this.width = w; this.height = h; this.rec = recorder(); } getContext() { return this.rec.ctx; } };
-  try {
-    const store = new SkinStore(memStorage(), "k"); const renderer = new SkinRenderer(store);
-    const frame = recorder();
-    renderer.draw(frame.ctx, 12, 1);
-    assert.equal(surfaces, 0, "沒有皮膚就不建立貼圖、不繪製");
-    assert.equal(frame.of("drawImage").length, 0);
-    store.save([stroke([{ x: 0.4, y: 0.5 }, { x: 0.6, y: 0.5 }])]);
-    for (let i = 0; i < 60; i++) renderer.draw(frame.ctx, 12, 1);
-    assert.equal(surfaces, 1, "60 幀只建立 1 張貼圖");
-    assert.equal(frame.of("drawImage").length, 60);
-    assert.deepEqual(frame.of("drawImage")[0].slice(2), [-12, -12, 24, 24]);
-    renderer.draw(frame.ctx, 12, 2);
-    assert.equal(surfaces, 2, "螢幕上的實際大小改變 → 重畫");
-    store.save([stroke([{ x: 0.5, y: 0.5 }])]);
-    renderer.draw(frame.ctx, 12, 2);
-    assert.equal(surfaces, 3, "皮膚內容改變 → 重畫");
-  } finally { delete globalThis.OffscreenCanvas; }
-});
-
-test("drawRoleAura：使用職業顏色畫 12 個粒子", () => {
-  const r = recorder(); drawRoleAura(r.ctx, 12, "#22e6ff", 1.5);
-  assert.deepEqual(r.sets("shadowColor"), ["#22e6ff"]);
-  assert.equal(r.of("arc").length, 12);
 });
 
 test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重設", () => {

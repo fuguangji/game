@@ -3,14 +3,36 @@
  * 全部是唯讀：這裡匯出的是「類別實例」與查詢函式，沒有任何可被改寫的資料表。
  */
 import { BulletCatalog, BulletEffect } from "./bullet-catalog.js";
-import { BossCatalog, FIRST_BOSS_TYPE_ID } from "./boss-catalog.js";
+import { BossCatalog } from "./boss-catalog.js";
 import { EnemyCatalog } from "./enemy-catalog.js";
 import { DEFAULT_DODGE } from "./creature-definition.js";
 
-export { BulletEffect, DEFAULT_DODGE, FIRST_BOSS_TYPE_ID };
+export { BulletEffect, DEFAULT_DODGE };
 export const enemyCatalog = new EnemyCatalog();
 export const bulletCatalog = new BulletCatalog();
 export const bossCatalog = new BossCatalog();
+
+// 啟動時檢查：任兩種敵方單位不能共用編號，宣告式攻擊用到的子彈必須存在。寫錯當場報錯，不會等到遊戲裡才出怪事。
+{
+  const seen = new Map();
+  const claim = (def, kind) => {
+    if (seen.has(def.typeId)) throw new Error(`編號 ${def.typeId} 同時被「${seen.get(def.typeId)}」和${kind}「${def.name}」使用`);
+    seen.set(def.typeId, `${kind}「${def.name}」`);
+  };
+  for (const d of enemyCatalog.all()) claim(d, "敵人");
+  for (const d of bossCatalog.all()) claim(d, "Boss");
+  for (const id of [30, 31]) claim(bossCatalog.findMinion(id), "小單位");
+  for (const d of enemyCatalog.all()) {
+    if (d.attack && !bulletCatalog.has(d.attack.bullet)) throw new Error(`敵人「${d.name}」的 attack.bullet 不存在：${d.attack.bullet}`);
+  }
+}
+
+/** 是不是 Boss（以資料判斷，不靠編號範圍） */
+export const isBossType = (typeId) => bossCatalog.findByType(typeId) !== null;
+/** 是不是 Boss 召喚的小單位（分身節點、護盾核心） */
+export const isMinionType = (typeId) => bossCatalog.findMinion(typeId) !== null;
+/** Boss 的出場順序（0 起算）；不是 Boss 回傳 -1 */
+export const bossIndexOf = (typeId) => bossCatalog.findByType(typeId)?.index ?? -1;
 
 /** 全域子彈速度倍率（以前的 BS） */
 export const BULLET_SPEED_SCALE = bulletCatalog.speedScale;

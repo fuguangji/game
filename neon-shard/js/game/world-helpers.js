@@ -5,6 +5,7 @@ import { MW, N, T, TAU } from "../core/viewport.js";
 import { PN } from "../game-config.js";
 import { coin, cur, jit } from "./pickups.js";
 import { ST } from "./progress.js";
+import { breakTile, placeTiles } from "./tiles.js";
 
 // 功能：讀取地圖格；超出地圖邊界時視為不可通行。
 export const cell = (i, j) =>
@@ -57,7 +58,7 @@ export function ray(x, y, a, m) {
 }
 
 // 功能：將敵人索引轉換為對應色相的 HSLA 顏色字串。
-export const hc = (v, a) => `hsla(${(v - 1) * 36},85%,46%,${a})`;
+export const hc = (v, a) => `hsla(${150 + (v - 1) * 15},48%,46%,${a})`;
 
 // 隨機產生地圖：外框不可破、中央安全區、其餘依關卡密度放可破壞牆
 export function genMap() {
@@ -72,6 +73,7 @@ export function genMap() {
       }
       G.grid[j * N + i] = v;
     }
+  placeTiles(ST()); // 特殊方塊圖層（見 tiles.js）
 }
 
 // 功能：尋找符合距離條件且未被障礙物阻擋的位置。
@@ -128,6 +130,7 @@ export function hitCell(i, j, n = 1) {
     col = hc(v, 1);
   if (nv === 0) {
     bus.emit(GameEvents.WALL_BROKEN);
+    breakTile(i, j, x, y, { zones: G.zones }); // 特殊方塊的 onBreak（見 tiles.js）
     for (let k = 0; k < 9; k++) {
       const a = Math.random() * TAU,
         s = 80 + Math.random() * 180;

@@ -3,14 +3,13 @@ import { G } from "../core/game-state.js";
 import { $ } from "../core/viewport.js";
 import { ELITE } from "../enemy-config.js";
 import { mkEn } from "./battle.js";
-import { ST, SV } from "./progress.js";
+import { bossCatalog } from "../config/index.js";
+import { bossIndexAt } from "./progress.js";
 import { mkIcon } from "../icons.js";
 
 // 功能：計算菁英敵人的基礎生命值。
 export function eliteHP() {
-  const bw = ST().g ? ST().g : Math.max(1, Math.ceil(G.wave / 5)) * 5,
-    bi = ST().g ? SV.sel : (bw / 5 - 1) % 8;
-  return Math.round(mkEn(14 + bi, 0, 0).mhp * 0.25);
+  return Math.round(mkEn(bossCatalog.get(bossIndexAt(G.wave)).typeId, 0, 0).mhp * 0.25);
 }
 // 功能：依菁英倍率調整敵人屬性。
 export function elify(m, q) {

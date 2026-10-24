@@ -1,9 +1,11 @@
 /** 與敵人、子彈、Boss 無關的遊戲設定（敵方單位設定已搬到 config/） */
+import { enemyCatalog } from "./config/index.js";
+
 export const PC = {
   chip: "#9dff3d",
   shard: "#4de1ff",
   core: "#ff4dff",
-  coin: "#ffd23a",
+  coin: "#d9c98a",
   heal: "#3dff8f",
   ammo: "#ffe14a",
   shield: "#4d9bff",
@@ -23,26 +25,10 @@ export const LEG_A = [
   ["chip", "芯片 · Boss 掉落，顏色代表稀有度（灰 / 綠 / 藍 / 紫 / 金），可裝到槍上"],
 ];
 
+/** 圖鑑「圖例」：敵人部分由 enemy-catalog.js 的 legend 欄位產生（有寫 legend 的才會列出），最後兩筆是子彈 */
 export const LEG_B = [
-  ["e0", "#ff3d9a", "追擊 · 貼身衝撞"],
-  ["e1", "#ff9a3d", "狙擊 · 預判單發"],
-  ["e2", "#b45cff", "散射 · 5 發扇形"],
-  ["e3", "#9dff3d", "投擲 · 延遲炸彈"],
-  ["e4", "#4de1ff", "緩速 · 命中減速"],
-  ["e5", "#ff4dff", "牽引 · 吸力力場"],
-  ["e6", "#3dffb0", "召喚 · 生出小怪"],
-  ["e7", "#ff2a4a", "雷射 · 瞬發光束"],
-  ["e8", "#c0c8ff", "衝鋒 · 蓄力撞擊"],
-  ["e9", "#ffd23a", "築牆 · 圍困玩家"],
-  ["e10", "#ff9ad5", "環射 · 旋轉彈環"],
-  ["e11", "#7a7aff", "瞬移 · 閃現後連射"],
-  ["e12", "#ff7a5a", "分裂 · 死後分成小怪"],
-  ["e13", "#d4ff3d", "迫擊 · 多枚延遲炸彈"],
-  ["e26", "#ff9f2a", "爆彈客 · 衝向你自爆"],
-  ["e27", "#e04dff", "追蹤者 · 發射追蹤光球"],
-  ["e28", "#6dffb0", "治療者 · 治療附近敵人"],
-  ["e29", "#c0a060", "陷阱師 · 佈下減速陷阱"],
-  ["pb", "#22e6ff", "我方子彈 · 青色拖尾"],
+  ...enemyCatalog.all().filter((d) => d.legend).map((d) => [`e${d.typeId}`, d.color, `${d.name} · ${d.legend}`]),
+  ["pb", "#8fe3cf", "我方子彈 · 薄荷色拖尾"],
   ["eb", "#ff5a7a", "敵方子彈 · 空心圓"],
 ];
 export const PSPD = 95;

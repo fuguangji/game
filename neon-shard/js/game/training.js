@@ -7,14 +7,13 @@ import { ELITE, EL_COL } from "../enemy-config.js";
 import { blocked, burst, empty, mkEn, setup } from "./battle.js";
 import { CH, RC, RN, modW } from "./chips.js";
 import { elify } from "./elite.js";
-import { EN } from "./pickups.js";
 import { SV, UL, quit } from "./progress.js";
 import { spawnDummy } from "./ultimates.js";
 import { ALLWEAPON, WP } from "./weapons.js";
 import { mkIcon } from "../icons.js";
-import { ECOL, trPick } from "../ui/menu.js";
+import { trPick } from "../ui/menu.js";
 import { trChip } from "../ui/workshop.js";
-import { bossCatalog } from "../config/index.js";
+import { bossCatalog, enemyCatalog } from "../config/index.js";
 import { toast } from "../ui/feedback.js";
 
 // 功能：處理「endTrain」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
@@ -144,9 +143,9 @@ export function trBuild() {
   sec("敵人");
   g = grid();
   sep(g, "一般敵人");
-  EN.forEach((n, i) =>
-    btn(g, "e" + i, ECOL[i], n, () => {
-      // 功能：處理「go」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
+  enemyCatalog.all().forEach((d) =>
+    btn(g, "e" + d.typeId, d.color, d.name, () => {
+      // 功能：在面前生成一隻（el 為 1 時是精英版）。
       const go = (el) => {
         const a = G.pl.aim;
         let p = {
@@ -154,42 +153,27 @@ export function trBuild() {
           y: G.pl.y + Math.sin(a) * 220,
         };
         if (blocked(p.x, p.y, 16)) p = empty(150, G.pl) || p;
-        const m = mkEn(i, p.x, p.y);
+        const m = mkEn(d.typeId, p.x, p.y);
         if (el) elify(m, 1);
         G.en.push(m);
         burst(p.x, p.y, el ? EL_COL : "#ffffff", el ? 16 : 8, 120, 2, 0.5);
       };
-      if (ELITE[i]) trPick(i, n, ECOL[i], go);
+      if (ELITE[d.typeId]) trPick(d.typeId, d.name, d.color, go);
       else go(0);
     }),
   );
   sep(g, "Boss");
-  bossCatalog.names().forEach((n, i) =>
-    btn(
-      g,
-      "e" + (14 + i),
-      [
-        "#ff4d4d",
-        "#ffb040",
-        "#4dffd8",
-        "#d070ff",
-        "#ffe14a",
-        "#9dff3d",
-        "#7a7aff",
-        "#ff2a8a",
-      ][i],
-      n,
-      () => {
-        const a = G.pl.aim;
-        let p = {
-          x: G.pl.x + Math.cos(a) * 260,
-          y: G.pl.y + Math.sin(a) * 260,
-        };
-        if (blocked(p.x, p.y, 16)) p = empty(200, G.pl) || p;
-        G.en.push(mkEn(14 + i, p.x, p.y));
-        burst(p.x, p.y, "#ffffff", 12, 160, 2, 0.5);
-      },
-    ),
+  bossCatalog.all().forEach((b) =>
+    btn(g, "e" + b.typeId, b.color, b.name, () => {
+      const a = G.pl.aim;
+      let p = {
+        x: G.pl.x + Math.cos(a) * 260,
+        y: G.pl.y + Math.sin(a) * 260,
+      };
+      if (blocked(p.x, p.y, 16)) p = empty(200, G.pl) || p;
+      G.en.push(mkEn(b.typeId, p.x, p.y));
+      burst(p.x, p.y, "#ffffff", 12, 160, 2, 0.5);
+    }),
   );
   sep(g, "其他");
   btn(g, "e22", "#9aa0ab", "肉盾", spawnDummy);

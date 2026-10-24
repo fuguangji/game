@@ -1,5 +1,5 @@
 /** game/boss-attacks — Boss 的攻擊招式：彈幕、炸彈、地磚、落石、蜂群、傳送門、毒區、射線等 */
-import { bulletCatalog } from "../config/index.js";
+import { bossIndexOf, bulletCatalog } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
 import { N, T, TAU } from "../core/viewport.js";
@@ -87,7 +87,7 @@ export function dm(e, d, ang) {
 
 // 功能：處理「bInv」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export const bInv = (e) => {
-  const i = e.t - 14;
+  const i = bossIndexOf(e.t);
   return (
     e.inv > 0 ||
     (i === 3 && G.en.some((n) => n.t === 31 && n.hp > 0)) ||
@@ -99,7 +99,7 @@ export const bInv = (e) => {
 
 // 功能：處理「bd」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bd(e, d, ang) {
-  const i = e.t - 14;
+  const i = bossIndexOf(e.t);
   if (e.inv > 0) return 0;
   if (e.dummy) return d;
   let m = 1,

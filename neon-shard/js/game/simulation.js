@@ -1,5 +1,6 @@
 /** game/simulation — 區域效果、擊殺、整體每幀模擬 */
 
+import { isMinionType } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
 import { MW, N, T } from "../core/viewport.js";
@@ -21,6 +22,7 @@ import { openShop } from "../ui/hud.js";
 import { showOv } from "../ui/render.js";
 import { kill } from "./enemy-death.js";
 import { updZ } from "./zone-update.js";
+import { applyStatus } from "./status-effects.js";
 export { updZ } from "./zone-update.js";
 export { kill } from "./enemy-death.js";
 // 整體模擬一步（dt 秒）
@@ -125,7 +127,7 @@ export function update(dt) {
         e.stn -= dt;
         if (Math.random() < 0.3) burst(e.x, e.y, "#ffe14a", 1, 40, 2, 0.3);
       } else if (!(G.train && G.fz) && !e.dummy) {
-        const ft = isB(e) || e.t >= 30 ? null : fTarget(e),
+        const ft = isB(e) || isMinionType(e.t) ? null : fTarget(e),
           real = G.pl;
         if (ft) {
           G.pl = Object.create(real);
@@ -414,10 +416,10 @@ export function update(dt) {
       ) {
         b.life = 0;
         hurt(b.dmg);
-        if (b.eff === 1) G.pl.slow = 2.2;
+        if (b.st) applyStatus(G.pl, b.st.name, b.st);
+        if (b.eff === 1) applyStatus(G.pl, "slow", { duration: 2.2 });
         if (b.eff === 3) {
-          G.pl.slowL = G.pl.slow > 0 ? Math.min(2, (G.pl.slowL || 1) + 1) : 1;
-          G.pl.slow = 2.6;
+          applyStatus(G.pl, "slow", { duration: 2.6, stack: true });
           burst(G.pl.x, G.pl.y, "#bfefff", 8, 120, 2, 0.4);
           if (b.efz) {
             G.zones.push({

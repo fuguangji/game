@@ -3,9 +3,11 @@ import { GameEvents, bus } from "../core/event-bus.js";
 import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
 import { PC, PSPD } from "../game-config.js";
-import { burst, keys, mouse, mv, shoot, ta, tm } from "./battle.js";
+import { burst, hurt, keys, mouse, mv, shoot, ta, tm } from "./battle.js";
 import { collectPk } from "./pickups.js";
 import { UL } from "./progress.js";
+import { applyStatus, speedMultiplier, tickStatuses } from "./status-effects.js";
+import { standOnTile } from "./tiles.js";
 import { WP } from "./weapons.js";
 
 // 衝刺：短暫無敵位移，方向取輸入或瞄準方向
@@ -52,9 +54,8 @@ export function updPl(dt) {
     { ix, iy } = inp();
   p.hf -= dt;
   p.rc = Math.max(0, p.rc - dt * 0.25);
-  p.slow -= dt;
-  if (p.slow <= 0) p.slowL = 0;
-  if (p.vuln > 0) p.vuln -= dt;
+  tickStatuses(p, dt, { hurt });
+  if (p.dashT <= 0) standOnTile(p, dt, { hurt, applyStatus }); // 站在特殊地板上（見 tiles.js）
   p.dashCd -= dt;
   p.boost -= dt;
   p.sc -= dt;
@@ -112,7 +113,7 @@ export function updPl(dt) {
       PSPD *
       (1 + 0.04 * UL("spd")) *
       (p.boost > 0 ? 1.4 : 1) *
-      (p.slow > 0 ? (p.slowL >= 2 ? 0.3 : 0.5) : 1);
+      speedMultiplier(p);
     p.vx = ix * sp;
     p.vy = iy * sp;
   }

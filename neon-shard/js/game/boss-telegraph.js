@@ -1,4 +1,5 @@
 /** game/boss-telegraph — Boss 攻擊預警（直線、圓圈、扇形、光束、地磚）的計算與繪製 */
+import { bossIndexOf } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { T, TAU, cx } from "../core/viewport.js";
 import { burst, hitCell, hurt, ray, solidAt } from "./battle.js";
@@ -68,7 +69,7 @@ export function tTiles() {
 
 // 功能：處理「bossTele」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bossTele(e) {
-  const i = e.t - 14,
+  const i = bossIndexOf(e.t),
     ph = e.ph || 0,
     k = e.atk,
     A = e.aim,

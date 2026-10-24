@@ -3,7 +3,8 @@ import { ELITE } from "../enemy-config.js";
 import { LEG_A, LEG_B, PC } from "../game-config.js";
 import { EN } from "../game/pickups.js";
 import { mkEIcon, mkIcon } from "../icons.js";
-import { XB } from "./menu-bag.js";
+import { bossCatalog } from "../config/index.js";
+import { bossRows } from "./menu-bag.js";
 import { XS, xSub, xbt, xh, xic } from "./menu.js";
 
 // 功能：處理介面系統「xEnemyCmp」相關的資料、互動或顯示。
@@ -277,15 +278,15 @@ export function xCodex(v) {
     );
     box.append(xh("x-h", "Boss 一覽"));
     const g = xh("x-lst");
-    XB.forEach((b, i) => {
+    bossRows().forEach((b, i) => {
       const d = xh("x-cd");
       d.style.setProperty("--a", b[1]);
       d.style.alignItems = "flex-start";
       d.append(
-        xic("e" + (14 + i), b[1], 30),
+        xic("e" + bossCatalog.get(i).typeId, b[1], 30),
         xh(
           "x-tx",
-          `<b style="color:${b[1]}">${b[0]}</b><small>${b[2]}</small><small style="color:#bcc8ee;margin-top:4px">${b[3]}</small>`,
+          `<b style="color:${b[1]}">${b[0]}</b><small>${b[2]}</small><small style="color:#c3d6cd;margin-top:4px">${b[3]}</small>`,
         ),
       );
       g.append(d);

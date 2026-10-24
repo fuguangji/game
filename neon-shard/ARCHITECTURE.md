@@ -103,8 +103,8 @@
 
 | 類別 | 內容 | 主要成員 |
 |---|---|---|
-| `EnemyCatalog` / `EnemyDefinition` | 18 種一般敵人 | `radius`、`maxHealth`、`moveSpeed`、`scoreValue`、`mass`、`unlockWave`、`preferredDistance`、`attackCooldown`、`recoveryTime`、`telegraphDuration`、`dodge`… |
-| `BossCatalog` / `BossDefinition` | 8 隻 Boss + 2 種召喚物 | `name`、`attackPatternCount`、`preferredDistance`，並繼承上面的基礎屬性 |
+| `EnemyCatalog` / `EnemyDefinition` | 一般敵人（數量不限，編號自動配發；圖鑑說明、精英資料、宣告式攻擊都寫在同一列） | `radius`、`maxHealth`、`moveSpeed`、`scoreValue`、`mass`、`unlockWave`、`preferredDistance`、`attackCooldown`、`recoveryTime`、`telegraphDuration`、`dodge`… |
+| `BossCatalog` / `BossDefinition` | Boss（數量不限，編號自動配發）+ 2 種召喚物 | `name`、`attackPatternCount`、`preferredDistance`，並繼承上面的基礎屬性 |
 | `BulletCatalog` / `BulletDefinition` | 16 種具名敵方子彈 | `speed`、`damage`、`radius`、`lifetimeSeconds`、`effect`（`BulletEffect`）、`color` |
 
 - **資料表是 `#` 私有欄位**：`Reflect.ownKeys(catalog)` 是空的，外部讀不到、列舉不到、也無法序列化；
@@ -194,9 +194,8 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 | `config.test.mjs` | 設定類別：私有資料表讀不到／改不了、定義已凍結、副本、建構驗證、查詢失敗會丟錯、原始碼中的子彈名稱都存在 |
 | `enemies.behavior.test.mjs` | 全部 28 種敵方單位（18 一般 + 8 Boss + 2 召喚物）生成並模擬、`fireBullet` 產生的子彈與設定一致 |
 | `appearance.test.mjs` | 皮膚換算（所見即所得）、最小線寬、快取、皮膚與設定儲存的驗證與持久化 |
-| `profile.test.mjs` | 個人檔案頁面（用小型假 DOM）：分頁切換、方向鍵、暱稱不會被當成 HTML、設定寫回、聯機鎖定、重新掛載會清理舊頁面 |
 | `game.behavior.test.mjs` | 第一次遊玩自動進教學、教學 15 步、900 幀戰鬥、24 把槍的大招、狀態機、事件匯流排、存檔損毀與原型污染 |
-| `ui-smoke.test.mjs` | 主頁每個分頁都能渲染，擴充 API 仍可用 |
+| `extension.test.mjs` | 擴充點：狀態效果、特殊方塊、宣告式攻擊、Boss 輪替 |
 
 `stubs.mjs` 用假的 DOM 讓遊戲在 Node 裡執行，**只能驗證邏輯，看不到畫面**；排版、動畫與手感仍需在瀏覽器實際操作。
 後端另有 16 項測試（`neon-shard-api`：`RoomManager`、`TokenBucket`、暱稱驗證、加密、安全）。
@@ -213,7 +212,20 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 - 線上聯機只在個人檔案頁面開啟期間連線；與實際戰鬥畫面的同步還沒有接上。
 - 真實瀏覽器中的視覺驗證（皮膚線寬、頭像、分頁排版）。
 
-## UI 人性化層（新增）
+## 擴充點與資料流（新增）
+
+每種內容只有一個「來源」，其他表都由它推導，新增時不必同步多處：
+
+| 要新增 | 來源（只改這裡） | 自動推導出 |
+|---|---|---|
+| 一般敵人 | `config/enemy-catalog.js` 一列 | 名稱表 `EN`、圖鑑圖例 `LEG_B`、精英表 `ELITE`、訓練場按鈕、生成池 |
+| Boss | `config/boss-catalog.js` 一列 + `game/boss-custom.js` 以名稱註冊招式 | Boss 圖鑑、訓練場按鈕、無盡模式輪替 |
+| 玩家狀態效果 | `game/status-effects.js` 的 `STATUS` | 倒數、HUD 圖示、角色光環、速度／受傷倍率 |
+| 地圖方塊 | `game/tiles.js` 底部 `registerTile` | 生成、繪製、站立效果、打破效果 |
+
+編號由程式配發，並在啟動時檢查任兩種單位不重複；Boss／小單位用資料判斷（`isBossType`、`isMinionType`），不再有編號範圍。
+
+## UI 人性化層
 
 | 檔案 | 職責 |
 |---|---|

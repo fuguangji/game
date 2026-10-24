@@ -142,6 +142,7 @@ export class TutorialController {
     this.#stats = TutorialController.emptyStats();
     G.en.length = 0; G.bl.length = 0; G.zones.length = 0; G.pk.length = 0; SQ.length = 0;
     for (let j = 1; j < N - 1; j++) for (let k = 1; k < N - 1; k++) G.grid[k + j * N] = 0;
+    G.tile = null; // 教學關是乾淨的空地，不要特殊方塊
     G.pl.hp = Math.max(G.pl.hp, G.pl.mhp * 0.6);
     TUTORIAL_STEPS[i].setup?.(this);
     this.#syncUi();

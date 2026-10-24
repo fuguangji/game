@@ -15,6 +15,7 @@ import { icon } from "../icons.js";
 import { fanG, rayK } from "./aim.js";
 import { xbt, xic } from "./menu.js";
 import { trMark } from "./workshop.js";
+import { activeStatuses } from "../game/status-effects.js";
 
 // 波次間補給站
 export function openShop() {
@@ -63,15 +64,14 @@ export function drawBuffs(x, yb, u) {
   const p = G.pl,
     L = [];
   if (p.boost > 0) L.push(["speed", "#ffffff", p.boost / 10]);
-  if (p.slow > 0) L.push(["slow", "#4de1ff", p.slow / 2.2]);
-  if (p.vuln > 0) L.push(["shard", "#ff4d6a", p.vuln / 3]);
+  for (const { def, state } of activeStatuses(p)) L.push([def.icon, def.color, state.t / def.defaultDuration]);
   const pv = Math.hypot(p.pvx || 0, p.pvy || 0);
   if (pv > 6) L.push(["pull", "#ff4dff", Math.min(1, pv / 55)]);
   const s = 18 * u;
   L.forEach((b, i) => {
     const bx = x + i * (s + 6),
       by = yb - s - 4;
-    cx.fillStyle = "#05060dcc";
+    cx.fillStyle = "#06100dcc";
     cx.fillRect(bx, by, s, s);
     cx.strokeStyle = b[1] + "99";
     cx.lineWidth = 1;
@@ -90,7 +90,7 @@ export function drawBuffs(x, yb, u) {
 export function bar(x, y, w, h, f, col, ic, txt) {
   const u = G.HU,
     ix = ic ? h + 6 : 0;
-  cx.fillStyle = "#05060d99";
+  cx.fillStyle = "#06100d99";
   cx.fillRect(x, y, w, h);
   cx.save();
   cx.shadowColor = col;
@@ -121,7 +121,7 @@ export function ammoBar(x, y, w, h) {
     bx = x + ix,
     aw = w - ix - tw,
     sh = Math.floor(wp.am + 1e-6);
-  cx.fillStyle = "#05060d99";
+  cx.fillStyle = "#06100d99";
   cx.fillRect(x, y, w, h);
   icon(cx, "ammo", x + h / 2 + 1, y + h / 2, h * 0.45, wp.c);
   cx.fillStyle = "#ffffff14";
@@ -136,7 +136,7 @@ export function ammoBar(x, y, w, h) {
   cx.fillStyle = wp.c;
   cx.fillRect(bx, y + 1, aw * Math.min(1, (sh * c) / 5), h - 2);
   cx.restore();
-  cx.fillStyle = "#05060d";
+  cx.fillStyle = "#06100d";
   for (let k = 1; k <= n; k += wp.ms > 30 ? 10 : wp.ms > 16 ? 5 : 1)
     cx.fillRect(bx + (aw * k * c) / 5 - 0.5, y + 1, 1, h - 2);
   cx.fillStyle = "#ffffff";
@@ -438,8 +438,8 @@ export function drawDashDir() {
     ex = px + Math.cos(a) * L,
     ey = py + Math.sin(a) * L;
   cx.save();
-  cx.strokeStyle = cx.fillStyle = "#22e6ff";
-  cx.shadowColor = "#22e6ff";
+  cx.strokeStyle = cx.fillStyle = "#8fe3cf";
+  cx.shadowColor = "#8fe3cf";
   cx.shadowBlur = 10;
   cx.lineWidth = 3;
   cx.setLineDash([8, 6]);
@@ -511,7 +511,7 @@ export function drawBars() {
   ring(
     $("bD"),
     1 - Math.max(0, p.dashCd) / (1.2 * (1 - 0.06 * UL("dsh"))),
-    "#22e6ff",
+    "#8fe3cf",
     false,
   );
 }
@@ -558,7 +558,7 @@ export function drawLast() {
       cx.stroke();
       cx.rotate(-a);
       cx.shadowBlur = 0;
-      cx.fillStyle = "#d8f4ff";
+      cx.fillStyle = "#dcebe5";
       cx.font = `${10 * u}px ui-monospace,monospace`;
       cx.textAlign = "center";
       cx.textBaseline = "middle";
@@ -600,7 +600,7 @@ export function drawSlots() {
       sel = i === G.pl.w;
     cx.save();
     cx.globalAlpha = G.drag && G.drag.from === i ? 0.35 : 1;
-    cx.fillStyle = sel ? w.c + "33" : "#05060d99";
+    cx.fillStyle = sel ? w.c + "33" : "#06100d99";
     cx.strokeStyle = sel ? w.c : w.c + "66";
     cx.lineWidth = sel ? 2.5 : 1.5;
     if (sel) {
@@ -613,7 +613,7 @@ export function drawSlots() {
     cx.stroke();
     cx.shadowBlur = 0;
     icon(cx, "ammo", r.x + r.w / 2, r.y + r.w * 0.4, r.w * 0.24, w.c);
-    cx.fillStyle = "#d8f4ff";
+    cx.fillStyle = "#dcebe5";
     cx.font = `${10 * u}px system-ui`;
     cx.textAlign = "center";
     cx.textBaseline = "middle";

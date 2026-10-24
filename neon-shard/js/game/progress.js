@@ -6,6 +6,7 @@ import { fsm } from "../core/state-machine.js";
 import { $ } from "../core/viewport.js";
 import { keys, mouse, ta, tm } from "./battle.js";
 import { bankChips } from "./chips.js";
+import { bossCatalog } from "../config/index.js";
 import { endTrain } from "./training.js";
 import { xPause } from "../ui/menu.js";
 import { showOv } from "../ui/render.js";
@@ -54,6 +55,20 @@ export const STG = [
     { n: "無盡深淵", g: 0, hm: 2.2, cm: 3, dn: 0.235, c: "#ffd23a" },
   ],
   ST = () => STG[SV.sel] || STG[0];
+
+/**
+ * 第 wave 波（Boss 波）要出哪一隻 Boss 的順序。
+ * - 一般關卡：該關的 boss 欄位；沒寫就等於關卡順序（第 N 關打第 N 隻）
+ * - 無盡模式：每 5 波輪流，輪完自動回到第一隻，Boss 數量增減都不必改這裡
+ */
+export const bossIndexAt = (wave) => (ST().g ? (ST().boss ?? SV.sel) : (Math.max(1, Math.ceil(wave / 5)) - 1) % bossCatalog.count);
+
+/** 圖鑑用：這隻 Boss 會在哪些關卡出現（由關卡表推導，不用手寫） */
+export function bossAppearance(index) {
+  const stages = STG.filter((s, i) => s.g && (s.boss ?? i) === index).map((s) => `${s.n}最終波`);
+  const first = 5 * (index + 1), cycle = 5 * bossCatalog.count;
+  return [...stages, `無盡模式第 ${first} 波起每 ${cycle} 波`].join("；");
+}
 // 通關結算
 export function win() {
   G.cor += Math.ceil(ST().g / 3);

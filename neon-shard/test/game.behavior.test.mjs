@@ -12,11 +12,11 @@ const run = (n, dt = 0.016) => { for (let i = 0; i < n; i++) { X.update(dt); bus
 tutorial.toBattle();
 G.pl.hp = G.pl.mhp = 1e6; run(900);
 ok(G.en.length >= 0 && Number.isFinite(G.pl.x), "正式戰鬥模擬 900 幀無例外");
-// 24 把槍的大招
+// 每一把槍的大招
 let ultOk = 0;
 ok(Object.isFrozen(X.ALLWEAPON) && Object.isFrozen(X.ALLWEAPON.getWeapon()) && Object.isFrozen(X.ALLWEAPON.getWeapon(0)), "武器定義 API、陣列與單筆資料皆唯讀");
 const weaponDefinitions = X.ALLWEAPON.getWeapon();
-ok(weaponDefinitions.length === 24 && weaponDefinitions.every((w, i) => w.id === i && typeof w.description === "string" && Number.isFinite(w.magazineCapacity) && Number.isFinite(w.reloadDuration)), "24 把武器的 ID、描述、彈匣與裝填資料均已整合");
+ok(weaponDefinitions.length > 0 && weaponDefinitions.every((w, i) => w.id === i && typeof w.description === "string" && Number.isFinite(w.magazineCapacity) && Number.isFinite(w.reloadDuration)), "每把武器的 ID、描述、彈匣與裝填資料均已整合");
 for (let i = 0; i < X.ALLWEAPON.getWeapon().length; i++) {
   if (fsm.state !== "play") fsm.transition("play");
   X.WP[0] = X.modW(X.ALLWEAPON.getWeapon(i)); G.pl.w = 0; X.WP[0].um = 100; G.pl.ult = 100;

@@ -7,6 +7,7 @@ import { dm, frz, isB, mineBoom, thr, zoneParticle } from "./boss.js";
 import { kill } from "./enemy-death.js";
 import { chgU, explode } from "./physics.js";
 import { chainZone, chipHit, chipTick, cloudSky, cloudSpark, dmM, gpTick, strikeFx, wBul, zfl } from "./ultimates.js";
+import { applyStatus } from "./status-effects.js";
 
 // 更新地面區域（炸彈倒數、牽引力場等）
 export function updZ(dt) {
@@ -69,7 +70,7 @@ export function updZ(dt) {
     }
     if (z.k === "slowz") {
       if (Math.hypot(G.pl.x - z.x, G.pl.y - z.y) < z.r && G.pl.dashT <= 0) {
-        G.pl.slow = Math.max(G.pl.slow, 0.35);
+        applyStatus(G.pl, "slow", { duration: 0.35 });
         if (z.trg && !z.fd) {
           z.fd = 1;
           z.t = Math.min(z.t, 0.4);
@@ -85,8 +86,7 @@ export function updZ(dt) {
               dmg: 18,
             });
           else {
-            G.pl.slowL = 2;
-            G.pl.slow = 2.6;
+            applyStatus(G.pl, "slow", { duration: 2.6, stacks: 2 });
             burst(z.x, z.y, z.col, 12, 140, 2, 0.4);
           }
         }

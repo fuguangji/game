@@ -1,5 +1,5 @@
 /** game/boss-ai — Boss 行為決策：階段切換、招式選擇、移動、衝鋒、分身與節點 */
-import { bossCatalog } from "../config/index.js";
+import { bossCatalog, bossIndexOf, isMinionType } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { T, TAU } from "../core/viewport.js";
 import { EL_COL } from "../enemy-config.js";
@@ -10,6 +10,7 @@ import { flash, phaseFx } from "./boss-visuals.js";
 import { isB } from "./boss.js";
 import { eb } from "./enemy-ai.js";
 import { nav } from "./pathfinding.js";
+import { CUSTOM_BOSS_ATTACKS } from "./boss-custom.js";
 
 // 功能：處理「bossPhase」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bossPhase(e, ph, i) {
@@ -92,8 +93,11 @@ export function bossFire3(e, ph, a, i) {
   G.TS = e;
   e.rec = Math.max(0.25, 0.5 - 0.08 * ph);
   const k = e.atk,
-    A = e.aim;
-  if (i === 0) {
+    A = e.aim,
+    custom = CUSTOM_BOSS_ATTACKS[bossCatalog.get(i).name]; // 新 Boss 用名稱註冊招式（boss-custom.js）
+  if (custom) {
+    custom(e, k, ph, A);
+  } else if (i === 0) {
     if (k === 0) {
       pRing(e, 12 + ph * 5, 170 + ph * 20, 9, G.time);
       if (ph > 0)
@@ -282,7 +286,7 @@ export function bossFire3(e, ph, a, i) {
 
 // 功能：處理「bossAI3」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bossAI3(e, dt, d, a) {
-  const i = e.t - 14,
+  const i = bossIndexOf(e.t),
     hf = e.hp / e.mhp,
     ph = hf < 0.25 ? 3 : hf < 0.5 ? 2 : hf < 0.75 ? 1 : 0;
   if (!e.init) {
@@ -447,7 +451,7 @@ export function chg(e, dt, d, a) {
     if (E) {
       if (Math.random() < 0.3) burst(e.x, e.y, EL_COL, 1, 60, 2, 0.3);
       for (const o of G.en) {
-        if (o === e || o.hp <= 0 || isB(o) || o.t >= 30 || o.dummy) continue;
+        if (o === e || o.hp <= 0 || isB(o) || isMinionType(o.t) || o.dummy) continue;
         const ox = e.x - o.x,
           oy = e.y - o.y,
           od = Math.hypot(ox, oy);

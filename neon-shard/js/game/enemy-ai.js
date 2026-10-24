@@ -5,13 +5,15 @@ import { ELITE, EL_COL } from "../enemy-config.js";
 import { blocked, burst, cell, hitCell, hurt, mkEn, mv, ray, solidAt } from "./battle.js";
 import { LEAD, bLead, bossAI3, chg, cloneAI, flk, isB, leadAt, nodeAI, thr } from "./boss.js";
 import { nav } from "./pathfinding.js";
-import { BULLET_SPEED_SCALE, ENEMY_SPEED_SCALE, attackCooldownOf, bulletCatalog, preferredDistanceOf, recoveryTimeOf, telegraphDurationOf } from "../config/index.js";
+import { applyStatus } from "./status-effects.js";
+import { BULLET_SPEED_SCALE, ENEMY_SPEED_SCALE, attackCooldownOf, bulletCatalog, enemyCatalog, preferredDistanceOf, recoveryTimeOf, telegraphDurationOf } from "../config/index.js";
 
 // 功能：處理「eb」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 /** 依子彈設定，在 (x, y) 朝 angle 方向發射一顆敵方子彈；color 省略時用設定中的顏色 */
 export function spawnEnemyBullet(x, y, angle, def, color) {
   G.bl.push({
     eff: def.effect,
+    st: def.status,
     hm2: def.isHoming,
     x,
     y,
@@ -346,7 +348,7 @@ export function fire(e) {
     });
     if (!h) e.cd = e.el ? 1 : 1.2;
     if (e.el && h && Math.hypot(G.pl.x - e.x, G.pl.y - e.y) < 220) {
-      G.pl.vuln = 3;
+      applyStatus(G.pl, "vuln", { duration: 3 });
       const dd = Math.hypot(G.pl.x - e.x, G.pl.y - e.y);
       if (dd < 120 && G.pl.dashT <= 0) {
         const a = Math.atan2(G.pl.y - e.y, G.pl.x - e.x);
@@ -487,8 +489,29 @@ export function fire(e) {
         );
       }
     }
+  } else {
+    fireDeclared(e); // 沒有專屬程式的敵人：照 enemy-catalog.js 的 attack 欄位開火
   }
   burst(e.x, e.y, e.col, 6, 150, 2, 0.3);
+}
+
+/**
+ * 宣告式攻擊：照 enemy-catalog.js 該敵人的 attack 欄位發射子彈，新增普通射手不必再寫程式。
+ *   { bullet }                        朝玩家一發
+ *   { bullet, count: 3, spread: 0.5 } 3 發扇形，整個扇形展開 0.5 弧度
+ *   { bullet, ring: 12 }              一圈 12 發
+ */
+function fireDeclared(e) {
+  const spec = enemyCatalog.find(e.t)?.attack;
+  if (!spec) return;
+  if (spec.ring) {
+    for (let k = 0; k < spec.ring; k++) fireBullet(e, G.time + (k / spec.ring) * TAU, spec.bullet);
+    return;
+  }
+  for (let k = 0; k < spec.count; k++) {
+    const offset = spec.count > 1 ? (k / (spec.count - 1) - 0.5) * spec.spread : 0;
+    fireBullet(e, e.aim + offset, spec.bullet);
+  }
 }
 // 每幀更新單一敵人：移動、預警、開火等 AI
 export function updEn(e, dt) {

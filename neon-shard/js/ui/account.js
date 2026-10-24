@@ -40,7 +40,7 @@ const profileBridge = {
     ownedCharacters: (SV.chars || []).length,
     totalCharacters: CHS.length,
   }),
-  getRoleColor: () => (HEX_COLOR.test(G.CHR?.c) ? G.CHR.c : "#22e6ff"),
+  getRoleColor: () => (HEX_COLOR.test(G.CHR?.c) ? G.CHR.c : "#8fe3cf"),
   getAutoAim: () => G.AA,
   setAutoAim: (mode) => setAA(mode),
   get autoAimLabels() { return AAH; }, // 用到時才讀取（避免模組載入順序問題）

@@ -31,7 +31,7 @@ export function xShop(v) {
   const cost = (K, c, can, fn, txt) => {
     const lack = c - SV[K];
     const b = xbt("x-btn sm " + (can ? "pri" : ""), `${c} ${CN[K]}`, fn, !can);
-    b.prepend(mkIcon(CI[K], can ? "#04101a" : CC[K], 14));
+    b.prepend(mkIcon(CI[K], can ? "#06130f" : CC[K], 14));
     if (!can && lack > 0) {
       b.append(xh("x-short", `還差 ${lack}`, "span"));
       b.title = `還差 ${lack} ${CN[K]}`;

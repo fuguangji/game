@@ -11,12 +11,13 @@ import { CHS, bankChips } from "./chips.js";
 import { elify } from "./elite.js";
 
 import { NEWT } from "./pickups.js";
-import { ST, SV, UL, save } from "./progress.js";
+import { ST, SV, UL, bossIndexAt, save } from "./progress.js";
 import { endTrain } from "./training.js";
 import { FT, LZ, SQ } from "./ultimates.js";
 import { WP } from "./weapons.js";
-import { ENEMY_SPEED_SCALE, enemyCatalog, requireCreature } from "../config/index.js";
+import { ENEMY_SPEED_SCALE, bossCatalog, enemyCatalog, requireCreature } from "../config/index.js";
 import { burst, empty, genMap } from "./world-helpers.js";
+import { damageTakenMultiplier } from "./status-effects.js";
 export { blocked, burst, cell, drop, empty, genMap, hc, hitCell, mv, ray, solidAt, turLand } from "./world-helpers.js";
 export { ULN, ULT_OLD, applyUM, shoot, ub, ult, ultMods, ultT } from "./player-attacks.js";
 
@@ -97,9 +98,9 @@ export function startWave() {
   if (bw) {
     const p = empty(380, G.pl, 760);
     if (p) {
-      const bi = ST().g ? SV.sel : (G.wave / 5 - 1) % 8;
+      const bi = bossIndexAt(G.wave);
       {
-        const bb = mkEn(14 + bi, p.x, p.y);
+        const bb = mkEn(bossCatalog.get(bi).typeId, p.x, p.y);
         G.en.push(bb);
         bossIntro(bb);
       }
@@ -140,7 +141,7 @@ export function setup() {
     ammo: 5,
     w: 0,
     rc: 0,
-    slow: 0,
+    st: {}, // 狀態效果（見 status-effects.js）
     pvx: 0,
     pvy: 0,
     q: 0.5,
@@ -204,32 +205,37 @@ export function setup() {
   startWave();
 }
 // 玩家受傷：衝刺無敵、減傷、先扣護盾再扣血，血量歸零則結束遊戲
-export function hurt(d) {
+/** quiet = true：持續傷害用，不震動、不閃紅（扣血、護盾、死亡判定照舊） */
+export function hurt(d, { quiet = false } = {}) {
   if (G.pl.dashT > 0 || fsm.state !== "play" || (G.train && G.god)) return;
-  d *= (G.CHR.dr || 1) * (G.pl.vuln > 0 ? 1.15 : 1);
+  d *= (G.CHR.dr || 1) * damageTakenMultiplier(G.pl);
   {
     const hurtEvent = { damage: d };
     bus.emit(GameEvents.PLAYER_HURT, hurtEvent); // 監聽者可調整傷害
     d = hurtEvent.damage;
   }
   const dd = d;
-  G.HF = Math.min(1, Math.max(G.HF, 0.3 + d / 45));
-  G.HC = G.pl.sh > 0 && d <= G.pl.sh ? "#4d9bff" : "#ff1e3c";
+  if (!quiet) {
+    G.HF = Math.min(1, Math.max(G.HF, 0.3 + d / 45));
+    G.HC = G.pl.sh > 0 && d <= G.pl.sh ? "#4d9bff" : "#ff1e3c";
+  }
   if (G.pl.sh > 0) {
     const a = Math.min(G.pl.sh, d);
     G.pl.sh -= a;
     d -= a;
   }
   G.pl.hp -= d;
-  G.pl.hf = 0.2;
-  G.shake = Math.max(G.shake, Math.min(26, 3 + dd * 0.4));
-  try {
-    if (navigator.vibrate)
-      navigator.vibrate(
-        G.pl.hp <= 0 ? [60, 40, 160] : Math.round(Math.min(120, 15 + dd * 2.5)),
-      );
-  } catch (e) {}
-  burst(G.pl.x, G.pl.y, "#ff3d6a", 10, 200, 2.5, 0.5);
+  if (!quiet || G.pl.hp <= 0) {
+    G.pl.hf = 0.2;
+    G.shake = Math.max(G.shake, Math.min(26, 3 + dd * 0.4));
+    try {
+      if (navigator.vibrate)
+        navigator.vibrate(
+          G.pl.hp <= 0 ? [60, 40, 160] : Math.round(Math.min(120, 15 + dd * 2.5)),
+        );
+    } catch (e) {}
+    burst(G.pl.x, G.pl.y, "#ff3d6a", 10, 200, 2.5, 0.5);
+  }
   if (G.pl.hp <= 0) {
     G.pl.hp = 0;
     fsm.transition("over");

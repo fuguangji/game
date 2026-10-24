@@ -8,6 +8,7 @@ import { blocked, burst } from "./battle.js";
 import { isB } from "./boss.js";
 import { chipToast } from "./chips.js";
 import { explode } from "./physics.js";
+import { clearStatus } from "./status-effects.js";
 import { SV, UB, UC, WPC, WPR, save } from "./progress.js";
 import { WP } from "./weapons.js";
 import { icon } from "../icons.js";
@@ -37,7 +38,7 @@ export function collectPk(q, n) {
   else if (q.t === "shard") G.shd += q.v;
   else if (q.t === "core") G.cor += q.v;
   else if (q.t === "chip") (G.chp.push(q.v), chipToast(q.v));
-  else if (q.t === "heal") p.hp = Math.min(p.mhp, p.hp + 30);
+  else if (q.t === "heal") (p.hp = Math.min(p.mhp, p.hp + 30)), clearStatus(p, "poison");
   else if (q.t === "ammo") {
     for (const w of WP) w.am = Math.min(w.ms, w.am + w.ms * 0.4);
     for (const w of WP) w.um = Math.min(100, (w.um || 0) + 25);
@@ -85,22 +86,8 @@ export function coin(x, y, v) {
 }
 export const AIMR = 170,
   NEWT = () => enemyCatalog.typesIntroducedAt(G.wave),
-  EN = [
-    "追擊",
-    "狙擊",
-    "散射",
-    "投擲",
-    "緩速",
-    "牽引",
-    "召喚",
-    "雷射",
-    "衝鋒",
-    "築牆",
-    "環射",
-    "瞬移",
-    "分裂",
-    "迫擊",
-  ];
+  /** 敵人名稱（依編號查詢），由 enemy-catalog.js 推導 */
+  EN = Object.fromEntries(enemyCatalog.all().map((d) => [d.typeId, d.name]));
 // 功能：處理「cone」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function cone() {
   const w = WP[G.pl.w],
@@ -164,6 +151,7 @@ export function useItem(k) {
   if (k === "heal") {
     if (p.hp >= p.mhp) return;
     p.hp = Math.min(p.mhp, p.hp + p.mhp / 2);
+    clearStatus(p, "poison"); // 治療會解除劇毒
   } else if (k === "shield") {
     if (p.sh >= 60) return;
     p.sh = Math.min(60, p.sh + 40);
@@ -307,13 +295,9 @@ export function init() {
 
 G.BK2 = 0;
 
-EN[26] = "爆彈客";
 
-EN[27] = "追蹤者";
 
-EN[28] = "治療者";
 
-EN[29] = "陷阱師";
 
 G.drag = null;
 ITM = {

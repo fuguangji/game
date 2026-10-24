@@ -21,11 +21,13 @@ import { bossCatalog, telegraphDurationOf, telegraphRadiusOf, usesLineTelegraph 
 import { settings } from "../core/settings-store.js";
 import { drawRoleAura, skinRenderer } from "../profile/appearance.js";
 import { accountService } from "../account/index.js";
+import { drawStatusAuras } from "../game/status-effects.js";
+import { drawTiles } from "../game/tiles.js";
 
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
   cx.setTransform(G.DPR, 0, 0, G.DPR, 0, 0);
-  cx.fillStyle = "#05060d";
+  cx.fillStyle = "#06100d";
   cx.fillRect(0, 0, G.W, G.H);
   const VW = G.W / G.S,
     VH = G.H / G.S,
@@ -39,7 +41,7 @@ export function render() {
     -(G.camx + ox) * G.DPR * G.S,
     -(G.camy + oy) * G.DPR * G.S,
   );
-  cx.fillStyle = "#080a17";
+  cx.fillStyle = "#08120f";
   cx.fillRect(0, 0, MW, MW);
   if (G.bti > 0.01) {
     cx.globalAlpha = G.bti * 0.12;
@@ -51,7 +53,7 @@ export function render() {
     i1 = Math.min(N - 1, Math.ceil((G.camx + VW) / T)),
     j0 = Math.max(0, Math.floor(G.camy / T)),
     j1 = Math.min(N - 1, Math.ceil((G.camy + VH) / T));
-  cx.strokeStyle = G.bti > 0.05 ? G.bcol : "rgba(60,200,255,.07)";
+  cx.strokeStyle = G.bti > 0.05 ? G.bcol : "rgba(143,227,207,.07)";
   cx.globalAlpha = G.bti > 0.05 ? 0.09 + 0.05 * Math.sin(G.time * 3) * G.bti : 1;
   cx.lineWidth = 1;
   cx.beginPath();
@@ -74,7 +76,7 @@ export function render() {
         y = j * T;
       if (v < 0) {
         cx.fillStyle = "rgba(168,85,247,.22)";
-        cx.strokeStyle = "#b45cff";
+        cx.strokeStyle = "#5fa88f";
         cx.lineWidth = 2;
         cx.fillRect(x + 3, y + 3, T - 6, T - 6);
         cx.strokeRect(x + 3, y + 3, T - 6, T - 6);
@@ -110,7 +112,8 @@ export function render() {
         cx.stroke();
       }
     }
-  cx.strokeStyle = G.bti > 0.05 ? G.bcol : "#b45cff";
+  drawTiles(cx, i0, i1, j0, j1, G.time); // 特殊方塊（見 tiles.js）
+  cx.strokeStyle = G.bti > 0.05 ? G.bcol : "#5fa88f";
   cx.lineWidth = 3;
   cx.strokeRect(0, 0, MW, MW);
   for (const q of G.pk) {
@@ -377,7 +380,7 @@ export function render() {
       cx.globalAlpha = 0.95;
       cx.shadowBlur = 0;
       cx.lineWidth = 4;
-      cx.strokeStyle = "#05060d";
+      cx.strokeStyle = "#06100d";
       cx.beginPath();
       cx.arc(z.x, z.y, z.r + 5, 0, TAU);
       cx.stroke();
@@ -865,6 +868,7 @@ export function render() {
       cx.arc(0, 0, p.r + 7, 0, TAU);
       cx.stroke();
     }
+    drawStatusAuras(cx, p, G.time); // 減速、易傷、劇毒…各一圈光環
     cx.restore();
         // 名牌：畫在玩家頭上
     const name = accountService.displayName;           // 純文字，fillText 不會解析 HTML，不需要額外跳脫
@@ -905,8 +909,8 @@ export function render() {
     cx.textBaseline = "bottom";
     cx.lineJoin = "round";
     cx.lineWidth = 3 / G.S;
-    cx.strokeStyle = "#05060dcc";                       
-    cx.fillStyle = "#d8f4ff";
+    cx.strokeStyle = "#06100dcc";                       
+    cx.fillStyle = "#dcebe5";
     
     // cx.strokeText(name, p.x, y);                    // 有背景後可不描邊。若想保留雙重防護可自由開啟
     cx.fillText(name, p.x, y);
@@ -942,7 +946,7 @@ export function render() {
       const ang = Math.atan2(b.vy, b.vx),
         spin = G.time * 30 + (b.age || 0) * 12,
         sc = b.ult ? 2.5 : 1.7,
-        col = b.ult ? "#ffd23a" : "#ffb3e6",
+        col = b.ult ? "#d9c98a" : "#ffb3e6",
         edge = b.ult ? "#d6ad2e" : "#c77da9";
       cx.save();
       cx.globalCompositeOperation = "source-over";
@@ -980,7 +984,7 @@ export function render() {
       cx.rotate(ang + spin * 0.12);
       cx.scale(sc, sc);
       cx.rotate(spin);
-      cx.fillStyle = b.ult ? "#ffd23a" : "#ffb3e6";
+      cx.fillStyle = b.ult ? "#d9c98a" : "#ffb3e6";
       cx.strokeStyle = edge;
       cx.lineWidth = b.ult ? 2 : 1.7;
       hex(17);
@@ -1204,7 +1208,7 @@ export function row(i, t, col, f, txt) {
     110 * u * Math.max(0, Math.min(1, f)),
     8 * u,
   );
-  cx.fillStyle = "#d8f4ff";
+  cx.fillStyle = "#dcebe5";
   cx.font = `${11 * u}px ui-monospace,monospace`;
   cx.textAlign = "left";
   cx.textBaseline = "middle";
@@ -1223,20 +1227,20 @@ export function hud() {
   cx.font = `bold ${16 * u}px ui-monospace,monospace`;
   const X = G.W - 12 * u;
   let y = G.safeT + 8 * u;
-  cx.fillStyle = "#22e6ff";
+  cx.fillStyle = "#8fe3cf";
   cx.fillText(
     G.train ? "TRAINING" : "WAVE " + G.wave + (ST().g ? "/" + ST().g : ""),
     X,
     y,
   );
-  cx.fillStyle = "#ff3d9a";
+  cx.fillStyle = "#ee6a7c";
   cx.fillText("ENEMY " + G.en.length, X, y + 22 * u);
   cx.fillStyle = "#ffe14a";
   cx.fillText("SCORE " + G.score, X, y + 44 * u);
   cx.fillStyle = "#ffffff99";
   cx.font = `${12 * u}px ui-monospace,monospace`;
   cx.fillText("BEST " + Math.max(G.best, G.score), X, y + 68 * u);
-  cx.fillStyle = "#ffd23a";
+  cx.fillStyle = "#d9c98a";
   cx.fillText("COIN " + G.coins, X, y + 86 * u);
   cx.fillStyle = "#4de1ff";
   cx.fillText("SHARD " + G.shd, X, y + 102 * u);
@@ -1250,8 +1254,8 @@ export function hud() {
     cx.textAlign = "center";
     cx.textBaseline = "middle";
     cx.font = `bold ${40 * u}px ui-monospace,monospace`;
-    cx.fillStyle = "#22e6ff";
-    cx.shadowColor = "#22e6ff";
+    cx.fillStyle = "#8fe3cf";
+    cx.shadowColor = "#8fe3cf";
     cx.shadowBlur = 20;
     cx.fillText("WAVE " + G.wave, G.W / 2, G.H * 0.25);
     if (G.en.some(isB)) {

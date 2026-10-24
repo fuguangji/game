@@ -2,7 +2,7 @@
 
 /* ---------- toast ---------- */
 .ns-toasts{position:fixed;z-index:80;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;width:min(440px,calc(100vw - 24px));pointer-events:none}
-.ns-toast{pointer-events:auto;width:100%;padding:11px 14px;border-radius:10px;background:#0d1328;color:var(--t);font-size:13.5px;line-height:1.5;box-shadow:0 8px 28px #000a,inset 3px 0 0 var(--c);animation:nsIn .18s ease-out;cursor:pointer}
+.ns-toast{pointer-events:auto;width:100%;padding:11px 14px;border-radius:10px;background:#0e1d19;color:var(--t);font-size:13.5px;line-height:1.5;box-shadow:0 8px 28px #000a,inset 3px 0 0 var(--c);animation:nsIn .18s ease-out;cursor:pointer}
 .ns-toast-success{box-shadow:0 8px 28px #000a,inset 3px 0 0 #3dff8f}
 .ns-toast-warn{box-shadow:0 8px 28px #000a,inset 3px 0 0 var(--g)}
 .ns-toast-error{box-shadow:0 8px 28px #000a,inset 3px 0 0 var(--m)}
@@ -10,7 +10,7 @@
 @keyframes nsIn{from{opacity:0;transform:translateY(8px)}}
 
 /* ---------- 確認對話框 ---------- */
-.ns-dialog{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;background:#04060ce6}
+.ns-dialog{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;background:#040a08e6}
 .ns-dialog-sheet{width:min(460px,100%);max-height:90vh;overflow:auto;padding:20px;background:var(--p1);box-shadow:inset 0 3px 0 var(--m);border-radius:12px}
 .ns-dialog-sheet h2{margin:0 0 10px;font-size:19px}
 .ns-dialog-body p{margin:0 0 6px;font-size:14px;line-height:1.6;color:var(--t)}
@@ -19,11 +19,11 @@
 
 /* ---------- 新手導覽（聚光燈） ---------- */
 .ns-coach{position:fixed;inset:0;z-index:70;pointer-events:none}
-.ns-coach-dim{position:fixed;background:#02040bd0;pointer-events:auto}
+.ns-coach-dim{position:fixed;background:#020806d0;pointer-events:auto}
 .ns-coach-block{position:fixed;pointer-events:auto}
-.ns-coach-ring{position:fixed;border:2px solid var(--c);border-radius:10px;box-shadow:0 0 0 2px #22e6ff33,0 0 22px #22e6ffaa;pointer-events:none;animation:nsPulse 1.5s ease-in-out infinite}
-@keyframes nsPulse{50%{box-shadow:0 0 0 5px #22e6ff22,0 0 30px #22e6ffcc}}
-.ns-coach-card{position:fixed;left:0;top:0;width:min(380px,calc(100vw - 24px));padding:14px 16px 16px;background:var(--p1);border:1px solid #22e6ff88;border-radius:12px;box-shadow:0 14px 44px #000b;pointer-events:auto;color:var(--t)}
+.ns-coach-ring{position:fixed;border:2px solid var(--c);border-radius:10px;box-shadow:0 0 0 2px #8fe3cf33,0 0 22px #8fe3cfaa;pointer-events:none;animation:nsPulse 1.5s ease-in-out infinite}
+@keyframes nsPulse{50%{box-shadow:0 0 0 5px #8fe3cf22,0 0 30px #8fe3cfcc}}
+.ns-coach-card{position:fixed;left:0;top:0;width:min(380px,calc(100vw - 24px));padding:14px 16px 16px;background:var(--p1);border:1px solid #8fe3cf88;border-radius:12px;box-shadow:0 14px 44px #000b;pointer-events:auto;color:var(--t)}
 .ns-coach-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mu)}
 .ns-coach-skip{border:0;background:none;color:var(--mu);font:inherit;text-decoration:underline;cursor:pointer;padding:4px}
 .ns-coach-bar{height:3px;margin:6px 0 10px;background:#ffffff1f;border-radius:2px;overflow:hidden}
@@ -39,18 +39,18 @@
 .x-btn .x-short{margin-left:4px;font-size:10.5px;font-weight:600;opacity:.85}
 .x-res{margin-top:4px}
 .x-goBag{display:flex;margin:10px 0 0}
-.x-next{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:linear-gradient(90deg,#ffd23a1f,transparent),var(--p1);box-shadow:inset 3px 0 0 var(--g);clip-path:var(--cut)}
+.x-next{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:linear-gradient(90deg,#d9c98a1f,transparent),var(--p1);box-shadow:inset 3px 0 0 var(--g);clip-path:var(--cut)}
 .x-next .x-btn{flex:none}
 
 /* ---------- 訓練場面板 ---------- */
 #tr .tr-row:not(.tr-head)>.tr-l{display:none}
 #tr .tr-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:4px}
-#tr .tr-drag{width:auto;font-size:12px;font-weight:700;color:#22e6ff;letter-spacing:.04em;padding:4px 6px}
+#tr .tr-drag{width:auto;font-size:12px;font-weight:700;color:#8fe3cf;letter-spacing:.04em;padding:4px 6px}
 #tr .tr-tabs{display:flex;gap:4px;flex:1 1 auto}
 #tr .tr-actions{display:flex;gap:4px;margin-left:auto}
 #tr button{min-height:30px;padding:4px 10px;font-size:12.5px}
-#tr .tr-tab.on{background:#22e6ff33}
-#tr .tr-exit{background:#ff3d9a22}
+#tr .tr-tab.on{background:#8fe3cf33}
+#tr .tr-exit{background:#ee6a7c22}
 #tr .tg-on{background:#3dff8f33!important;box-shadow:inset 0 0 0 1px #3dff8f}
 #tr .tr-hint{margin:2px 2px 6px;font-size:12px;line-height:1.5;color:var(--mu)}
 #tr .tr-tip{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;border:1px solid #3dff8f66;border-radius:8px;background:#3dff8f14;font-size:12px;line-height:1.5}
@@ -64,21 +64,21 @@
 .ns-account{display:grid;gap:14px;max-width:620px}
 .ns-account h2{margin:0;color:var(--t);font-size:1.25rem}
 .ns-account h3{margin:0 0 4px;font-size:1rem;color:var(--t)}
-.ns-pill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;border:1px solid #22e6ff88;color:#22e6ff;font-size:.7rem;font-weight:700;vertical-align:middle}
+.ns-pill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;border:1px solid #8fe3cf88;color:#8fe3cf;font-size:.7rem;font-weight:700;vertical-align:middle}
 .ns-intro p{margin:6px 0;color:var(--mu);line-height:1.6;font-size:.92rem}
 .ns-points{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem;line-height:1.5;color:var(--t)}
 .ns-points .warn{color:var(--g)}
-.ns-seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:#101923;border:1px solid #ffffff1a;width:max-content;max-width:100%}
+.ns-seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:#122520;border:1px solid #ffffff1a;width:max-content;max-width:100%}
 .ns-seg-btn{padding:8px 18px;border:0;border-radius:999px;background:none;color:var(--mu);font:inherit;font-weight:700;cursor:pointer}
-.ns-seg-btn.on{background:var(--c);color:#04101a}
+.ns-seg-btn.on{background:var(--c);color:#06130f}
 .ns-form{display:grid;gap:14px}
 .ns-field{display:grid;gap:5px}
 .ns-label{font-size:.9rem;font-weight:650;color:var(--t)}
 .ns-input-row{display:flex;gap:6px}
-.ns-input{box-sizing:border-box;flex:1;min-width:0;padding:12px;border:1px solid #ffffff30;border-radius:10px;background:#101923;color:var(--t);font:inherit;user-select:text;-webkit-user-select:text}
-.ns-input:focus{outline:none;border-color:#22e6ff;box-shadow:0 0 0 3px #22e6ff22}
+.ns-input{box-sizing:border-box;flex:1;min-width:0;padding:12px;border:1px solid #ffffff30;border-radius:10px;background:#122520;color:var(--t);font:inherit;user-select:text;-webkit-user-select:text}
+.ns-input:focus{outline:none;border-color:#8fe3cf;box-shadow:0 0 0 3px #8fe3cf22}
 .ns-input[aria-invalid="true"]{border-color:var(--m)}
-.ns-eye{flex:none;padding:0 12px;border:1px solid #ffffff30;border-radius:10px;background:#101923;color:var(--mu);font:inherit;cursor:pointer}
+.ns-eye{flex:none;padding:0 12px;border:1px solid #ffffff30;border-radius:10px;background:#122520;color:var(--mu);font:inherit;cursor:pointer}
 .ns-note{min-height:1.2em;font-size:.8rem;line-height:1.4;color:var(--mu)}
 .ns-note.ok{color:#3dff8f}
 .ns-err{font-size:.82rem;color:#ff7b88}
@@ -89,13 +89,13 @@
 .ns-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ns-account button:disabled,.ns-account input:disabled{opacity:.55;cursor:wait}
 .ns-me{display:flex;align-items:center;gap:12px}
-.ns-avatar-dot{flex:none;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#12445a;border:1px solid #22e6ff88;font-size:1.3rem;font-weight:800}
+.ns-avatar-dot{flex:none;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1d4a40;border:1px solid #8fe3cf88;font-size:1.3rem;font-weight:800}
 .ns-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .ns-badge{padding:1px 9px;border-radius:999px;font-size:.75rem;font-weight:700;border:1px solid}
 .ns-badge.ok{color:#3dff8f;border-color:#3dff8f88}
-.ns-badge.warn{color:var(--g);border-color:#ffd23a88}
+.ns-badge.warn{color:var(--g);border-color:#d9c98a88}
 .ns-sync{display:grid;gap:10px}
-.ns-sync-card{display:grid;gap:8px;justify-items:start;padding:14px;border:1px solid #ffffff1a;border-radius:12px;background:#0b1220}
+.ns-sync-card{display:grid;gap:8px;justify-items:start;padding:14px;border:1px solid #ffffff1a;border-radius:12px;background:#0e1f1b}
 .ns-sync-card p{margin:0;font-size:.88rem;line-height:1.55;color:var(--mu)}
 .ns-meta{margin:0;font-size:.85rem;line-height:1.6;color:var(--mu)}
 .ns-foot{margin-top:4px}
