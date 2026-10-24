@@ -109,7 +109,7 @@ export function drawTiles(cx, i0, i1, j0, j1, time) {
 /* ───────────── 方塊清單：新增方塊從這裡開始（範例見 README） ───────────── */
 registerTile({
   name: "炸藥桶", color: "#ffaa00", solid: true, hp: 1,
-  density: () => 0.01,
+  density: (stage) => stage >= 3 ? 0.01 : 0,
   onBreak(x, y, { zones }) {
     zones.push({ k: "bomb", x, y, r: 90, t: 0.3, max: 0.3, col: "#ff9f2a", dmg: 30 });
   },
@@ -120,6 +120,54 @@ registerTile({
     cx.strokeStyle = "#000000";
     cx.lineWidth = 4;
     cx.strokeRect(x + 4, y + 4, size - 8, size - 8);
+    cx.restore();
+  }
+});
+registerTile({
+  name: "冰面", color: "#a0e0ff", solid: false,
+  density: (stage) => 0.02,
+  onStand(p, dt, { applyStatus }) {
+    applyStatus(p, "fast", 0.1);
+  },
+  draw(cx, x, y, size) {
+    cx.save();
+    cx.fillStyle = "#00bfff";
+    cx.fillRect(x + 2, y + 2, size - 4, size - 4);
+    cx.strokeStyle = "#00bfffb7";
+    cx.lineWidth = 3;
+    cx.strokeRect(x + 2, y + 2, size - 4, size - 4);
+    cx.restore();
+  }
+});
+registerTile({
+  name: "岩漿地板", color: "#ff3300", solid: false,
+  density: (stage) => stage >= 5 ? 0.02 : 0,
+  onStand(p, dt, { applyStatus }) {
+    applyStatus(p, "burn", 10);
+  },
+  draw(cx, x, y, size) {
+    cx.save();
+    cx.fillStyle = "#ff330055";
+    cx.fillRect(x + 2, y + 2, size - 4, size - 4);
+    cx.strokeStyle = "#ff0000";
+    cx.lineWidth = 3;
+    cx.strokeRect(x + 2, y + 2, size - 4, size - 4);
+    cx.restore();
+  }
+});
+registerTile({
+  name: "毒氣地板", color: "#00ff00", solid: false,
+  density: (stage) => stage >= 10 ? 0.02 : 0,
+  onStand(p, dt, { applyStatus }) {
+    applyStatus(p, "poison", 0.5);
+  },
+  draw(cx, x, y, size) {
+    cx.save();
+    cx.fillStyle = "#00ff0055";
+    cx.fillRect(x + 2, y + 2, size - 4, size - 4);
+    cx.strokeStyle = "#00aa00";
+    cx.lineWidth = 3;
+    cx.strokeRect(x + 2, y + 2, size - 4, size - 4);
     cx.restore();
   }
 });
