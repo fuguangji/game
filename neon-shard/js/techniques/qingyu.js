@@ -60,7 +60,7 @@ registerTechnique({
             el += dt;
             p.heat = (100 * Math.expm1(K * el)) / Math.expm1(K * DUR);
             applyStatus(p, "slow", { duration: 0.2 });
-            if (isBlocked(p, "attack")) f.release(f);
+            if (isBlocked(p, "skill")) f.release(f);
           },
           draw(cx) {
             const h = p.heat / 100;

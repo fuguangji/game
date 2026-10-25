@@ -18,7 +18,7 @@ import { castDomain, domainCount } from "./techniques.js";
 // 開火：檢查彈藥與冷卻，依武器產生子彈（含自動瞄準與散佈）
 export function shoot(f, qk) {
   const w = WP[G.pl.w];
-  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 熔斷中不能攻擊
+  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 靈魂熔斷中不能攻擊，術式熔斷可以
   w.am -= w.laser ? 0.85 : 1;
   G.pl.sc = w.cd;
   G.pl.lf = G.time;

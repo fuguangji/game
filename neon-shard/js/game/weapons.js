@@ -627,7 +627,7 @@ class WeaponCatalog {
     description: "術式·輕快近戰｜時柳／渦流／脈衝／璃／負片｜術式場：絕對霜域、轉態",
   },
   {
-    name: "幻日虹",
+    name: "閃霰劍",
     color: "#ffd98a",
     projectilesPerShot: 1,
     spreadAngle: 0,

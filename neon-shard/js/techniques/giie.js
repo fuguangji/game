@@ -1,4 +1,4 @@
-/** 幻日虹：空間斬擊系術式，擅長大範圍壓制與術式熔斷／反噬。 */
+/** 閃霰劍：空間斬擊系術式，擅長大範圍壓制與術式熔斷／反噬。 */
 import { isBossType } from "../config/index.js";
 import { G } from "../core/game-state.js";
 import { TAU } from "../core/viewport.js";
@@ -22,7 +22,7 @@ function sector(cx, x, y, ang, range, arc, col, alpha) {
 }
 
 registerTechnique({
-  weapon: "幻日虹",
+  weapon: "閃霰劍",
   color: "#ffd98a",
   skills: [
     {

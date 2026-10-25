@@ -389,7 +389,7 @@ export function castSkill(i) {
   const running = G.tq.find((f) => f.skill === sk.name && f.release);
   if (running) { running.release(running); return true; }
   if (G.dom?.lockSkills) return deny("術式場展開中，無法使用其他術式");
-  if (isBlocked(p, "attack")) return deny("術式熔斷中，無法施放術式");
+  if (isBlocked(p, "skill")) return deny("術式熔斷中，無法施放術式");
   if ((p.cdw[sk.name] ?? 0) > 0) return false;
   const ctx = makeCtx();
   const free = G.train && G.inf;
@@ -414,7 +414,7 @@ export function castDomain(n) {
   if (!d) return false;
   const p = G.pl;
   ensure(p);
-  if (isBlocked(p, "attack")) return deny("術式熔斷中，無法展開術式場");
+  if (isBlocked(p, "skill")) return deny("術式熔斷中，無法展開術式場");
   if (G.dom) return deny("術式場已經展開");
   const free = G.train && G.inf;
   if (!free && p.ult < 100) return deny("術式場尚未蓄滿（造成傷害來蓄能）");
@@ -523,6 +523,6 @@ function sync(force = false) {
     rings: G.dom?.ringUi ? G.dom.ringUi() : null,
     handlers: { skill: castSkill, domain: castDomain, digit: techDigit },
     domainOn: !!G.dom,
-    sealed: isBlocked(p, "attack"),
+    sealed: isBlocked(p, "skill"),
   });
 }

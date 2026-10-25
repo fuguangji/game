@@ -16,7 +16,7 @@
  *   skillDamageMul(n, tag) 術式技能傷害倍率（tag 是技能屬性，例如 "water"）
  *   skillCostMul(n)  技能能量消耗倍率（0 = 免費）
  *   backlashMul(n)   術式反噬倍率（0 = 無視反噬）
- *   blocks           ["attack", "move"]：生效期間禁止攻擊／施放術式、禁止移動
+ *   blocks           ["attack", "skill", "move"]：生效期間禁止攻擊／施放術式、禁止移動
  *   immuneTo         另一個狀態名稱；玩家身上有那個狀態時，這個狀態施加不上去
  *   onApply(p) / onExpire(p)  從無到有、到期或被解除時各呼叫一次
  *   onTick(p, s, dt, api)  每幀呼叫（s = 狀態 { t 剩餘秒數, n 層數, acc 計時用 }；api.hurt 可扣血）
@@ -68,11 +68,11 @@ export const STATUS = Object.freeze({
   /* ───── 術式系統（見 techniques.js）使用的狀態 ───── */
   seal: {
     label: "術式熔斷", color: "#ff9a3d", icon: "pull", defaultDuration: 4,
-    blocks: ["attack"], immuneTo: "sealImmune",
+    blocks: ["skill"], immuneTo: "sealImmune",
   },
   soulseal: {
     label: "靈魂熔斷", color: "#c070ff", icon: "slow", defaultDuration: 4,
-    blocks: ["attack", "move"], immuneTo: "sealImmune", speedMul: () => 0,
+    blocks: ["attack", "skill", "move"], immuneTo: "sealImmune", speedMul: () => 0,
   },
   sealImmune: { label: "熔斷無效", color: "#9fe8ff", icon: "shield", defaultDuration: 60 },
   heated: {
