@@ -207,7 +207,7 @@ export class FirebaseRoomClient extends EventTarget {
     channel.onopen = () => {
       emit(this, "state", { state: "connected" });
       if (this.#role === "host" && this.#roomCode) {
-        update(ref(this.#db, `rooms/${this.#roomCode}`), { status: "connected" }).catch(() => {});
+        set(ref(this.#db, `rooms/${this.#roomCode}/status`), "connected").catch(() => {});
       }
       emit(this, "room", { code: this.#roomCode, mode: this.#mode, role: this.#role, status: "connected" });
     };
