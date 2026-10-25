@@ -92,14 +92,16 @@ test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重�
   void skin; page.destroy();
 });
 
-test("線上聯機：未登入時鎖定，登入後開放", () => {
-  const { deps, account } = makeDeps(); const { host, page } = mount(deps);
+test("線上聯機：使用 Firebase 匿名身分，不依賴雲端帳號登入", () => {
+  const { deps } = makeDeps(); const { host, page } = mount(deps);
   const online = panel(host, "online");
-  const gate = online.find((e) => e.className === "ns-feature-status" && e.hidden !== undefined && e.textContent.includes("請先"));
   const body = online.find((e) => e.className === "ns-online");
-  assert.equal(body.hidden, true); assert.equal(gate.hidden, false);
-  account.signedIn = true; account.dispatchEvent(new CustomEvent("change", { detail: {} }));
-  assert.equal(body.hidden, false); assert.equal(gate.hidden, true);
+  assert.ok(body, "線上聯機面板存在");
+  assert.notEqual(body.hidden, true, "訪客也能開啟線上聯機面板");
+  const labels = online.findAll((e) => e.tagName === "BUTTON").map((e) => e.textContent);
+  assert.ok(labels.includes("建立房間（我是房主）"));
+  assert.ok(labels.includes("加入房間"));
+  assert.ok(labels.includes("中斷連線"));
   page.destroy();
 });
 
