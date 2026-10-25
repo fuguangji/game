@@ -13,7 +13,8 @@
 - [ ] 填入 Firebase 專案設定、啟用匿名登入、建立 Realtime Database 並發布規則。
 - [ ] 為跨 NAT／校園網路／行動網路提供 TURN 中繼服務並完成雙網路測試。
 - [ ] 把 P2P 封包正式接入遊戲模擬：遠端玩家渲染、房主端輸入驗證、權威戰鬥狀態與重連處理。
-- [ ] 合併 PR #15，確認 Render 部署使用修補後的 Node.js，再驗證 API。
+- [x] 合併 PR #15；Render 部署已成功，建置記錄確認使用 Node.js 24.22.1。main 也已加上相同版本鎖定。
+- [ ] 再人工確認 API health、既有登入、金鑰讀取與加密存檔流程。
 - [ ] 決定是否另行把雲端帳號與存檔從既有 Render/Supabase 後端遷移到 Firebase。
 
 > **重要：目前 Firebase 已負責線上房間與 WebRTC 訊號；現有雲端帳號／加密存檔仍走 Render API 與 Supabase。** 這是刻意保留的相容性界線，避免在沒有遷移與恢復測試前破壞既有加密存檔。線上聯機目前可建立房間、加入房間、建立 P2P DataChannel 並傳送測試封包；它尚不代表整場戰鬥已經由房主完整模擬及同步。
@@ -93,12 +94,10 @@
 
 官方 Node.js 2026-10-21 安全公告修補了多項問題，包括高嚴重度的 Brotli 解碼器漏洞。NEON SHARD API 的舊設定 node >=20 沒有限制上界，也沒有鎖定已修補版本。
 
-1. 開啟 PR [#15](https://github.com/fuguangji/game/pull/15)。
-2. 檢查 CI／差異後，將它合併到 Render 目前使用的分支 feature/neon-shard-integration。
-3. Render 設定為自動部署；合併後確認新部署成功。
-4. 在 Render logs 確認啟動時使用 Node.js 24.22.1。
-5. 測試 https://neon-shard-api.onrender.com/api/health 回傳健康狀態。
-6. 再測試既有登入、金鑰讀取與加密存檔流程。
+1. PR [#15](https://github.com/fuguangji/game/pull/15) 已合併到 Render 使用的分支 feature/neon-shard-integration。
+2. Render 自動部署已成功；建置記錄明確顯示使用 Node.js 24.22.1。
+3. 還需要人工確認 https://neon-shard-api.onrender.com/api/health 回傳健康狀態，並測試既有登入、金鑰讀取與加密存檔流程。
+4. main 分支也已加入根目錄 .node-version 與 API package 的版本鎖定，避免未來切換部署分支時重新採用不明確版本。
 
 官方公告與 Render 版本選擇說明：
 - https://nodejs.org/en/blog/vulnerability/october-2026-security-releases
