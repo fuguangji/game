@@ -4,7 +4,7 @@
     ".write": false,
     "rooms": {
       "$roomCode": {
-        ".read": "auth != null && (data.child('hostUid').val() === auth.uid || data.child('guestUid').val() === auth.uid)",
+        ".read": "auth != null && (data.child('hostUid').val() === auth.uid || data.child('guestUid').val() === auth.uid || (data.child('guestUid').val() === null && data.child('status').val() === 'waiting'))",
         ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('guestUid').val() === null) || (data.child('hostUid').val() === auth.uid && !newData.exists()))",
         ".validate": "newData.hasChildren(['hostUid', 'mode', 'status', 'createdAt']) && newData.child('hostUid').isString() && (newData.child('mode').val() === 'arena' || newData.child('mode').val() === 'boss')",
         "hostUid": {
