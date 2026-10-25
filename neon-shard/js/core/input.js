@@ -8,6 +8,7 @@ import { dash } from "../game/player.js";
 import { togglePause } from "../game/progress.js";
 import { WP } from "../game/weapons.js";
 import { start } from "../ui/render.js";
+import { techDigit, techKey } from "../game/techniques.js";
 
 export let fsB, fsOK; // 初始化在 init()
 // 功能：處理「toggleFS」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
@@ -72,8 +73,10 @@ addEventListener("keydown", (e) => {
     if (!e.repeat) ult();
   } else if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat)
     dash();
+  else if (techKey(e.code)) e.preventDefault();
   else if (/^Digit[1-9]$/.test(e.code)) {
     const dn = +e.code[5];
+    if (techDigit(dn, e.shiftKey)) return; // 塵流懸圖：數字鍵接管成同心圓控制
     if (dn >= 4 && dn <= 6 && !e.repeat) useItem(BAG()[dn - 4]);
     else if (dn <= WP.length) G.pl.w = dn - 1;
   } else if ((e.code === "Escape" || e.code === "KeyP") && !e.repeat)

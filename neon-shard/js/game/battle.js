@@ -18,6 +18,7 @@ import { WP } from "./weapons.js";
 import { ENEMY_SPEED_SCALE, bossCatalog, enemyCatalog, requireCreature } from "../config/index.js";
 import { burst, empty, genMap } from "./world-helpers.js";
 import { damageTakenMultiplier } from "./status-effects.js";
+import { resetTechniques } from "./techniques.js";
 export { blocked, burst, cell, drop, empty, genMap, hc, hitCell, mv, ray, solidAt, turLand } from "./world-helpers.js";
 export { ULN, ULT_OLD, applyUM, shoot, ub, ult, ultMods, ultT } from "./player-attacks.js";
 
@@ -142,6 +143,10 @@ export function setup() {
     w: 0,
     rc: 0,
     st: {}, // 狀態效果（見 status-effects.js）
+    en: 100, // 術式能量（見 techniques.js）
+    enMax: 100,
+    cdw: {}, // 技能冷卻
+    heat: 0, // 青羽鎩的熱量
     pvx: 0,
     pvy: 0,
     q: 0.5,
@@ -194,6 +199,7 @@ export function setup() {
   G.pk = [];
   G.pt = [];
   G.zones = [];
+  resetTechniques();
   G.wave = 0;
   G.score = 0;
   G.shake = 0;

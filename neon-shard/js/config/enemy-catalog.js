@@ -277,7 +277,7 @@ export class EnemyCatalog {
         rg: 70,
         fx: ["一次佈下 3 個減速陷阱（波數 14 後 4 個），範圍更大、持續更久", "橘色陷阱：踩到會爆炸；藍色陷阱：踩到會強力減速"],
       } },
-    { name: "毒霧", radius: 15, maxHealth: 45, moveSpeed: 60, color: "#3dff67", scoreValue: 280, mass: 2.3, unlockWave: 10,
+    { name: "毒霧", radius: 15, maxHealth: 45, moveSpeed: 60, color: "#3dff67", scoreValue: 280, mass: 2.3, unlockWave: 1,
       shape: { sides: 15, innerRatio: 1 }, telegraphRadius: 90, preferredDistance: 340, attackCooldown: 5, recoveryTime: 1.4,
       dodge: { skill: 0.2, mistakeChance: 0.7 },
       legend: "發射毒霧彈，命中會中毒",

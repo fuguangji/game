@@ -222,6 +222,8 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 | Boss | `config/boss-catalog.js` 一列 + `game/boss-custom.js` 以名稱註冊招式 | Boss 圖鑑、訓練場按鈕、無盡模式輪替 |
 | 玩家狀態效果 | `game/status-effects.js` 的 `STATUS` | 倒數、HUD 圖示、角色光環、速度／受傷倍率 |
 | 地圖方塊 | `game/tiles.js` 底部 `registerTile` | 生成、繪製、站立效果、打破效果 |
+| 敵人狀態效果 | `game/enemy-effects.js` 的 `ENEMY_FX` | 倒數、頭上光環、禁止攻擊／移動 |
+| 術式（技能與術式場） | `js/techniques/` 新增檔案 + `registerTechnique` | 技能鈕、能量條、冷卻、按鍵（核心在 `game/techniques.js`，畫面在 `ui/technique-ui.js`） |
 
 編號由程式配發，並在啟動時檢查任兩種單位不重複；Boss／小單位用資料判斷（`isBossType`、`isMinionType`），不再有編號範圍。
 

@@ -6,13 +6,13 @@ import { PC, PSPD } from "../game-config.js";
 import { burst, hurt, keys, mouse, mv, shoot, ta, tm } from "./battle.js";
 import { collectPk } from "./pickups.js";
 import { UL } from "./progress.js";
-import { applyStatus, speedMultiplier, tickStatuses } from "./status-effects.js";
+import { applyStatus, isBlocked, speedMultiplier, tickStatuses } from "./status-effects.js";
 import { standOnTile } from "./tiles.js";
 import { WP } from "./weapons.js";
 
 // 衝刺：短暫無敵位移，方向取輸入或瞄準方向
 export function dash(ang) {
-  if (fsm.state !== "play" || G.pl.dashCd > 0) return;
+  if (fsm.state !== "play" || G.pl.dashCd > 0 || isBlocked(G.pl, "move")) return;
   let { ix, iy } = inp();
   if (ang !== undefined) {
     ix = Math.cos(ang);

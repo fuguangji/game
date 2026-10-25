@@ -7,6 +7,7 @@ import { LEAD, bLead, bossAI3, chg, cloneAI, flk, isB, leadAt, nodeAI, thr } fro
 import { nav } from "./pathfinding.js";
 import { applyStatus } from "./status-effects.js";
 import { BULLET_SPEED_SCALE, ENEMY_SPEED_SCALE, attackCooldownOf, bulletCatalog, enemyCatalog, preferredDistanceOf, recoveryTimeOf, telegraphDurationOf } from "../config/index.js";
+import { enemyMayAttack } from "./enemy-effects.js";
 
 // 功能：處理「eb」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 /** 依子彈設定，在 (x, y) 朝 angle 方向發射一顆敵方子彈；color 省略時用設定中的顏色 */
@@ -137,6 +138,7 @@ export function lzEnd(e, n) {
 }
 // 敵人開火（依種類發射子彈、投放地面區域或召喚）
 export function fire(e) {
+  if (!enemyMayAttack(e)) return; // 術式熔斷中取消攻擊；術式反噬在這裡結算
   const t = e.t;
   e.rec = recoveryTimeOf(t) || 0.6;
   e.cd =

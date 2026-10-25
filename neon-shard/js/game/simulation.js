@@ -23,8 +23,23 @@ import { showOv } from "../ui/render.js";
 import { kill } from "./enemy-death.js";
 import { updZ } from "./zone-update.js";
 import { applyStatus } from "./status-effects.js";
+import { bindEnemyFxApi, enemyBacklashMul, enemyBlocks, tickEnemyFx } from "./enemy-effects.js";
+import { blindTarget, updateTechniques } from "./techniques.js";
 export { updZ } from "./zone-update.js";
 export { kill } from "./enemy-death.js";
+// 敵人效果（enemy-effects.js）需要的傷害與能量函式，在這裡綁定
+bindEnemyFxApi({
+  damage(e, d) {
+    const dd = dm(e, d);
+    e.hp -= dd;
+    e.hf = dd > 0 ? 1 : 0;
+    if (e.hp <= 0) kill(e);
+  },
+  damagePct(e, normal, boss) { this.damage(e, e.mhp * (isB(e) ? boss : normal)); },
+  gainEnergy(v) { G.pl.en = Math.min(G.pl.enMax ?? 100, (G.pl.en ?? 0) + v); },
+  backlashMul: enemyBacklashMul,
+});
+
 // 整體模擬一步（dt 秒）
 export function update(dt) {
   if (G.pendEn.length) {
@@ -80,6 +95,7 @@ export function update(dt) {
   G.shake = Math.max(0, G.shake - dt * 40);
   if (fsm.state === "play") {
     updPl(dt);
+    updateTechniques(dt);
     G.pl.avx =
       (G.pl.avx || 0) + ((G.pl.vx || 0) - (G.pl.avx || 0)) * Math.min(1, dt * 5);
     G.pl.avy =
@@ -101,6 +117,7 @@ export function update(dt) {
     }
     for (const e of G.en) {
       if (e.inv > 0) e.inv -= dt;
+      tickEnemyFx(e, dt);
       if (e.bu > 0) {
         e.bu -= dt;
         e.hp -= dm(e, 10 * dt);
@@ -126,8 +143,8 @@ export function update(dt) {
       if (e.stn > 0) {
         e.stn -= dt;
         if (Math.random() < 0.3) burst(e.x, e.y, "#ffe14a", 1, 40, 2, 0.3);
-      } else if (!(G.train && G.fz) && !e.dummy) {
-        const ft = isB(e) || isMinionType(e.t) ? null : fTarget(e),
+      } else if (!(G.train && G.fz) && !e.dummy && !enemyBlocks(e, "move")) {
+        const ft = blindTarget(e) ?? (isB(e) || isMinionType(e.t) ? null : fTarget(e)),
           real = G.pl;
         if (ft) {
           G.pl = Object.create(real);

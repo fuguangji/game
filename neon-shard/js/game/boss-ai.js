@@ -11,6 +11,7 @@ import { isB } from "./boss.js";
 import { eb } from "./enemy-ai.js";
 import { nav } from "./pathfinding.js";
 import { CUSTOM_BOSS_ATTACKS } from "./boss-custom.js";
+import { enemyMayAttack } from "./enemy-effects.js";
 
 // 功能：處理「bossPhase」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bossPhase(e, ph, i) {
@@ -90,6 +91,7 @@ export const dk = (c) => {
 
 // 功能：處理「bossFire3」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
 export function bossFire3(e, ph, a, i) {
+  if (!enemyMayAttack(e)) return;
   G.TS = e;
   e.rec = Math.max(0.25, 0.5 - 0.08 * ph);
   const k = e.atk,

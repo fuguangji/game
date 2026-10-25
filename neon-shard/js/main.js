@@ -29,6 +29,8 @@ import { init as init_ui_render } from "./ui/render.js";
 import { init as init_core_input } from "./core/input.js";
 import { init as init_game_tutorial } from "./game/tutorial.js";
 import { init as init_api_extension } from "./api/extension.js";
+import "./techniques/index.js"; // 術式武器的內容
+import { initTechniques } from "./game/techniques.js";
 
 /* 依原本的載入順序，逐一執行各模組的初始化（與單檔時的執行順序相同） */
 init_core_viewport();
@@ -36,6 +38,7 @@ init_game_elite();
 init_game_weapons();
 init_game_battle();
 init_game_ultimates();
+initTechniques();
 init_game_progress();
 init_game_chips();
 init_ui_workshop();

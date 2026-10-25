@@ -12,17 +12,19 @@ import { UL } from "./progress.js";
 import { ULTS, laserFire, slashHit, ultRing, zfl } from "./ultimates.js";
 import { ALLWEAPON, WP } from "./weapons.js";
 import { burst, ray, turLand } from "./world-helpers.js";
+import { damageDealtMultiplier, isBlocked } from "./status-effects.js";
+import { castDomain, domainCount } from "./techniques.js";
 
 // 開火：檢查彈藥與冷卻，依武器產生子彈（含自動瞄準與散佈）
 export function shoot(f, qk) {
   const w = WP[G.pl.w];
-  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1)) return;
+  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 熔斷中不能攻擊
   w.am -= w.laser ? 0.85 : 1;
   G.pl.sc = w.cd;
   G.pl.lf = G.time;
   const tg = qk ? quickT() : aimT();
   bus.emit(GameEvents.PLAYER_SHOT, { autoAim: !!tg });
-  const SB = G.pl.sb > 0 ? 1.3 : 1;
+  const SB = (G.pl.sb > 0 ? 1.3 : 1) * damageDealtMultiplier(G.pl);
   G.pl.sb = 0;
   let ba = G.pl.aim;
   if (tg && !(w.mine || w.web || w.tur || w.tox || w.slash)) {
@@ -562,6 +564,7 @@ export function ultT() {
 // 施放 SUPER 大招：依目前武器查表執行，並清空蓄能
 export function ult(ang, q) {
   if (fsm.state !== "play" || G.pl.ult < 100) return;
+  if (domainCount()) { castDomain(0); return; } // 術式武器：大招鍵展開術式場（techniques.js）
   G.UMANUAL = ang !== undefined;
   if (ang === undefined) {
     const t = ultT();

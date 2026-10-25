@@ -23,6 +23,8 @@ import { drawRoleAura, skinRenderer } from "../profile/appearance.js";
 import { accountService } from "../account/index.js";
 import { drawStatusAuras } from "../game/status-effects.js";
 import { drawTiles } from "../game/tiles.js";
+import { drawTechniques } from "../game/techniques.js";
+import { drawEnemyFx } from "../game/enemy-effects.js";
 
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
@@ -436,6 +438,7 @@ export function render() {
     cx.stroke();
     cx.restore();
   }
+  drawTechniques(cx); // 術式的持續效果與術式場
   for (const f of G.fxs) {
     if (f.fp) {
       f.x = G.pl.x;
@@ -787,6 +790,7 @@ export function render() {
     cx.restore();
   }
   for (const e of G.en) {
+    drawEnemyFx(cx, e, G.time); // 敵人身上的效果光環（enemy-effects.js）
     if (e.gl) {
       cx.save();
       cx.globalCompositeOperation = "lighter";

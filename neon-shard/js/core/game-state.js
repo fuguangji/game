@@ -21,6 +21,8 @@ export class GameState {
   zones = undefined;
   grid = undefined;
   tile = undefined; // 特殊方塊圖層（tiles.js）
+  tq = undefined; // 術式的持續效果清單（techniques.js）
+  dom = undefined; // 目前展開的術式場（沒有則 null）
   pl = undefined;
   en = undefined;
   bl = undefined;
