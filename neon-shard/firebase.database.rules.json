@@ -1,0 +1,49 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$roomCode": {
+        ".read": "auth != null && (data.child('hostUid').val() === auth.uid || data.child('guestUid').val() === auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('guestUid').val() === null) || (data.child('hostUid').val() === auth.uid && !newData.exists()))",
+        ".validate": "newData.hasChildren(['hostUid', 'mode', 'status', 'createdAt']) && newData.child('hostUid').isString() && (newData.child('mode').val() === 'arena' || newData.child('mode').val() === 'boss')",
+        "hostUid": {
+          ".write": false
+        },
+        "guestUid": {
+          ".write": "auth != null && data.val() === null && newData.val() === auth.uid"
+        },
+        "mode": {
+          ".write": false
+        },
+        "createdAt": {
+          ".write": false
+        },
+        "status": {
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('hostUid').val() === auth.uid",
+          ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'connected' || newData.val() === 'closed')"
+        },
+        "offer": {
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('hostUid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['type', 'sdp']) && newData.child('type').val() === 'offer' && newData.child('sdp').isString()"
+        },
+        "answer": {
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('guestUid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['type', 'sdp']) && newData.child('type').val() === 'answer' && newData.child('sdp').isString()"
+        },
+        "hostCandidates": {
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('hostUid').val() === auth.uid",
+          "$candidateId": {
+            ".validate": "newData.hasChildren(['candidate']) && newData.child('candidate').isString()"
+          }
+        },
+        "guestCandidates": {
+          ".write": "auth != null && root.child('rooms').child($roomCode).child('guestUid').val() === auth.uid",
+          "$candidateId": {
+            ".validate": "newData.hasChildren(['candidate']) && newData.child('candidate').isString()"
+          }
+        }
+      }
+    }
+  }
+}
