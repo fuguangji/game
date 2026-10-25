@@ -1,10 +1,27 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import {
-  getDatabase, ref, get, set, update, remove, push, runTransaction,
-  onValue, onChildAdded, onDisconnect,
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 import { FIREBASE_CONFIG, FIREBASE_ICE_SERVERS } from "./firebase-config.js";
+
+// Load the browser SDK only when a player actually starts online play. This keeps
+// Node-based unit tests and local import validation from trying to load HTTPS URLs.
+let initializeApp, getApps, getAuth, signInAnonymously, getDatabase;
+let ref, get, set, update, remove, push, runTransaction, onValue, onChildAdded, onDisconnect;
+let sdkLoadPromise;
+async function loadFirebaseSdk() {
+  if (!sdkLoadPromise) {
+    sdkLoadPromise = Promise.all([
+      import("https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js"),
+    ]).then(([appSdk, authSdk, dbSdk]) => {
+      ({ initializeApp, getApps } = appSdk);
+      ({ getAuth, signInAnonymously } = authSdk);
+      ({ getDatabase, ref, get, set, update, remove, push, runTransaction, onValue, onChildAdded, onDisconnect } = dbSdk);
+    }).catch((error) => {
+      sdkLoadPromise = null;
+      throw error;
+    });
+  }
+  await sdkLoadPromise;
+}
 
 const ROOM_CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 const MODES = new Set(["arena", "boss"]);
@@ -43,11 +60,6 @@ export class FirebaseRoomClient extends EventTarget {
 
   constructor() {
     super();
-    if (!validConfig()) throw new Error("Firebase 尚未設定：請依 dev.md 填入 firebase-config.js。");
-    const app = getApps().find((item) => item.name === SDK_APP_NAME)
-      ?? initializeApp(FIREBASE_CONFIG, SDK_APP_NAME);
-    this.#auth = getAuth(app);
-    this.#db = getDatabase(app);
   }
 
   get connected() { return this.#channel?.readyState === "open"; }
@@ -55,6 +67,14 @@ export class FirebaseRoomClient extends EventTarget {
   get role() { return this.#role; }
 
   async #ensureAuth() {
+    if (!validConfig()) throw new Error("Firebase 尚未設定：請依 dev.md 填入 firebase-config.js。");
+    await loadFirebaseSdk();
+    if (!this.#auth || !this.#db) {
+      const app = getApps().find((item) => item.name === SDK_APP_NAME)
+        ?? initializeApp(FIREBASE_CONFIG, SDK_APP_NAME);
+      this.#auth = getAuth(app);
+      this.#db = getDatabase(app);
+    }
     if (!this.#auth.currentUser) await signInAnonymously(this.#auth);
     if (!this.#auth.currentUser) throw new Error("Firebase 匿名登入失敗，請確認已啟用 Anonymous Authentication。");
     return this.#auth.currentUser.uid;
