@@ -58,7 +58,7 @@ registerTechnique({
           tag: "water",
           each(dt, f) {
             for (const e of enemiesIn(f.x, f.y, f.r))
-              applyEnemyFx(e, "frozen", {duration: 1.2 });
+              applyEnemyFx(e, "frozen", { duration: 1.2 });
           },
           tick(f) {
             for (const e of enemiesIn(f.x, f.y, f.r)) {
@@ -405,21 +405,33 @@ registerTechnique({
             const TAU = Math.PI * 2;
             // 1. 取得超高頻率的時間齒輪，讓閃電每幀都在瘋狂顫抖
             const time = Date.now() * 0.001;
-            const color = [
-              [59,82,246],
-              [168,55,247],
-              [145,100,60]
-            ]
-            const t = (time%3)
-            const index = Math.floor(t)
-            const progress = t - index
-            const smooth = progress*progress*(3-2*progress)
-            const a = color[index]
-            const b = color[(index+1)%3]
-            let dh = ((b[0]-a[0]+540)%360)-180
-            const h = (a[0]+dh*smooth+360)-180
-            const s = a[1]+(b[1]-a[1])*smooth
-            const l = a[2]+(b[2]-a[2])*smooth
+
+            // 紫電、綠電、藍電：HSL
+            const colors = [
+              [270, 100, 60], // 紫電
+              [145, 100, 50], // 綠電
+              [215, 100, 60], // 藍電
+            ];
+
+            // 每種顏色過渡 1 秒，3 秒完成循環
+            const t = time % 3;
+            const index = Math.floor(t);
+            const progress = t - index;
+
+            // Smoothstep：避免每段交界時突然改變速度
+            const smooth = progress * progress * (3 - 2 * progress);
+
+            const a = colors[index];
+            const b = colors[(index + 1) % colors.length];
+
+            // 沿色相最短路徑過渡
+            const dh = ((b[0] - a[0] + 540) % 360) - 180;
+
+            const h = (a[0] + dh * smooth + 360) % 360;
+            const s = a[1] + (b[1] - a[1]) * smooth;
+            const l = a[2] + (b[2] - a[2]) * smooth;
+
+            const electricColor = `hsl(${h}, ${s}%, ${l}%)`;
 
             cx.save();
             // 2. 雷電終極發光模式：重疊處會融合成耀眼的白光
@@ -443,7 +455,7 @@ registerTechnique({
               // 4. 雷擊主幹：設定為超亮核心（白藍色），線條較粗
               cx.strokeStyle = "#ffffff";
               cx.lineWidth = 2.0;
-              cx.shadowColor = `hsl(${h},${s},${l})`; 
+              cx.shadowColor = electricColor;
               cx.shadowBlur = 10;
               cx.globalAlpha = 0.9;
 

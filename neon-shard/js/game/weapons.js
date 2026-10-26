@@ -216,7 +216,7 @@ class WeaponCatalog {
     {
       weapon: "泱懸伏鏢",
       color: "#501aa7",
-      projectilesPerShot: 1,
+      projectilesPerShot: 2,
       spreadAngle: 0.1,
       damage: 17,
       projectileSpeed: 1000,

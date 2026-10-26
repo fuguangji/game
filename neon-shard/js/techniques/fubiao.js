@@ -385,7 +385,7 @@ registerTechnique({
   ],
   domains: [
     {
-      name: "噬血符",
+      name: "hi",
       color: "#5edfff",
       desc: "術式場（12 秒，半徑 10 公尺）：範圍內敵人受到火雷冰毒的持續傷害與效果，玩家也會受到3級中毒",
       backlash: 0.5,
