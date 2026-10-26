@@ -20,6 +20,6 @@
     "helmet": "8.1.0",
     "zod": "4.1.5",
     "ws": "8.18.3",
-    "firebase-admin": "^13.5.0"
+    "firebase-admin": "13.5.0"
   }
 }
