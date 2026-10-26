@@ -15,6 +15,7 @@ export class ApiClient {
   #sessions;
   #timeoutMs;
   #fetch;
+  #getAuthToken;
   #refreshing = null;
   /** session 無法更新（已過期）時呼叫，讓上層回到登入畫面 */
   onSessionExpired = () => {};
@@ -26,7 +27,8 @@ export class ApiClient {
     this.#base = String(baseUrl || "").replace(/\/$/, "");
     this.#sessions = sessions;
     this.#timeoutMs = timeoutMs;
-    this.#fetch = fetchImpl;\n    this.#getAuthToken = typeof getAuthToken === "function" ? getAuthToken : null;
+    this.#fetch = fetchImpl;
+    this.#getAuthToken = typeof getAuthToken === "function" ? getAuthToken : null;
   }
 
   async request(path, { method = "GET", body, auth = true } = {}) {
