@@ -15,9 +15,12 @@
 - [ ] 把 P2P 封包正式接入遊戲模擬：遠端玩家渲染、房主端輸入驗證、權威戰鬥狀態與重連處理。
 - [x] 合併 PR #15；Render 部署已成功，建置記錄確認使用 Node.js 24.22.1。main 也已加上相同版本鎖定。
 - [ ] 再人工確認 API health、既有登入、金鑰讀取與加密存檔流程。
-- [ ] 決定是否另行把雲端帳號與存檔從既有 Render/Supabase 後端遷移到 Firebase。
+- [x] 新增 `/account/` 共用 Firebase Email/Password 登入／註冊頁與同來源持久化登入狀態。
+- [x] 新增 Render `/api/identity/me`：由 Firebase Admin SDK 驗證 ID Token，而不是相信前端提供的 UID。
+- [ ] 在 Firebase Console 與 Render 填入設定，完成實際身分驗證測試。
+- [ ] 將既有雲端存檔 API 從 Supabase Auth 身分遷移到 Firebase UID；目前這部分尚未完成。
 
-> **重要：目前 Firebase 已負責線上房間與 WebRTC 訊號；現有雲端帳號／加密存檔仍走 Render API 與 Supabase。** 這是刻意保留的相容性界線，避免在沒有遷移與恢復測試前破壞既有加密存檔。線上聯機目前可建立房間、加入房間、建立 P2P DataChannel 並傳送測試封包；它尚不代表整場戰鬥已經由房主完整模擬及同步。
+> **重要：共用登入已開始改用 Firebase Authentication；`/api/identity/me` 可用 Firebase Admin 驗證 ID Token，但需先在 Render 設定服務帳號。** 現有雲端加密存檔 API 仍使用舊的 Supabase Auth session，尚未接上 Firebase UID。登入中心的「伺服器身分驗證」與雲端存檔功能是兩件事，不能把前者視為存檔遷移已完成。線上聯機目前可建立房間、加入房間、建立 P2P DataChannel 並傳送測試封包；它尚不代表整場戰鬥已經由房主完整模擬及同步。
 
 ---
 
