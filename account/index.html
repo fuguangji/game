@@ -103,13 +103,14 @@
         if (!name || [...name].length > 24 || /[<>&"'\x60%_\\\u0000-\u001f\u007f]/u.test(name)) {
           throw new Error("顯示名稱需為 1～24 個字，且不能包含特殊控制符號。");
         }
-        await register(email, password, name);
+        const user = await register(email, password, name);
+        await renderUser(user);
         say("帳號已建立，正在確認伺服器身分…");
       } else {
-        await signIn(email, password);
+        const user = await signIn(email, password);
+        await renderUser(user);
         say("登入成功，正在確認伺服器身分…");
       }
-      await renderUser(currentUser);
     } catch (error) {
       const message = error?.code === "auth/email-already-in-use" ? "這個電子郵件已註冊，請改用登入。"
         : error?.code === "auth/invalid-credential" ? "電子郵件或密碼不正確。"
