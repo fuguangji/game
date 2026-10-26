@@ -192,7 +192,7 @@ export class AccountView {
   /* ---------- 未登入 ---------- */
   #renderSignedOut(panel) {
     const accountUrl = new URL("../../../account/", import.meta.url);
-    accountUrl.searchParams.set("returnTo", location.href);
+    accountUrl.searchParams.set("returnTo", globalThis.location?.href || new URL("../../../neon-shard/", import.meta.url).href);
     const openAccount = h("a", { class: "x-btn pri blk", href: accountUrl.href }, "前往共用帳號中心");
     panel.append(
       h("header", { class: "ns-intro" },
@@ -210,7 +210,7 @@ export class AccountView {
     const user = this.#sharedUser;
     const name = user.displayName || user.email || "已登入玩家";
     const accountUrl = new URL("../../../account/", import.meta.url);
-    accountUrl.searchParams.set("returnTo", location.href);
+    accountUrl.searchParams.set("returnTo", globalThis.location?.href || new URL("../../../neon-shard/", import.meta.url).href);
     const head = h("header", { class: "ns-me" },
       h("div", { class: "ns-avatar-dot", "aria-hidden": "true" }, [...name][0] ?? "?"),
       h("div", {}, h("h2", {}, name),
