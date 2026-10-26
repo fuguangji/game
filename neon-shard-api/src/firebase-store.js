@@ -20,6 +20,11 @@ export function createAccountStore(db) {
   }
 
   return {
+    async ping() {
+      await db.collection("_health").doc("firestore").set({ checkedAt: new Date().toISOString() }, { merge: true });
+      return true;
+    },
+
     async ensureIdentity(decoded) {
       const ref = userRef(decoded.uid);
       return db.runTransaction(async (tx) => {
