@@ -24,13 +24,47 @@
 
 ---
 
+## 0. 共用帳號中心（最新開發分支）
+
+共用登入入口是 `/account/`。遊戲內所有「登入／建立帳號」入口都應導向這裡，附上 `returnTo`，登入後回到原遊戲。頁面會限制回跳網址必須同來源且位於網站部署路徑內，避免開放式重新導向。
+
+### A. Firebase Web 設定
+
+1. Firebase Console → Project settings → General → Your apps，選擇共用 Web App。
+2. 將實際的 `apiKey`、`authDomain`、`databaseURL`、`projectId`、`appId` 填入 `account/firebase-config.js`。
+3. Firebase Console → Authentication → Sign-in method，啟用 **Email/Password**。
+4. Authentication → Settings → Authorized domains，確認 GitHub Pages 網域已列入；本機測試則依 Firebase Console 的目前介面加入 localhost。
+5. `neon-shard/js/profile/firebase-config.js` 現在只是轉出共用設定，不要在兩處填兩份不同的 Firebase 專案資料。
+6. 若仍使用線上房間，另外依第 1 節啟用 Anonymous Auth；匿名身分只供房間流程使用，不會取代電子郵件帳號。
+
+### B. Render 後端驗證憑證
+
+1. Firebase Console → Project settings → Service accounts，產生 Admin SDK 服務帳號 JSON。
+2. Render → `neon-shard-api` Web Service → Environment，新增 `FIREBASE_SERVICE_ACCOUNT_JSON`。
+3. 將完整服務帳號 JSON 作為環境變數值貼入。**不要**把 JSON 檔案提交 GitHub、放進前端、寫進 `.env.example` 或貼到聊天。
+4. 重新部署 Render。
+5. 登入 `/account/` 後，頁面應顯示「伺服器已驗證你的身分」。若顯示 `FIREBASE_ADMIN_NOT_CONFIGURED`，代表 Render 尚未收到該環境變數；若驗證失敗，檢查 JSON 與前端設定是否指向同一 Firebase 專案。
+
+驗證端點：`GET https://neon-shard-api.onrender.com/api/identity/me`，使用 `Authorization: Bearer <Firebase ID Token>`。Token 是短期有效的身分證明，不是永久密碼；後端會驗簽並從 Token 取得可信的 `uid`，不會信任前端另傳的 UID。
+
+### C. 目前範圍與待完成工作
+
+- 已新增共用登入／註冊、登入狀態持久化、登出、忘記密碼及安全的 `returnTo` 檢查。
+- NEON SHARD 未登入時的登入／註冊入口已導向共用帳號中心。
+- 已新增 Firebase Admin 驗證端點；沒有設定服務帳號時，端點會回報尚未配置，不會假裝驗證成功。
+- **尚未完成：** 雲端存檔 API 仍使用舊的 Supabase Auth session。後續需把 profiles、player_data、金鑰 metadata 遷移至 Firebase UID，並調整加密簽章所用的 userId。不能只把 Firebase UID 塞進舊 UUID 欄位；需先檢查資料表型別、外鍵、唯一鍵與 RLS，再設計 SQL migration。
+- Firebase WebRTC 房間目前使用另一個具名 Firebase App 與匿名登入，避免覆寫共用帳號登入狀態。後續需決定房間採已登入 UID 還是允許訪客 UID，並讓資料庫規則一致。
+- 測試順序：建立帳號 → 登出 → 登入 → 重新整理 → 新分頁／另一款遊戲沿用登入狀態 → 登出後確認各頁狀態同步 → 確認伺服器驗證回傳 UID 與 Firebase 使用者相同。
+
+---
+
 ## 1. Firebase 專案設定（你需要操作）
 
 ### A. 建立 Web App
 
 1. 開啟 [Firebase Console](https://console.firebase.google.com/) 並建立或選擇專案。
 2. 專案設定（齒輪）→「一般」→「你的應用程式」→ 新增 Web App。
-3. 複製 Web App 設定值，填入 neon-shard/js/profile/firebase-config.js 的 FIREBASE_CONFIG：
+3. 複製 Web App 設定值，填入 account/firebase-config.js 的 FIREBASE_CONFIG：
    - apiKey
    - authDomain
    - databaseURL
@@ -134,7 +168,7 @@
 
 ## 5. 雲端存檔遷移提醒
 
-目前雲端帳號和存檔仍使用 Render API + Supabase Auth/PostgreSQL。不要直接刪除舊後端或替換 cloud-crypto.js。
+共用登入已開始使用 Firebase Authentication，但雲端存檔仍使用 Render API + Supabase Auth/PostgreSQL。不要直接刪除舊後端或替換 cloud-crypto.js。
 
 加密資料的金鑰推導、簽章與關聯資料會綁定使用者識別及版本。若決定把帳號與存檔全面遷移到 Firebase，必須先設計：
 - Firebase Authentication 帳號建立／登入／驗證與既有帳號對應；
