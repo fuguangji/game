@@ -1,4 +1,3 @@
-import { getFirestore } from "firebase-admin/firestore";
 import { hasUnsupportedDisplayNameChars } from "./display-name.js";
 
 export function createAccountStore(db) {
@@ -184,4 +183,3 @@ export function createAccountStore(db) {
   };
 }
 
-export { getFirestore };
