@@ -460,7 +460,7 @@ async function updateSave(req, res, next) {
     if (!Number.isInteger(input.expectedRevision)) {
       throw new HttpError(400, "REVISION_REQUIRED", "expectedRevision is required for updates.");
     }
-    const profile = await getProfile(req.user.id);
+    const profile = await getProfile(requestUserId(req), req.user.authProvider);
     requireSigningKey(profile, input, req, input.expectedRevision);
     const { data, error } = await admin.from(playerDataTable(req)).update({
       save_data: input.saveData,
