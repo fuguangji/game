@@ -27,7 +27,10 @@ export class AccountService extends EventTarget {
     this.#sessions = sessions;
     this.#crypto = crypto;
     this.#sharedAuth = sharedAuth;
-    api.onSessionExpired = () => this.#reset("登入已過期，請重新登入。");
+    api.onSessionExpired = () => {
+      if (this.#sharedUser && this.#sharedAuth) this.#sharedAuth.signOut().catch((error) => console.warn("[account] expired Firebase session sign-out failed", error));
+      this.#reset("登入已過期，請重新登入。");
+    };
   }
 
   get signedIn() { return this.#sharedUser !== null || this.#sessions.current !== null; }
@@ -91,6 +94,7 @@ export class AccountService extends EventTarget {
         console.warn("[account] shared auth initialization failed", error);
       }
     }
+    if (this.#sharedAuth) return;
     if (!this.signedIn || this.#profile) return;
     try {
       await this.#loadProfile();
