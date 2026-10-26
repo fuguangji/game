@@ -14,7 +14,7 @@ const safeSend = (socket, data) => {
 /**
  * WebSocket 轉接層：只處理連線、驗證、頻率限制與心跳；遊戲規則都在 RoomManager。
  */
-export function attachRealtime(server, { admin, allowedOrigins = [], manager = new RoomManager() } = {}) {
+export function attachRealtime(server, { firebaseAuth, allowedOrigins = [], manager = new RoomManager() } = {}) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
 
   server.on("upgrade", (req, socket, head) => {
@@ -63,13 +63,16 @@ export function attachRealtime(server, { admin, allowedOrigins = [], manager = n
           return;
         }
         authState = "checking"; // 驗證進行中時，再收到任何訊息都視為違規
-        const { data, error } = await admin.auth.getUser(msg.token);
-        if (error || !data?.user?.id) { socket.close(4401, "invalid token"); return; }
+        if (!firebaseAuth) { socket.close(1013, "Firebase not configured"); return; }
+        let decoded;
+        try { decoded = await firebaseAuth.verifyIdToken(msg.token, true); }
+        catch { socket.close(4401, "invalid token"); return; }
+        if (!decoded?.uid) { socket.close(4401, "invalid token"); return; }
         authState = "done";
         clearTimeout(authTimeout);
         player = manager.createPlayer({
-          id: data.user.id,
-          name: data.user.user_metadata?.display_name ?? "玩家",
+          id: decoded.uid,
+          name: decoded.name ?? decoded.email?.split("@")[0] ?? "玩家",
           send: (payload) => safeSend(socket, payload),
           close: (code, reason) => socket.close(code, reason),
         });
