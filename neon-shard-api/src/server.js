@@ -107,11 +107,21 @@ function bearerToken(req) {
 async function requireUser(req, _res, next) {
   try {
     const token = bearerToken(req);
+    if (firebaseAuth) {
+      try {
+        const decoded = await firebaseAuth.verifyIdToken(token, true);
+        if (decoded?.uid) {
+          req.user = { id: decoded.uid, uid: decoded.uid, email: decoded.email ?? null, authProvider: "firebase" };
+          req.accessToken = token;
+          return next();
+        }
+      } catch { /* A legacy Supabase token may still be valid during migration. */ }
+    }
     const { data, error } = await admin.auth.getUser(token);
     if (error || !data?.user?.id) {
-      throw new HttpError(401, "UNAUTHENTICATED", "A valid bearer token is required.");
+      throw new HttpError(401, "UNAUTHENTICATED", "A valid Firebase or legacy bearer token is required.");
     }
-    req.user = data.user;
+    req.user = { ...data.user, authProvider: "supabase" };
     req.accessToken = token;
     next();
   } catch (error) {
@@ -119,12 +129,29 @@ async function requireUser(req, _res, next) {
   }
 }
 
-async function getProfile(userId) {
-  const { data, error } = await admin
-    .from("profiles")
-    .select("user_id,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id")
-    .eq("user_id", userId)
-    .maybeSingle();
+function requestUserId(req) {
+  return req.user.authProvider === "firebase" ? req.user.uid : req.user.id;
+}
+function profileTable(req) {
+  return req.user.authProvider === "firebase" ? "firebase_profiles" : "profiles";
+}
+function profileUserColumn(req) {
+  return req.user.authProvider === "firebase" ? "firebase_uid" : "user_id";
+}
+function playerDataTable(req) {
+  return req.user.authProvider === "firebase" ? "firebase_player_data" : "player_data";
+}
+function playerDataUserColumn(req) {
+  return req.user.authProvider === "firebase" ? "firebase_uid" : "user_id";
+}
+
+async function getProfile(userId, provider = "supabase") {
+  const table = provider === "firebase" ? "firebase_profiles" : "profiles";
+  const userColumn = provider === "firebase" ? "firebase_uid" : "user_id";
+  const selected = provider === "firebase"
+    ? "firebase_uid:user_id,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id"
+    : "user_id,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id";
+  const { data, error } = await admin.from(table).select(selected).eq(userColumn, userId).maybeSingle();
   if (error) throw new HttpError(500, "INTERNAL_ERROR", "The request could not be completed.");
   if (!data) throw new HttpError(404, "PROFILE_NOT_FOUND", "Profile not found.");
   return data;
@@ -335,7 +362,7 @@ app.get("/api/profile/me", requireUser, async (req, res, next) => {
 
 app.get("/api/keys", requireUser, async (req, res, next) => {
   try {
-    const profile = await getProfile(req.user.id);
+    const profile = await getProfile(requestUserId(req), req.user.authProvider);
     res.set("Cache-Control", "no-store");
     if (!profile.signing_public_key || !profile.encryption_public_key || !profile.key_id) {
       return res.json({ registered: false });
@@ -358,7 +385,7 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
     const input = parseBody(keyRegistrationSchema, req.body);
     const current = await getProfile(req.user.id);
     const signingJwk = input.signingPublicKey;
-    const proofMessage = registrationProofMessage(req.user.id, input.keyId, input.encryptionPublicKey);
+    const proofMessage = registrationProofMessage(requestUserId(req), input.keyId, input.encryptionPublicKey);
     if (!verifyP256Signature(signingJwk, proofMessage, input.proof)) {
       throw new HttpError(401, "INVALID_KEY_PROOF", "Proof of key ownership is invalid.");
     }
