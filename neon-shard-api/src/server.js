@@ -5,6 +5,8 @@ import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth as getFirebaseAuth } from "firebase-admin/auth";
 import {
   keyRegistrationSchema,
   loginSchema,
@@ -26,6 +28,17 @@ for (const name of requiredEnv) {
 const supabaseUrl = process.env.SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Firebase identity verification is optional during rollout so existing API/save
+// endpoints can stay healthy until the owner adds the Render secret.
+let firebaseAuth = null;
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  const appName = "novacircuit-shared-account-admin";
+  const firebaseApp = getApps().find((item) => item.name === appName)
+    ?? initializeApp({ credential: cert(serviceAccount) }, appName);
+  firebaseAuth = getFirebaseAuth(firebaseApp);
+}
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",").map((value) => value.trim()).filter(Boolean);
 
@@ -154,6 +167,30 @@ function parseEnvelope(text) {
     throw new HttpError(500, "INTERNAL_ERROR", "Stored save data is invalid.");
   }
 }
+
+app.get("/api/identity/me", async (req, res, next) => {
+  try {
+    if (!firebaseAuth) {
+      throw new HttpError(503, "FIREBASE_ADMIN_NOT_CONFIGURED", "Firebase server verification is not configured yet.");
+    }
+    const token = bearerToken(req);
+    const decoded = await firebaseAuth.verifyIdToken(token, true);
+    if (!decoded?.uid) throw new HttpError(401, "UNAUTHENTICATED", "A valid Firebase ID token is required.");
+    res.set("Cache-Control", "no-store");
+    res.json({
+      uid: decoded.uid,
+      email: decoded.email ?? null,
+      emailVerified: Boolean(decoded.email_verified),
+      displayName: decoded.name ?? null,
+    });
+  } catch (error) {
+    if (error instanceof HttpError) return next(error);
+    if (error?.code?.startsWith?.("auth/")) {
+      return next(new HttpError(401, "UNAUTHENTICATED", "Firebase ID token is invalid or expired."));
+    }
+    next(error);
+  }
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "neon-shard-api", time: new Date().toISOString() });
