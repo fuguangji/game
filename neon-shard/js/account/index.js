@@ -14,4 +14,5 @@ export const accountService = new AccountService({
   api: new ApiClient({ baseUrl: API_BASE, sessions, getAuthToken: sharedAuth ? getIdentityToken : null }),
   sessions,
   crypto,
+  sharedAuth,
 });
