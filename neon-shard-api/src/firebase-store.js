@@ -21,7 +21,9 @@ export function createAccountStore(db) {
 
   return {
     async ping() {
-      await db.collection("_health").doc("firestore").set({ checkedAt: new Date().toISOString() }, { merge: true });
+      // A read-only query proves Firestore connectivity without charging a write
+      // on every Render readiness probe.
+      await db.collection("_health").limit(1).get();
       return true;
     },
 
