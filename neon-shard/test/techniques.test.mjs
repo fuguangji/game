@@ -19,6 +19,7 @@ function scene(weapon) {
   X.resetTechniques();
   const p = G.pl;
   X.WP[0] = X.modW(X.ALLWEAPON.getWeapon(weaponId(weapon))); p.w = 0;
+  X.WP[0].am = X.WP[0].ms; X.WP[0].um = 0; p.sc = 0;
   Object.assign(p, { hp: 1000, mhp: 1000, en: 100, enMax: 100, cdw: {}, st: {}, heat: 50, sh: 0, dashT: 0 });
   G.en.length = 0; G.bl.length = 0; G.zones.length = 0;
   for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; const e = X.mkEn(0, p.x + Math.cos(a) * (120 + k * 25), p.y + Math.sin(a) * (120 + k * 25)); e.hp = e.mhp = 1e5; G.en.push(e); }
@@ -30,6 +31,8 @@ const sane = (p) => [p.hp, p.en, p.x, p.y, ...G.en.flatMap((e) => [e.hp, e.x, e.
 test("資料：每套術式都對應到武器、技能與術式場齊全、名稱不重複", () => {
   const all = X.allTechniques();
   assert.ok(all.length > 0);
+  const defs = X.ALLWEAPON.getWeapon();
+  defs.forEach((w, id) => assert.ok(X.techniqueOf(id), `「${w.name}」沒有註冊術式：這個遊戲只有術式武器（要新增普通武器請先移除這條檢查）`));
   const names = new Set();
   for (const t of all) {
     assert.ok(weaponId(t.weapon) >= 0, `${t.weapon} 找不到對應武器`);
@@ -60,11 +63,17 @@ for (const tq of X.allTechniques()) {
   });
 }
 
-test("規則：熔斷中不能施放術式；熔斷無效時施加不上", () => {
+test("規則：術式熔斷只擋術式（普通攻擊照常）；靈魂熔斷什麼都不能做；熔斷無效時施加不上", () => {
   const p = scene("青羽鎩");
   X.applyStatus(p, "seal", { duration: 3 });
-  assert.equal(X.castSkill(0), false);
+  assert.equal(X.castSkill(0), false, "熔斷時不能施放術式");
+  p.ult = 100; assert.equal(X.castDomain(0), false, "熔斷時不能展開術式場");
+  X.shoot(); assert.ok(p.sc > 0 && X.WP[0].am < X.WP[0].ms, "熔斷時普通攻擊照常（出手後進入冷卻、耗了彈藥）");
   X.clearStatus(p, "seal");
+  p.sc = 0; X.WP[0].am = X.WP[0].ms;
+  X.applyStatus(p, "soulseal", { duration: 3 });
+  X.shoot(); assert.ok(p.sc === 0 && X.WP[0].am === X.WP[0].ms, "靈魂熔斷時連普通攻擊也不行");
+  X.clearStatus(p, "soulseal");
   X.applyStatus(p, "sealImmune", { duration: 5 });
   X.applyStatus(p, "seal", { duration: 3 });
   X.applyStatus(p, "soulseal", { duration: 3 });
@@ -72,7 +81,7 @@ test("規則：熔斷中不能施放術式；熔斷無效時施加不上", () =>
 });
 
 test("規則：術式反噬不會致死（最少留 1 點）；無視反噬時不受反噬", () => {
-  const p = scene("閃霰劍");
+  const p = scene("幻日虹");
   p.hp = 2;
   X.selfBacklash(5);
   assert.equal(p.hp, 1);
@@ -135,7 +144,7 @@ test("規則：霜雪風域讓場內敵人看不見你，且幾乎無法傷到�
 });
 
 test("敵人效果：熔斷的敵人不會開火、靈魂熔斷不能移動；Boss 免疫靈魂熔斷", () => {
-  const p = scene("閃霰劍");
+  const p = scene("幻日虹");
   const e = X.mkEn(X.enemyCatalog.byName("毒霧").typeId, p.x + 200, p.y); e.hp = e.mhp = 1e5; G.en.push(e);
   X.applyEnemyFx(e, "seal", { duration: 5 });
   G.bl.length = 0; X.fire(e);
@@ -155,4 +164,15 @@ test("狀態倍率：升溫隨熱量提高傷害；轉態只放大水屬性技�
   X.applyStatus(p, "waterBoost");
   assert.equal(X.skillDamageMultiplier(p, "water"), 3);
   assert.equal(X.skillDamageMultiplier(p, "fire"), 1);
+});
+
+test("出戰上限：最多 2 把，只能裝擁有的武器，至少留一把", () => {
+  const own = X.SV.own.slice(), lo = G.LO.slice();
+  try {
+    X.SV.own = [0, 1, 2, 3]; G.LO = [0, 1, 2, 9];
+    X.applyLO();
+    assert.deepEqual(G.LO, [0, 1], "超過 2 把會被截斷，沒擁有的會被濾掉");
+    G.LO = [9]; X.applyLO();
+    assert.deepEqual(G.LO, [0], "全部無效時退回擁有的第一把");
+  } finally { X.SV.own = own; G.LO = lo; X.applyLO(); }
 });

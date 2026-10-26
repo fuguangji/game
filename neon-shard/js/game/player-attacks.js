@@ -9,16 +9,16 @@ import { isB, thr } from "./boss.js";
 import { aimT, angD, explode, quickT } from "./physics.js";
 import { AIMR, cone } from "./pickups.js";
 import { UL } from "./progress.js";
-import { ULTS, laserFire, slashHit, ultRing, zfl } from "./ultimates.js";
+import { laserFire, slashHit, zfl } from "./ultimates.js";
 import { ALLWEAPON, WP } from "./weapons.js";
 import { burst, ray, turLand } from "./world-helpers.js";
 import { damageDealtMultiplier, isBlocked } from "./status-effects.js";
-import { castDomain, domainCount } from "./techniques.js";
+import { castDomain } from "./techniques.js";
 
 // 開火：檢查彈藥與冷卻，依武器產生子彈（含自動瞄準與散佈）
 export function shoot(f, qk) {
   const w = WP[G.pl.w];
-  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 靈魂熔斷中不能攻擊，術式熔斷可以
+  if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 熔斷中不能攻擊
   w.am -= w.laser ? 0.85 : 1;
   G.pl.sc = w.cd;
   G.pl.lf = G.time;
@@ -391,20 +391,7 @@ export function applyUM(b) {
   }
 }
 
-export const ULN = [
-    "連珠",
-    "轟炸",
-    "貫穿光束",
-    "彈幕",
-    "烈焰環",
-    "隕石",
-    "飛彈群",
-    "雙環爆",
-    "雷射掃射",
-    "雙向火網",
-    "地毯轟炸",
-    "穿透風暴",
-  ],
+export const ULN = [],
   ULT_OLD = {
     0() {
       const a = G.pl.aim;
@@ -562,44 +549,8 @@ export function ultT() {
 }
 
 // 施放 SUPER 大招：依目前武器查表執行，並清空蓄能
-export function ult(ang, q) {
+/** 大招鍵：展開目前武器的術式場（需要大招蓄滿；規則與消耗見 techniques.js 的 castDomain） */
+export function ult() {
   if (fsm.state !== "play" || G.pl.ult < 100) return;
-  if (domainCount()) { castDomain(0); return; } // 術式武器：大招鍵展開術式場（techniques.js）
-  G.UMANUAL = ang !== undefined;
-  if (ang === undefined) {
-    const t = ultT();
-    if (t) {
-      const lx = t.x + (t.mvx || 0) * 0.3,
-        ly = t.y + (t.mvy || 0) * 0.3;
-      ang = Math.atan2(ly - G.pl.y, lx - G.pl.x);
-      G.pl.aim = ang;
-      q = Math.max(0, Math.min(1, Math.hypot(lx - G.pl.x, ly - G.pl.y) / 330));
-    }
-  }
-  G.pl.ult = 0;
-  bus.emit(GameEvents.ULTIMATE_USED);
-  G.UM = ultMods();
-  const n0 = G.bl.length;
-  (ULTS[WP[G.pl.w].id] || ultRing)(
-    ang === undefined ? G.pl.aim : ang,
-    q === undefined
-      ? mouse.has
-        ? Math.max(
-            0,
-            Math.min(
-              1,
-              Math.hypot(mouse.x / G.S + G.camx - G.pl.x, mouse.y / G.S + G.camy - G.pl.y) /
-                330,
-            ),
-          )
-        : 0.7
-      : q,
-  );
-  for (let i = n0; i < G.bl.length; i++) if (G.bl[i].ult) applyUM(G.bl[i]);
-  if (WP[G.pl.w].id !== 18) {
-    if (WP[G.pl.w].id !== 18) {
-      G.shake = 14;
-      burst(G.pl.x, G.pl.y, "#ffe14a", 40, 320, 3, 0.7);
-    }
-  }
+  castDomain(0);
 }

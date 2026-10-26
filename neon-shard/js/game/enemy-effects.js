@@ -27,6 +27,19 @@ export const ENEMY_FX = Object.freeze({
       while (s.acc >= 0.5) { s.acc -= 0.5; api.damage(e, 4 * s.n); }
     },
   },
+  frozen: { label: "冰凍", color: "#5edfff", defaultDuration: 1.2 ,
+    blocks: ["move"], bossDurationMul: 0.5,
+  },
+  shock: { label: "麻痺", color: "#ffd27a", defaultDuration: 1.5, bossDurationMul: 0.5 ,blocks:["attack"]
+  },
+  burn: {
+    label: "灼燒", color: "#ff4d4d", defaultDuration: 3, maxStacks: 3,
+    onTick(e, s, dt, api) {
+      s.acc += dt;
+      while (s.acc >= 0.5) { s.acc -= 0.5; api.damage(e, 3 * s.n); }
+    },
+    damageTakenMul: (n) => 1 + 0.1 * n,
+  },
   seal: { label: "術式熔斷", color: "#ff9a3d", defaultDuration: 4, blocks: ["attack"], bossDurationMul: 0.5 },
   soulseal: { label: "靈魂熔斷", color: "#c070ff", defaultDuration: 4, blocks: ["attack", "move"], bossImmune: true },
   /** 能量流失：持續失去生命（Boss 只受 1/4），同時把流失的能量補給玩家 */

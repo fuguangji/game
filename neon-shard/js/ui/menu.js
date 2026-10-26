@@ -10,7 +10,7 @@ import { CHS } from "../game/chips.js";
 
 import { CC, CN, SV, UL } from "../game/progress.js";
 
-import { ALLWEAPON, WD } from "../game/weapons.js";
+import { ALLWEAPON, MAX_LOADOUT, WD } from "../game/weapons.js";
 import { mkIcon } from "../icons.js";
 import { xAccount } from "./account.js";
 
@@ -24,19 +24,9 @@ export { trPick, xCodex, xEnemyCmp } from "./menu-codex.js";
 export { xLoad, xLobby, xPause, xResult, xStage } from "./menu-lobby.js";
 
 /* ===== NEON SHARD · 新版選單（資料與工具） ===== */
-export const XCAT = [
-  ["精準", [0, 2, 8, 11]],
-  ["速射", [3, 9, 12, 13]],
-  ["近距", [1, 4, 22]],
-  ["爆破", [5, 7, 10, 23]],
-  ["控場", [16, 17, 18, 19]],
-  ["特殊", [6, 14, 15, 20, 21]],
-];
-// 功能：取得指定武器的分類名稱與武器索引。
-export const wCat = (i) => {
-  for (const c of XCAT) if (c[1].includes(i)) return c[0];
-  return "其他";
-};
+export const XCAT = [["近戰"], ["遠程"]];
+// 功能：取得指定武器的分類名稱（近戰＝揮砍型，其餘為遠程；由武器資料判斷，新增武器不必改這裡）。
+export const wCat = (i) => (ALLWEAPON.getWeapon()[i]?.meleeArcEnabled ? "近戰" : "遠程");
 // 功能：取得武器描述中的模式欄位。
 export const wMode = (i) => (WD[i] || "").split("·")[0];
 // 功能：取得武器描述中的補充說明。
@@ -170,7 +160,7 @@ export function xRender() {
   const cl = SV.clr.filter(Boolean).length;
   const TI = {
     h: ["大廳", `最高分 ${G.best}`],
-    b: ["備戰", `${(CHS[SV.char] || CHS[0]).n} · 出戰 ${G.LO.length} / 3 把`],
+    b: ["備戰", `${(CHS[SV.char] || CHS[0]).n} · 出戰 ${G.LO.length} / ${MAX_LOADOUT} 把`],
     i: ["背包", `芯片 ${xChipTotal()} 枚 · 槍械 ${SV.own.length} 把`],
     k: ["關卡", `已通關 ${cl} / 8`],
     m: ["商城", "強化、解鎖與芯片包"],

@@ -108,7 +108,7 @@ registerTechnique({
     },
     {
       name: "負片", cost: 0, cd: 60,
-      desc: "把狀態逆流：能量回滿、生命回到 5 秒前的水準（不會比現在低）、清除負面狀態；代價是 30 秒術式熔斷（無法攻擊與施放術式）",
+      desc: "把狀態逆流：能量回滿、生命回到 5 秒前的水準（不會比現在低）、清除負面狀態；代價是 30 秒術式熔斷（無法施放術式，仍可普通攻擊）",
       cast({ p }) {
         const past = p.snap?.[0];
         for (const n of ["slow", "vuln", "poison", "seal", "soulseal"]) clearStatus(p, n);

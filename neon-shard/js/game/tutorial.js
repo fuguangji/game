@@ -92,6 +92,7 @@ export class TutorialController {
     this.#buildUi();
     bus.on(GameEvents.PLAYER_SHOT, ({ autoAim }) => { this.#count("shots"); if (autoAim) this.#count("auto"); });
     bus.on(GameEvents.PLAYER_DASH, () => this.#count("dashes"));
+    bus.on(GameEvents.SKILL_CAST, () => this.#count("skills"));
     bus.on(GameEvents.ULTIMATE_USED, () => this.#count("supers"));
     bus.on(GameEvents.ENEMY_KILLED, () => this.#count("kills"));
     bus.on(GameEvents.WALL_BROKEN, () => this.#count("walls"));
@@ -321,9 +322,17 @@ TUTORIAL_STEPS = Object.freeze([
   },
   {
     title: "換槍",
-    text: "按 1 / 2 / 3、Q 或滑鼠滾輪切換武器，每把槍的射速、彈匣、擊退與特殊效果都不同（只裝備 1 把槍會自動略過）。嘗試換幾次槍吧！",
+    text: "按 1 / 2、Q 或滑鼠滾輪切換武器（可以在「備戰」裝備第 2 把術式武器；只裝備 1 把會自動略過）。嘗試換幾次吧！",
     mb: "點畫面下方的槍欄切換武器（可拖曳互換位置），試著切換 2 次。",
     progress: (s) => (WP.length < 2 ? 1 : s.switches / 2),
+  },
+  {
+    title: "術式技能",
+    text: "術式武器除了普通攻擊，還有技能：按 Z 施放第 1 個技能（X C V B N 是其他技能，畫面下方也有技能鈕，會顯示耗能與冷卻）。技能消耗能量，能量會自己回復。試著施放 2 次！",
+    mb: "點畫面下方的技能鈕施放技能（鈕上會顯示耗能與冷卻）。試著施放 2 次！",
+    setup: () => { G.pl.en = G.pl.enMax; },
+    keep: () => { if (G.pl.en < 30) G.pl.en = 30; },
+    progress: (s) => s.skills / 2,
   },
   {
     title: "自動瞄準",
@@ -385,9 +394,9 @@ TUTORIAL_STEPS = Object.freeze([
     progress: (s) => s.kills,
   },
   {
-    title: "SUPER 大招",
-    text: "命中敵人會累積 SUPER 能量，每把槍各自累積，蓄滿後可一次轟出強力攻擊。這次已幫你蓄滿，按空白鍵施放。",
-    mb: "這次已幫你蓄滿 SUPER。點 SUPER 鈕施放（按住拖曳可指定方向）。",
+    title: "術式場",
+    text: "命中敵人會累積大招能量，每把武器各自累積，蓄滿後可以展開「術式場」，在範圍內改寫戰場規則。這次已幫你蓄滿，按空白鍵展開（展開中有些術式場會鎖住技能或接管數字鍵，仔細看說明）。",
+    mb: "這次已幫你蓄滿。點 SUPER 鈕展開術式場。",
     setup: () => { spawnDummies(2); G.pl.ult = 100; },
     keep: (ctl) => {
       if ((ctl.stats.supers || 0) < 1 && G.pl.ult < 100) G.pl.ult = 100;

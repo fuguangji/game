@@ -403,6 +403,7 @@ export function castSkill(i) {
   if (hpCost) loseHp(hpCost);
   selfBacklash(sk.backlash ?? 0);
   sk.cast(ctx);
+  bus.emit(GameEvents.SKILL_CAST, { name: sk.name });
   sync(true);
   return true;
 }

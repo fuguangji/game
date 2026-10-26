@@ -16,7 +16,7 @@
  *   skillDamageMul(n, tag) 術式技能傷害倍率（tag 是技能屬性，例如 "water"）
  *   skillCostMul(n)  技能能量消耗倍率（0 = 免費）
  *   backlashMul(n)   術式反噬倍率（0 = 無視反噬）
- *   blocks           ["attack", "skill", "move"]：生效期間禁止攻擊／施放術式、禁止移動
+ *   blocks           ["skill", "attack", "move"]：生效期間禁止施放術式（skill）、禁止普通攻擊（attack）、禁止移動（move）
  *   immuneTo         另一個狀態名稱；玩家身上有那個狀態時，這個狀態施加不上去
  *   onApply(p) / onExpire(p)  從無到有、到期或被解除時各呼叫一次
  *   onTick(p, s, dt, api)  每幀呼叫（s = 狀態 { t 剩餘秒數, n 層數, acc 計時用 }；api.hurt 可扣血）
@@ -32,7 +32,7 @@ export const STATUS = Object.freeze({
   slow: {
     label: "減速", color: "#4de1ff", icon: "slow", defaultDuration: 2.2, maxStacks: 2,
     speedMul: (n) => (n >= 2 ? 0.3 : 0.5),
-  }, 
+    }, 
   fast: {
     label: "加速", color: "#ffb84d", icon: "fast", defaultDuration: 2.2, maxStacks: 2,
     speedMul: (n) => 2,
@@ -72,7 +72,7 @@ export const STATUS = Object.freeze({
   },
   soulseal: {
     label: "靈魂熔斷", color: "#c070ff", icon: "slow", defaultDuration: 4,
-    blocks: ["attack", "skill", "move"], immuneTo: "sealImmune", speedMul: () => 0,
+    blocks: ["skill", "attack", "move"], immuneTo: "sealImmune", speedMul: () => 0,
   },
   sealImmune: { label: "熔斷無效", color: "#9fe8ff", icon: "shield", defaultDuration: 60 },
   heated: {
@@ -172,7 +172,7 @@ export const skillCostMultiplier = (p) => activeStatuses(p).reduce((m, { def, st
 /** 術式反噬倍率（0 = 無視反噬） */
 export const backlashMultiplier = (p) => activeStatuses(p).reduce((m, { def, state }) => m * (def.backlashMul?.(state.n) ?? 1), 1);
 
-/** 有沒有被某類效果禁止：what = "attack"（攻擊與施放術式）或 "move"（移動） */
+/** 有沒有被某類效果禁止：what = "skill"（施放術式與術式場）、"attack"（普通攻擊）或 "move"（移動） */
 export const isBlocked = (p, what) => activeStatuses(p).some(({ def }) => def.blocks?.includes(what));
 
 /** 所有生效狀態的受傷倍率相乘 */

@@ -166,12 +166,8 @@ export function seamHit(x0, y0, x1, y1) {
   }
   return null;
 }
-// 大招蓄能：每把槍各自一條(w.um 0~100)，並有各自的蓄能效率 UE[武器id]
-//        手槍 霰彈 狙擊 衝鋒 噴火 重炮 導引 環爆 光線 雙槍 榴彈 穿甲 彈跳 電弧 地雷 迴旋 寒霜 重力 電荷 蛛網 砲塔 毒罐 斬擊 集束
-const UE = [
-  1, 0.8, 1.3, 1, 1.6, 1.1, 1, 0.7, 1.5, 1.1, 1.1, 1, 1, 1.2, 1.2, 1.2, 1.8, 1,
-  1.1, 1, 1.5, 1, 0.9, 1.1,
-];
+// 大招（術式場）蓄能：每把武器各自一條(w.um 0~100)；UE[武器id] 可調各武器的蓄能效率，沒寫就是 1
+const UE = [];
 // 增加大招蓄能
 export function chgU(wo, amt) {
   const w = wo === undefined ? WP[G.pl.w] : typeof wo === "number" ? WP[wo] : wo;

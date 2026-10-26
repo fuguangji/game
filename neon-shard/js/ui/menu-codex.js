@@ -188,7 +188,7 @@ export function xCodex(v) {
           "<kbd>WASD</kbd> 移動，滑鼠瞄準，按住左鍵射擊",
           "<kbd>Shift</kbd> 衝刺（衝刺期間無敵）",
           "<kbd>空白鍵</kbd> 釋放 SUPER",
-          "<kbd>1</kbd>–<kbd>3</kbd>、<kbd>Q</kbd>、滾輪切換槍械",
+          "<kbd>1</kbd>–<kbd>2</kbd>、<kbd>Q</kbd>、滾輪切換槍械",
           "<kbd>F</kbd> 全螢幕，<kbd>P</kbd> / <kbd>Esc</kbd> 暫停",
         ]),
       ),

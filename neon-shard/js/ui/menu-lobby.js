@@ -8,7 +8,7 @@ import { CC, ST, STG, SV, WPC, WPR, save } from "../game/progress.js";
 import { rdOpen } from "../game/redeem.js";
 import { startTrain } from "../game/training.js";
 import { startTutorial } from "../game/tutorial.js";
-import { ALLWEAPON, WD } from "../game/weapons.js";
+import { ALLWEAPON, MAX_LOADOUT, WD } from "../game/weapons.js";
 import { bossRows, xEmb, xEquip, xUnequip } from "./menu-bag.js";
 import { XCAT, XS, wCat, wMode, wNote, wStat, xFlt, xGo, xSide, xSub, xbt, xfmt, xh, xic, xmax } from "./menu.js";
 import { start } from "./render.js";
@@ -55,7 +55,7 @@ export function xLobby(v) {
   r2.style.setProperty("--a", ch.c);
   lst.append(r1, r2);
   const sl = xh("x-slots");
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < MAX_LOADOUT; k++) {
     const i = G.LO[k],
       w = i !== undefined ? ALLWEAPON.getWeapon()[i] : null,
       d = xbt("x-sl" + (w ? "" : " em"), "", () => {
@@ -140,7 +140,7 @@ export function xLoad(v) {
     xh("x-h", "出戰槍械<small>先選槍位，再從槍械庫選槍裝入</small>"),
   );
   const sl = xh("x-slots");
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < MAX_LOADOUT; k++) {
     const i = G.LO[k],
       w = i !== undefined ? ALLWEAPON.getWeapon()[i] : null,
       d = xbt(

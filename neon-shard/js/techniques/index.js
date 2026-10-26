@@ -6,3 +6,4 @@ import "./chenliu.js";
 import "./qirong.js";
 import "./mingu.js";
 import "./jiyin.js";
+import "./fuzhou.js";

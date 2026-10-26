@@ -7,6 +7,7 @@
 export const GameEvents = Object.freeze({
   PLAYER_SHOT: "player:shot", // { autoAim: boolean }
   PLAYER_DASH: "player:dash",
+  SKILL_CAST: "technique:cast",
   PLAYER_HURT: "player:hurt", // { damage }  監聽者可修改 damage
   ULTIMATE_USED: "ultimate:used",
   ENEMY_KILLED: "enemy:killed", // { enemy }
