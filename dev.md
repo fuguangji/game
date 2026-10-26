@@ -52,7 +52,9 @@
 - 已新增共用登入／註冊、登入狀態持久化、登出、忘記密碼及安全的 `returnTo` 檢查。
 - NEON SHARD 未登入時的登入／註冊入口已導向共用帳號中心。
 - 已新增 Firebase Admin 驗證端點；沒有設定服務帳號時，端點會回報尚未配置，不會假裝驗證成功。
-- **尚未完成：** 雲端存檔 API 仍使用舊的 Supabase Auth session。後續需把 profiles、player_data、金鑰 metadata 遷移至 Firebase UID，並調整加密簽章所用的 userId。不能只把 Firebase UID 塞進舊 UUID 欄位；需先檢查資料表型別、外鍵、唯一鍵與 RLS，再設計 SQL migration。
+- [x] 已在 Neon-shard Supabase 專案新增 `firebase_identities`、`firebase_profiles`、`firebase_player_data` 三張 Firebase UID（text）資料表，保留舊 UUID 表與外鍵不動；SQL 記錄在 `neon-shard-api/sql/firebase-shared-account.sql`。三張新表已啟用 RLS，僅授權 `service_role` 直接存取。
+- [x] Render API 已開始依經過驗證的 Token provider 分流：Firebase UID 寫入新表，舊 Supabase session 仍走原表，避免直接把 Firebase UID 塞進 UUID 欄位。
+- **仍需完成線上驗證：** 在 Render 設定 `FIREBASE_SERVICE_ACCOUNT_JSON`，填入 Firebase Web config，然後測試新帳號、金鑰初始化、加密存檔上傳／下載及不同 UID 間的資料隔離。
 - Firebase WebRTC 房間目前使用另一個具名 Firebase App 與匿名登入，避免覆寫共用帳號登入狀態。後續需決定房間採已登入 UID 還是允許訪客 UID，並讓資料庫規則一致。
 - 測試順序：建立帳號 → 登出 → 登入 → 重新整理 → 新分頁／另一款遊戲沿用登入狀態 → 登出後確認各頁狀態同步 → 確認伺服器驗證回傳 UID 與 Firebase 使用者相同。
 
