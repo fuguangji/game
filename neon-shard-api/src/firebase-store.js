@@ -1,4 +1,5 @@
 import { getFirestore } from "firebase-admin/firestore";
+import { hasUnsupportedDisplayNameChars } from "./display-name.js";
 
 export function createAccountStore(db) {
   const userRef = (uid) => db.collection("users").doc(uid);
@@ -43,19 +44,29 @@ export function createAccountStore(db) {
           return { uid: decoded.uid, email: updated.email, emailVerified: updated.emailVerified, displayName: old.displayName };
         }
 
-        const base = (decoded.name || decoded.email?.split("@")[0] || `Player-${decoded.uid.slice(0, 8)}`)
-          .trim().replace(/\s+/g, " ").slice(0, 24) || `Player-${decoded.uid.slice(0, 8)}`;
-        let displayName = base;
-        let nameDoc = nameRef(displayName);
-        let nameSnap = await tx.get(nameDoc);
-        if (nameSnap.exists && nameSnap.data().uid !== decoded.uid) {
-          displayName = `Player-${decoded.uid.slice(0, 8)}`;
-          nameDoc = nameRef(displayName);
-          nameSnap = await tx.get(nameDoc);
-          if (nameSnap.exists && nameSnap.data().uid !== decoded.uid) {
-            displayName = `P-${decoded.uid.slice(0, 12)}`;
-            nameDoc = nameRef(displayName);
+        const requestedName = (decoded.name || decoded.email?.split("@")[0] || "").trim().replace(/\s+/g, " ").slice(0, 24);
+        const base = requestedName && !hasUnsupportedDisplayNameChars(requestedName)
+          ? requestedName
+          : `Player-${decoded.uid.slice(0, 8)}`;
+        const candidates = [
+          base,
+          `Player-${decoded.uid.slice(0, 8)}`,
+          `P-${decoded.uid.slice(0, 12)}`,
+          `P-${decoded.uid.slice(-20)}`,
+        ];
+        let displayName = null;
+        let nameDoc = null;
+        for (const candidate of [...new Set(candidates)]) {
+          const candidateRef = nameRef(candidate);
+          const candidateSnap = await tx.get(candidateRef);
+          if (!candidateSnap.exists || candidateSnap.data().uid === decoded.uid) {
+            displayName = candidate;
+            nameDoc = candidateRef;
+            break;
           }
+        }
+        if (!displayName || !nameDoc) {
+          throw Object.assign(new Error("Could not reserve a unique display name."), { code: "DISPLAY_NAME_TAKEN" });
         }
         const now = new Date().toISOString();
         tx.set(ref, {
