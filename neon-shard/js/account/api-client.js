@@ -22,11 +22,11 @@ export class ApiClient {
   /**
    * @param {{baseUrl:string, sessions:import('./session-store.js').SessionStore, timeoutMs?:number, fetchImpl?:typeof fetch}} o
    */
-  constructor({ baseUrl, sessions, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a) }) {
+  constructor({ baseUrl, sessions, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a), getAuthToken = null }) {
     this.#base = String(baseUrl || "").replace(/\/$/, "");
     this.#sessions = sessions;
     this.#timeoutMs = timeoutMs;
-    this.#fetch = fetchImpl;
+    this.#fetch = fetchImpl;\n    this.#getAuthToken = typeof getAuthToken === "function" ? getAuthToken : null;
   }
 
   async request(path, { method = "GET", body, auth = true } = {}) {
@@ -34,7 +34,16 @@ export class ApiClient {
     try {
       return await this.#send(path, { method, body, auth });
     } catch (error) {
-      if (!(auth && error instanceof ApiError && error.status === 401 && this.#sessions.current)) throw error;
+      if (!(auth && error instanceof ApiError && error.status === 401)) throw error;
+      if (this.#getAuthToken) {
+        try {
+          const refreshedToken = await this.#getAuthToken(true);
+          if (refreshedToken) return this.#send(path, { method, body, auth });
+        } catch { /* token refresh failed; expire below */ }
+        this.#expire();
+        throw new ApiError("登入已過期，請重新登入。", { status: 401, code: "SESSION_EXPIRED" });
+      }
+      if (!this.#sessions.current) throw error;
       if (!(await this.#refresh())) {
         this.#expire();
         throw new ApiError("登入已過期，請重新登入。", { status: 401, code: "SESSION_EXPIRED" });
@@ -46,7 +55,10 @@ export class ApiClient {
   async #send(path, { method, body, auth }) {
     const headers = { "Content-Type": "application/json" };
     const session = this.#sessions.current;
-    if (auth && session) headers.Authorization = `Bearer ${session.accessToken}`;
+    if (auth && this.#getAuthToken) {
+      const token = await this.#getAuthToken(false);
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } else if (auth && session) headers.Authorization = `Bearer ${session.accessToken}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
     let response;
