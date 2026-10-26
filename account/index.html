@@ -105,11 +105,9 @@
         }
         const user = await register(email, password, name);
         await renderUser(user);
-        say("帳號已建立，正在確認伺服器身分…");
       } else {
         const user = await signIn(email, password);
         await renderUser(user);
-        say("登入成功，正在確認伺服器身分…");
       }
     } catch (error) {
       const message = error?.code === "auth/email-already-in-use" ? "這個電子郵件已註冊，請改用登入。"
