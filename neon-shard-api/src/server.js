@@ -149,7 +149,7 @@ async function getProfile(userId, provider = "supabase") {
   const table = provider === "firebase" ? "firebase_profiles" : "profiles";
   const userColumn = provider === "firebase" ? "firebase_uid" : "user_id";
   const selected = provider === "firebase"
-    ? "firebase_uid:user_id,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id"
+    ? "user_id:firebase_uid,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id"
     : "user_id,display_name,kdf_version,kdf_salt,key_bundle_ciphertext,key_bundle_iv,encryption_public_key,signing_public_key,key_id";
   const { data, error } = await admin.from(table).select(selected).eq(userColumn, userId).maybeSingle();
   if (error) throw new HttpError(500, "INTERNAL_ERROR", "The request could not be completed.");
@@ -383,7 +383,7 @@ app.get("/api/keys", requireUser, async (req, res, next) => {
 app.put("/api/keys", requireUser, async (req, res, next) => {
   try {
     const input = parseBody(keyRegistrationSchema, req.body);
-    const current = await getProfile(req.user.id);
+    const current = await getProfile(requestUserId(req), req.user.authProvider);
     const signingJwk = input.signingPublicKey;
     const proofMessage = registrationProofMessage(requestUserId(req), input.keyId, input.encryptionPublicKey);
     if (!verifyP256Signature(signingJwk, proofMessage, input.proof)) {
@@ -402,7 +402,7 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
       key_id: input.keyId,
       updated_at: new Date().toISOString(),
     }).eq(profileUserColumn(req), requestUserId(req)).is("signing_public_key", null)
-      .select("user_id").maybeSingle();
+      .select(profileUserColumn(req)).maybeSingle();
     if (error) throw new HttpError(500, "KEY_SETUP_FAILED", "Could not save encryption key metadata.");
     if (!updated) throw new HttpError(409, "KEY_ROTATION_REQUIRES_RECOVERY", "Keys were registered by another request; reload the profile.");
     res.status(204).end();
@@ -435,7 +435,7 @@ async function writeInitialSave(req, res, next) {
     if (input.expectedRevision !== undefined) {
       throw new HttpError(400, "INVALID_PAYLOAD", "Initial save must not include expectedRevision.");
     }
-    const profile = await getProfile(req.user.id);
+    const profile = await getProfile(requestUserId(req), req.user.authProvider);
     requireSigningKey(profile, input, req, null);
     const { data, error } = await admin.from("player_data").insert({
       user_id: req.user.id,
