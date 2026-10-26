@@ -11,6 +11,7 @@
  */
 import { h } from "../core/dom-utils.js";
 import { confirmDialog } from "../ui/feedback.js";
+import { observeAuth, signOutShared, verifyIdentityWithApi } from "../../../account/shared-auth.js";
 
 const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,6 +53,8 @@ export class AccountView {
   #statusEl = null;
   #lastSync = null;
   #listeners = new Set();
+  #sharedUser = null;
+  #authUnsubscribe = null;
 
   /**
    * @param {HTMLElement} container
@@ -80,6 +83,7 @@ export class AccountView {
 
   destroy() {
     this.#abort.abort();
+    this.#authUnsubscribe?.();
     this.#listeners.clear();
     if (AccountView.#current === this) AccountView.#current = null;
   }
@@ -93,6 +97,17 @@ export class AccountView {
     }, { signal: this.#abort.signal });
     this.render();
     this.#service.restore();
+    observeAuth((user) => {
+      this.#sharedUser = user;
+      if (!this.#container.isConnected) return this.destroy();
+      this.render();
+      for (const fn of this.#listeners) fn();
+    }, (error) => console.warn("[account] shared Firebase auth state unavailable", error))
+      .then((unsubscribe) => {
+        if (this.#abort.signal.aborted) unsubscribe();
+        else this.#authUnsubscribe = unsubscribe;
+      })
+      .catch((error) => console.warn("[account] shared Firebase auth initialization failed", error));
   }
 
   #setNotice(text, error = false) {
@@ -133,8 +148,9 @@ export class AccountView {
   render() {
     this.#statusEl = h("p", { class: "ns-status" + (this.#notice.error ? " err" : ""), role: "status", "aria-live": "polite" }, this.#notice.text);
     const panel = h("section", { class: "ns-account" });
-    if (!this.#service.signedIn) this.#renderSignedOut(panel);
-    else this.#renderSignedIn(panel);
+    if (this.#sharedUser) this.#renderSharedSignedIn(panel);
+    else if (this.#service.signedIn) this.#renderSignedIn(panel);
+    else this.#renderSignedOut(panel);
     this.#container.replaceChildren(panel);
   }
 
@@ -187,6 +203,37 @@ export class AccountView {
           h("li", {}, "🪪 遊戲伺服器會驗證 Firebase ID Token，不能只相信前端傳來的 UID。"),
           h("li", { class: "warn" }, "☁️ 共用身分已與雲端存檔 API 分開；存檔遷移完成前，不要把「已登入」誤認為雲端存檔已可用。"))),
       openAccount,
+      this.#statusEl);
+  }
+
+  #renderSharedSignedIn(panel) {
+    const user = this.#sharedUser;
+    const name = user.displayName || user.email || "已登入玩家";
+    const accountUrl = new URL("../../../account/", import.meta.url);
+    accountUrl.searchParams.set("returnTo", location.href);
+    const head = h("header", { class: "ns-me" },
+      h("div", { class: "ns-avatar-dot", "aria-hidden": "true" }, [...name][0] ?? "?"),
+      h("div", {}, h("h2", {}, name),
+        h("div", { class: "ns-badges" }, h("span", { class: "ns-badge ok" }, "Firebase 已登入"))));
+    const details = h("p", { class: "ns-meta" }, user.email || "此帳號未提供電子郵件",
+      h("br"), "Firebase UID：", user.uid);
+    const verify = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
+      const identity = await verifyIdentityWithApi();
+      if (identity.uid !== user.uid) throw new Error("伺服器回傳的 UID 與目前登入帳號不一致。");
+      this.#setNotice("伺服器已驗證目前帳號身分。");
+    }, { busyText: "正在驗證伺服器身分…" }) }, "驗證伺服器身分");
+    const manage = h("a", { class: "x-btn", href: accountUrl.href }, "管理共用帳號");
+    const logout = h("button", { type: "button", class: "x-btn sm", onclick: () => this.#run(async () => {
+      await signOutShared();
+      this.#setNotice("已登出共用帳號。");
+    }, { busyText: "正在登出…" }) }, "登出");
+    panel.append(
+      h("header", { class: "ns-intro" },
+        h("h2", {}, "共用帳號已登入"),
+        h("p", {}, "此登入狀態由 Firebase Authentication 管理，同來源的遊戲頁可以共用。")),
+      head, details,
+      h("p", { class: "ns-meta" }, "雲端存檔目前仍在遷移中；這個登入狀態已共用，但舊版 Supabase 存檔尚未接上 Firebase UID。"),
+      h("div", { class: "ns-row" }, verify, manage, logout),
       this.#statusEl);
   }
 
