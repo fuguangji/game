@@ -7,3 +7,4 @@ import "./qirong.js";
 import "./mingu.js";
 import "./jiyin.js";
 import "./fuzhou.js";
+import "./fubiao.js";

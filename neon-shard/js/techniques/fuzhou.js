@@ -58,7 +58,7 @@ registerTechnique({
           tag: "water",
           each(dt, f) {
             for (const e of enemiesIn(f.x, f.y, f.r))
-              applyEnemyFx(e, "frozen", { duration: 1.2 });
+              applyEnemyFx(e, "frozen", {duration: 1.2 });
           },
           tick(f) {
             for (const e of enemiesIn(f.x, f.y, f.r)) {
@@ -392,8 +392,8 @@ registerTechnique({
       name: "噬血符",
       color: "#5edfff",
       desc: "術式場（12 秒，半徑 10 公尺）：範圍內敵人受到火雷冰毒的持續傷害與效果，玩家也會受到3級中毒",
-      backlash: 0.5,
-      cost: 60,
+      backlash: -0.1,
+      cost: 10,
       cast({ p }) {
         domain({
           x: p.x,
@@ -401,12 +401,119 @@ registerTechnique({
           r: 1000,
           t: 12,
           color: "#5edfff",
+          draw(cx, f) {
+            const TAU = Math.PI * 2;
+            // 1. 取得超高頻率的時間齒輪，讓閃電每幀都在瘋狂顫抖
+            const time = Date.now() * 0.001;
+            const color = [
+              [59,82,246],
+              [168,55,247],
+              [145,100,60]
+            ]
+            const t = (time%3)
+            const index = Math.floor(t)
+            const progress = t - index
+            const smooth = progress*progress*(3-2*progress)
+            const a = color[index]
+            const b = color[(index+1)%3]
+            let dh = ((b[0]-a[0]+540)%360)-180
+            const h = (a[0]+dh*smooth+360)-180
+            const s = a[1]+(b[1]-a[1])*smooth
+            const l = a[2]+(b[2]-a[2])*smooth
+
+            cx.save();
+            // 2. 雷電終極發光模式：重疊處會融合成耀眼的白光
+            cx.globalCompositeOperation = "screen";
+            cx.lineJoin = "miter";
+            cx.miterLimit = 4; // 讓閃電的折角保持極度尖銳
+
+            // 3. 高頻率閃爍與明滅邏輯
+            // 模擬閃電「劈下後消失，再劈下」的隨機跳動感，有 30% 的機率完全不顯示（造成驟盲閃爍感）
+            const strikeFlicker = Math.sin(time * 60); // 每秒震盪 60 次的極速波
+            if (strikeFlicker < -0.4) {
+              cx.restore();
+              return;
+            }
+
+            // 9 條向四面八方劈開的雷電主幹
+            for (let k = 0; k < 9; k++) {
+              // 基礎雷擊方向
+              const baseAngle = (k * TAU) / 9;
+
+              // 4. 雷擊主幹：設定為超亮核心（白藍色），線條較粗
+              cx.strokeStyle = "#ffffff";
+              cx.lineWidth = 2.0;
+              cx.shadowColor = `hsl(${h},${s},${l})`; 
+              cx.shadowBlur = 10;
+              cx.globalAlpha = 0.9;
+
+              cx.beginPath();
+              cx.moveTo(f.x, f.y);
+
+              let currentX = f.x;
+              let currentY = f.y;
+              const segments = 4; // 4 段高密度的劇烈折線
+
+              for (let s = 1; s <= segments; s++) {
+                const progress = s / segments;
+
+                // 5. 雷擊隨機擾動 (Chaos Noise)：
+                // 這裡乘以 120 配合 time，能創造出每幀完全不同、毫無幾何規律的狂暴折角
+                const lightningChaos = Math.sin(
+                  k * 23.13 + s * 45.67 + time * 120,
+                );
+
+                // 讓角度產生高達 ±45 度的劇烈偏折
+                const segmentAngle = baseAngle + lightningChaos * 0.8;
+                // 長度同樣隨機縮放，製造鋸齒感
+                const segmentDist =
+                  f.r *
+                  progress *
+                  (0.8 + 0.4 * Math.cos(k * 12.3 + s * 8.9 + time * 80));
+
+                const nextX = f.x + Math.cos(segmentAngle) * segmentDist;
+                const nextY = f.y + Math.sin(segmentAngle) * segmentDist;
+
+                cx.lineTo(nextX, nextY);
+
+                // 6. 閃電分支 (Branches)：主幹劈到一半時，分支出更細、更淡的微小電弧
+                if (s >= 2 && (k + s) % 3 === 0) {
+                  cx.save();
+                  cx.lineWidth = 0.8; // 分支電弧變細
+                  cx.strokeStyle = "#93c5fd"; // 偏藍的外圍電弧
+                  cx.shadowBlur = 4;
+
+                  // 分支角度偏折極大（甚至往橫向劈開）
+                  const forkChaos = Math.cos(k * 45.1 + s * 12.9 + time * 150);
+                  const forkAngle = segmentAngle + (forkChaos > 0 ? 1.2 : -1.2);
+                  const forkDist =
+                    segmentDist + f.r * 0.25 * (0.5 + 0.5 * forkChaos);
+
+                  cx.moveTo(nextX, nextY);
+                  cx.lineTo(
+                    f.x + Math.cos(forkAngle) * forkDist,
+                    f.y + Math.sin(forkAngle) * forkDist,
+                  );
+                  cx.stroke();
+                  cx.restore();
+                }
+
+                currentX = nextX;
+                currentY = nextY;
+              }
+
+              // 繪製該條雷擊主幹
+              cx.stroke();
+            }
+
+            cx.restore();
+          },
           update(dt, f) {
             for (const e of enemiesIn(f.x, f.y, f.r)) {
-              applyEnemyFx(e, "poison", { duration: 1.5, stacks: 2 });
+              applyEnemyFx(e, "poison", { duration: 1.5, stacks: 3 });
               applyEnemyFx(e, "frozen", { duration: 1.2 });
-              applyEnemyFx(e, "burn", { duration: 1.5, stacks: 2 });
-              applyEnemyFx(e, "shock", { duration: 1.5, stacks: 2 });
+              applyEnemyFx(e, "burn", { duration: 1.5, stacks: 3 });
+              applyEnemyFx(e, "shock", { duration: 1.5, stacks: 3 });
             }
             applyStatus(p, "poison", { duration: 1.5, stacks: 3 });
             if (Math.random() < dt * 14) {

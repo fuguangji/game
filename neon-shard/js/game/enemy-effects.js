@@ -40,6 +40,13 @@ export const ENEMY_FX = Object.freeze({
     },
     damageTakenMul: (n) => 1 + 0.1 * n,
   },
+  afraid:{
+    label:"恐懼",color:"#000000",defaultDuration:3,maxStacks:7,blocks:["move"],
+    onAttack(e, s, api) { 
+      const m = api.backlashMul(e);
+      api.damage(e, m*0.5); 
+    },
+  },
   seal: { label: "術式熔斷", color: "#ff9a3d", defaultDuration: 4, blocks: ["attack"], bossDurationMul: 0.5 },
   soulseal: { label: "靈魂熔斷", color: "#c070ff", defaultDuration: 4, blocks: ["attack", "move"], bossImmune: true },
   /** 能量流失：持續失去生命（Boss 只受 1/4），同時把流失的能量補給玩家 */
