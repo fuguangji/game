@@ -214,7 +214,7 @@ class WeaponCatalog {
       description: "術式·遠程符咒｜冰／火／雷／毒｜術式場：噬血符",
     },
     {
-      weapon: "泱懸伏鏢",
+      name: "泱懸伏鏢",
       color: "#501aa7",
       projectilesPerShot: 2,
       spreadAngle: 0.1,
