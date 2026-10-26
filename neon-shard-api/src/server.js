@@ -176,12 +176,35 @@ app.get("/api/identity/me", async (req, res, next) => {
     const token = bearerToken(req);
     const decoded = await firebaseAuth.verifyIdToken(token, true);
     if (!decoded?.uid) throw new HttpError(401, "UNAUTHENTICATED", "A valid Firebase ID token is required.");
+    const email = decoded.email ?? null;
+    const displayName = (decoded.name || email?.split("@")[0] || `Player-${decoded.uid.slice(0, 8)}`).trim().slice(0, 24);
+    const identity = {
+      firebase_uid: decoded.uid,
+      email,
+      display_name: displayName,
+      email_verified: Boolean(decoded.email_verified),
+      updated_at: new Date().toISOString(),
+    };
+    const { error: identityError } = await admin.from("firebase_identities")
+      .upsert(identity, { onConflict: "firebase_uid" });
+    if (identityError) throw new HttpError(500, "IDENTITY_PROFILE_FAILED", "Could not initialize shared account identity.");
+    const { error: profileError } = await admin.from("firebase_profiles")
+      .upsert({ firebase_uid: decoded.uid, display_name: displayName, updated_at: new Date().toISOString() }, { onConflict: "firebase_uid", ignoreDuplicates: true });
+    if (profileError?.code === "23505") {
+      // A display name is optional identity metadata; fall back to a UID-derived name if it collides.
+      const fallbackName = `Player-${decoded.uid.slice(0, 8)}`;
+      const { error: fallbackError } = await admin.from("firebase_profiles")
+        .upsert({ firebase_uid: decoded.uid, display_name: fallbackName, updated_at: new Date().toISOString() }, { onConflict: "firebase_uid", ignoreDuplicates: true });
+      if (fallbackError) throw new HttpError(500, "IDENTITY_PROFILE_FAILED", "Could not initialize shared account profile.");
+    } else if (profileError) {
+      throw new HttpError(500, "IDENTITY_PROFILE_FAILED", "Could not initialize shared account profile.");
+    }
     res.set("Cache-Control", "no-store");
     res.json({
       uid: decoded.uid,
-      email: decoded.email ?? null,
+      email,
       emailVerified: Boolean(decoded.email_verified),
-      displayName: decoded.name ?? null,
+      displayName,
     });
   } catch (error) {
     if (error instanceof HttpError) return next(error);
@@ -300,7 +323,7 @@ app.post("/api/auth/logout", requireUser, async (req, res, next) => {
  */
 app.get("/api/profile/me", requireUser, async (req, res, next) => {
   try {
-    const profile = await getProfile(req.user.id);
+    const profile = await getProfile(requestUserId(req), req.user.authProvider);
     res.set("Cache-Control", "no-store");
     res.json({
       userId: req.user.id,
@@ -342,7 +365,7 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
     if (current.signing_public_key) {
       throw new HttpError(409, "KEY_ROTATION_REQUIRES_RECOVERY", "Key replacement requires the account recovery flow.");
     }
-    const { data: updated, error } = await admin.from("profiles").update({
+    const { data: updated, error } = await admin.from(profileTable(req)).update({
       kdf_version: input.kdfVersion,
       kdf_salt: input.kdfSalt,
       key_bundle_ciphertext: input.keyBundleCiphertext,
@@ -351,7 +374,7 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
       signing_public_key: JSON.stringify(input.signingPublicKey),
       key_id: input.keyId,
       updated_at: new Date().toISOString(),
-    }).eq("user_id", req.user.id).is("signing_public_key", null)
+    }).eq(profileUserColumn(req), requestUserId(req)).is("signing_public_key", null)
       .select("user_id").maybeSingle();
     if (error) throw new HttpError(500, "KEY_SETUP_FAILED", "Could not save encryption key metadata.");
     if (!updated) throw new HttpError(409, "KEY_ROTATION_REQUIRES_RECOVERY", "Keys were registered by another request; reload the profile.");
@@ -411,7 +434,7 @@ async function updateSave(req, res, next) {
     }
     const profile = await getProfile(req.user.id);
     requireSigningKey(profile, input, req, input.expectedRevision);
-    const { data, error } = await admin.from("player_data").update({
+    const { data, error } = await admin.from(playerDataTable(req)).update({
       save_data: input.saveData,
       sensitive_ciphertext: JSON.stringify(input.sensitiveEnvelope),
       crypto_version: input.sensitiveEnvelope.cryptoVersion,
@@ -419,7 +442,7 @@ async function updateSave(req, res, next) {
       schema_version: input.sensitiveEnvelope.schemaVersion,
       revision: input.expectedRevision + 1,
       updated_at: new Date().toISOString(),
-    }).eq("user_id", req.user.id).eq("revision", input.expectedRevision)
+    }).eq(playerDataUserColumn(req), requestUserId(req)).eq("revision", input.expectedRevision)
       .select("revision,updated_at").maybeSingle();
     if (error) throw new HttpError(422, "SAVE_REJECTED", "The save could not be stored.");
     if (!data) {
