@@ -17,6 +17,7 @@ This remains a pre-deployment integration branch. Do not deploy as production-re
 ## Routes
 
 - `GET /api/health`
+- `GET /api/identity/me` — verifies a Firebase ID Token using `FIREBASE_SERVICE_ACCOUNT_JSON` and returns the verified Firebase UID (the legacy save routes still use Supabase Auth).
 - `POST /api/auth/signup` — `{ email, password, displayName }`
 - `POST /api/auth/login` — `{ email, password }`
 - `POST /api/auth/refresh` — `{ refreshToken }`
