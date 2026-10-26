@@ -207,6 +207,7 @@ export class AccountView {
   }
 
   #renderSharedSignedIn(panel) {
+    if (this.#service.unlocked) return this.#renderSignedIn(panel);
     const user = this.#sharedUser;
     const name = user.displayName || user.email || "已登入玩家";
     const accountUrl = new URL("../../../account/", import.meta.url);
@@ -217,6 +218,27 @@ export class AccountView {
         h("div", { class: "ns-badges" }, h("span", { class: "ns-badge ok" }, "Firebase 已登入"))));
     const details = h("p", { class: "ns-meta" }, user.email || "此帳號未提供電子郵件",
       h("br"), "Firebase UID：", user.uid);
+    const password = this.#field({
+      label: "帳號密碼（用來保護雲端存檔）",
+      type: "password",
+      password: true,
+      autocomplete: "current-password",
+      maxLength: 256,
+      help: "第一次使用會建立本機加密金鑰；之後登入則用相同密碼解鎖。密碼不會送到遊戲伺服器，也不會被儲存。",
+    });
+    const keyForm = h("form", { class: "ns-form", onsubmit: (event) => {
+      event.preventDefault();
+      if (!password.input.value) {
+        password.fail("請輸入密碼。");
+        password.input.focus();
+        return;
+      }
+      this.#run(async () => {
+        await this.#service.initializeOrUnlockKeys(password.input.value);
+        password.input.value = "";
+        this.#setNotice("雲端存檔金鑰已準備好。");
+      }, { busyText: "正在初始化／解鎖加密金鑰…" });
+    } }, password.wrap, h("button", { type: "submit", class: "x-btn pri blk" }, "初始化／解鎖雲端存檔"));
     const verify = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
       const identity = await verifyIdentityWithApi();
       if (identity.uid !== user.uid) throw new Error("伺服器回傳的 UID 與目前登入帳號不一致。");
@@ -232,7 +254,8 @@ export class AccountView {
         h("h2", {}, "共用帳號已登入"),
         h("p", {}, "此登入狀態由 Firebase Authentication 管理，同來源的遊戲頁可以共用。")),
       head, details,
-      h("p", { class: "ns-meta" }, "雲端存檔目前仍在遷移中；這個登入狀態已共用，但舊版 Supabase 存檔尚未接上 Firebase UID。"),
+      h("p", { class: "ns-meta" }, "第一次使用請初始化加密金鑰；之後使用同一密碼解鎖。登入身分與存檔加密金鑰是兩回事。"),
+      keyForm,
       h("div", { class: "ns-row" }, verify, manage, logout),
       this.#statusEl);
   }
