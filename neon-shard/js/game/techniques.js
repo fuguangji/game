@@ -82,6 +82,40 @@ export const currentTechnique = () => {
 /** 目前武器有幾個術式場（大招鍵是否改為展開術式場，由這個決定） */
 export const domainCount = () => currentTechnique()?.domains.length ?? 0;
 
+/* ───────────── 選定的格子：滾輪切換、左鍵／放開瞄準時發動 ───────────── */
+/** 目前武器的格子數：普通攻擊 + 各技能 */
+export const slotCount = () => 1 + (currentTechnique()?.skills.length ?? 0);
+
+/** 目前選定的格子（0 = 普通攻擊，1.. = 第 n 個技能） */
+export function selectedSlot() {
+  const w = WP[G.pl.w];
+  if (!w) return 0;
+  const i = G.pl.sels?.[w.id] ?? 0;
+  return i < slotCount() ? i : 0;
+}
+
+/** 目前選的是不是技能（是的話，普通攻擊的輸入會改成發動技能） */
+export const skillSelected = () => selectedSlot() > 0;
+
+/** 選定第 i 格 */
+export function selectSlot(i) {
+  const w = WP[G.pl.w], n = slotCount();
+  if (!w || n < 2) return false;
+  ensure(G.pl);
+  G.pl.sels[w.id] = ((i % n) + n) % n;
+  sync(true);
+  return true;
+}
+
+/** 往後（1）或往前（-1）切換一格；這把武器沒有技能時回傳 false（輸入層會改做別的事） */
+export const cycleSlot = (dir) => (slotCount() < 2 ? false : selectSlot(selectedSlot() + dir));
+
+/** 發動目前選定的技能（選的是普通攻擊時什麼都不做） */
+export function castSelected() {
+  const i = selectedSlot() - 1;
+  return i >= 0 ? castSkill(i) : false;
+}
+
 /** 把第 1 個術式場的名稱設成該武器的大招名稱（SUPER 鈕上的文字）；main.js 在武器初始化後呼叫 */
 export function initTechniques() {
   for (const [id, t] of table()) if (t.domains[0]) ULN[id] = t.domains[0].name;
@@ -96,6 +130,7 @@ function ensure(p) {
   p.enMax ??= 100;
   p.cdw ??= {};
   p.heat ??= 0;
+  p.sels ??= {}; // 每把武器目前選定的格子（0 = 普通攻擊，1.. = 技能）
 }
 
 let lastNotice = "";
@@ -507,22 +542,26 @@ function sync(force = false) {
   if (!tq) return syncTechniqueUi(null);
   ensure(p);
   const free = G.train && G.inf;
+  const ctx = makeCtx();
   syncTechniqueUi({
     force,
     weapon: tq.weapon,
     color: tq.color,
     en: p.en, enMax: p.enMax,
     meter: tq.meter ? { name: tq.meter.name, color: tq.meter.color, value: tq.meter.value(p) } : null,
-    skills: tq.skills.map((s, i) => ({
-      name: s.name, key: SKILL_LABELS[i], desc: s.desc ?? "",
-      cd: p.cdw[s.name] ?? 0, cdMax: s.cd ?? 0,
-      cost: Math.round((typeof s.cost === "function" ? s.cost(makeCtx()) : (s.cost ?? 0)) * skillCostMultiplier(p)),
-      active: G.tq.some((f) => f.skill === s.name),
-    })),
+    slots: [
+      { name: "普通攻擊", key: "", desc: "左鍵／拖曳瞄準後放開", cd: 0, cdMax: 0, cost: 0, active: false },
+      ...tq.skills.map((s, i) => ({
+        name: s.name, key: SKILL_LABELS[i], desc: s.desc ?? "",
+        cd: p.cdw[s.name] ?? 0, cdMax: s.cd ?? 0,
+        cost: Math.round((typeof s.cost === "function" ? s.cost(ctx) : (s.cost ?? 0)) * skillCostMultiplier(p)),
+        active: G.tq.some((f) => f.skill === s.name),
+      })),
+    ],
+    sel: selectedSlot(),
     domains: tq.domains.map((d, i) => ({ name: d.name, key: i ? "E" : "空白鍵", ready: free || p.ult >= 100, energyFrac: d.energyFrac ?? 0 })),
-    ult: p.ult,
     rings: G.dom?.ringUi ? G.dom.ringUi() : null,
-    handlers: { skill: castSkill, domain: castDomain, digit: techDigit },
+    handlers: { cycle: cycleSlot, select: selectSlot, cast: castSelected, domain: castDomain },
     domainOn: !!G.dom,
     sealed: isBlocked(p, "skill"),
   });

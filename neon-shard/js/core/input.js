@@ -8,7 +8,7 @@ import { dash } from "../game/player.js";
 import { togglePause } from "../game/progress.js";
 import { WP } from "../game/weapons.js";
 import { start } from "../ui/render.js";
-import { techDigit, techKey } from "../game/techniques.js";
+import { castSelected, cycleSlot, skillSelected, techDigit, techKey } from "../game/techniques.js";
 
 export let fsB, fsOK; // 初始化在 init()
 // 功能：處理「toggleFS」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
@@ -114,6 +114,14 @@ cv.addEventListener("mousemove", (e) => {
 cv.addEventListener("mousedown", (e) => {
   if (e.button === 0 && fsm.state === "play" && slotDown(e.clientX, e.clientY))
     return;
+  if (e.button === 0 && fsm.state === "play" && skillSelected()) { // 選定的是技能：左鍵按下就發動（不連發，蓄力類技能才能「再按一次釋放」）
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.has = true;
+    G.pl.aim = Math.atan2(mouse.y / G.S + G.camy - G.pl.y, mouse.x / G.S + G.camx - G.pl.x);
+    castSelected();
+    return;
+  }
   if (e.button === 0) {
     mouse.down = true;
     mouse.x = e.clientX;
@@ -286,8 +294,8 @@ $("bW").addEventListener("pointerdown", (e) => {
 addEventListener(
   "wheel",
   (e) => {
-    if (fsm.state === "play")
-      G.pl.w = (G.pl.w + (e.deltaY > 0 ? 1 : WP.length - 1)) % WP.length;
+    if (fsm.state !== "play") return;
+    if (!cycleSlot(e.deltaY > 0 ? 1 : -1)) G.pl.w = (G.pl.w + (e.deltaY > 0 ? 1 : WP.length - 1)) % WP.length; // 沒有技能的武器：維持切換武器
   },
   { passive: true },
 );

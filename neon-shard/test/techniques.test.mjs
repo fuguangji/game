@@ -176,3 +176,36 @@ test("出戰上限：最多 2 把，只能裝擁有的武器，至少留一把",
     assert.deepEqual(G.LO, [0], "全部無效時退回擁有的第一把");
   } finally { X.SV.own = own; G.LO = lo; X.applyLO(); }
 });
+
+test("選定格子：滾輪切換、選定技能時普通攻擊輸入改為發動技能（手機放開才發動）", () => {
+  const p = scene("青羽鎩");
+  assert.equal(X.selectedSlot(), 0, "預設是普通攻擊");
+  X.shoot(); assert.ok(p.sc > 0, "選普通攻擊時照常開火");
+  p.sc = 0; X.WP[0].am = X.WP[0].ms;
+  assert.equal(X.cycleSlot(1), true);
+  assert.equal(X.selectedSlot(), 1); assert.equal(X.skillSelected(), true);
+  X.shoot(); X.shoot(false, true);
+  assert.equal(p.sc, 0, "選技能時，按住連射的呼叫不開火也不發動技能");
+  assert.equal(p.cdw["琉璃焰"] ?? 0, 0);
+  X.shoot(true);
+  assert.ok(p.cdw["琉璃焰"] > 0, "放開（shoot(true)）才發動選定的技能");
+  assert.equal(p.sc, 0, "發動技能不會同時揮砍");
+  for (let i = 0; i < X.slotCount(); i++) X.cycleSlot(1);
+  assert.equal(X.selectedSlot(), 1, "繞一圈回到原位");
+  X.cycleSlot(-1); X.cycleSlot(-1);
+  assert.equal(X.selectedSlot(), X.slotCount() - 1, "往回切會繞到最後一個技能");
+  X.selectSlot(0); X.applyStatus(p, "seal", { duration: 3 });
+  assert.equal(X.castSelected(), false, "選的是普通攻擊時 castSelected 什麼都不做");
+});
+
+test("選定格子：每把武器各自記住，換武器不會帶著", () => {
+  const p = scene("塵流懸液");
+  X.selectSlot(2);
+  const id = X.WP[0].id;
+  assert.equal(p.sels[id], 2);
+  X.WP[1] = X.modW(X.ALLWEAPON.getWeapon(weaponId("青羽鎩"))); p.w = 1;
+  assert.equal(X.selectedSlot(), 0, "另一把武器預設選普通攻擊");
+  p.w = 0;
+  assert.equal(X.selectedSlot(), 2, "切回來還記得");
+  X.WP.length = 1;
+});

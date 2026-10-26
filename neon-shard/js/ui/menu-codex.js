@@ -185,10 +185,11 @@ export function xCodex(v) {
       xh(
         "",
         ul([
-          "<kbd>WASD</kbd> 移動，滑鼠瞄準，按住左鍵射擊",
+          "<kbd>WASD</kbd> 移動，滑鼠瞄準，左鍵發動「目前選定」的格子（普通攻擊可按住連射）",
           "<kbd>Shift</kbd> 衝刺（衝刺期間無敵）",
-          "<kbd>空白鍵</kbd> 釋放 SUPER",
-          "<kbd>1</kbd>–<kbd>2</kbd>、<kbd>Q</kbd>、滾輪切換槍械",
+          "<kbd>滾輪</kbd> 切換選定的格子（普通攻擊 ↔ 各技能），<kbd>Z X C V B N</kbd> 直接施放技能",
+          "<kbd>空白鍵</kbd> 展開術式場（<kbd>E</kbd> 為第 2 個術式場）",
+          "<kbd>1</kbd>–<kbd>2</kbd>、<kbd>Q</kbd> 切換武器",
           "<kbd>F</kbd> 全螢幕，<kbd>P</kbd> / <kbd>Esc</kbd> 暫停",
         ]),
       ),

@@ -14,7 +14,7 @@ import { showOv } from "../ui/render.js";
 export const SV = {
   coins: 0,
   up: {},
-  own: [7], // 起始武器：塵流懸液（見 weapons.js 的 STARTER_WEAPON）
+  own: [7], // 起始武器：符咒（見 weapons.js 的 STARTER_WEAPON）
   clr: [],
   sb: [],
   sel: 0,
@@ -146,7 +146,7 @@ save = () => {
   };
 UL = (k) => (SV.up[k] || 0) + ((G.CHR && G.CHR["L" + k]) || 0);
 WPR = [
-    // 武器價格（索引＝武器編號，見 weapons.js 的順序）：青羽鎩、未雨鎩、幻日虹、塵流懸液、噐體熔融、銘骨衍枝曲、驥隱流楓、符咒（起始，免費）
+    // 武器價格（索引＝武器編號，見 weapons.js 的順序）：青羽鎩、未雨鎩、閃霰劍、塵流懸液、噐體熔融、銘骨衍枝曲、驥隱流楓、符咒（起始，免費）
     1000, 1000, 1300, 1000, 1200, 1000, 1400,0
   ];
 WPC = Array(WPR.length).fill("coins");

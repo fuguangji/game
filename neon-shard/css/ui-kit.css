@@ -101,30 +101,51 @@
 .ns-foot{margin-top:4px}
 @media(min-width:620px){.ns-sync{grid-template-columns:1fr 1fr}}
 
-/* ---------- 術式系統（能量條、技能鈕、同心圓面板） ---------- */
-#tqBar{position:fixed;left:50%;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 6px);transform:translateX(-50%);z-index:6;display:none;flex-direction:column;align-items:center;gap:6px;max-width:calc(100vw - 16px);pointer-events:none;--tq:#8fe3cf}
+/* ---------- 術式系統：能量條 + 目前選定的格子（手機不擠） ---------- */
+#tqBar{position:fixed;left:50%;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 4px);transform:translateX(-50%);z-index:6;display:none;flex-direction:column;align-items:center;gap:4px;max-width:calc(100vw - 16px);pointer-events:none;--tq:#8fe3cf}
 #tqBar.on{display:flex}
 #tqBar>*{pointer-events:auto}
-.tq-meters{display:flex;flex-direction:column;gap:3px;width:min(320px,86vw)}
-.tq-meter{position:relative;height:14px;border:1px solid #ffffff33;border-radius:7px;background:#06100d;overflow:hidden}
-.tq-meter.alt{height:11px}
+.tq-meters{display:flex;flex-direction:column;gap:2px;width:min(220px,60vw)}
+.tq-meter{position:relative;height:11px;border:1px solid #ffffff33;border-radius:6px;background:#06100d;overflow:hidden}
+.tq-meter.alt{height:9px}
 .tq-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--tq);transition:width .1s linear}
-.tq-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 0 3px #000}
-.tq-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
-.tq-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:58px;height:58px;padding:2px;border:1px solid var(--tq);border-radius:10px;background:#0a1714e6;color:var(--t);font:inherit;cursor:pointer;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
-.tq-btn .tq-k{position:absolute;top:2px;left:4px;font-size:9px;color:var(--tq)}
-.tq-btn .tq-n{font-size:11.5px;font-weight:700;line-height:1.15;text-align:center}
-.tq-btn .tq-c{font-size:9.5px;color:var(--mu)}
-.tq-btn .tq-cd{position:absolute;left:0;right:0;bottom:0;height:0;background:#000000a8}
-.tq-btn .tq-t{position:absolute;top:2px;right:4px;font-size:10px;font-style:normal;color:#fff}
-.tq-btn.no{opacity:.5}
-.tq-btn.act{box-shadow:0 0 12px var(--tq);background:#12332ce6}
-.tq-btn.dom{border-style:double;border-width:3px;width:64px}
-.tq-btn.dom.ready{box-shadow:0 0 16px var(--tq);animation:nsPulse 1.2s ease-in-out infinite}
-.tq-rings{display:none;gap:4px;flex-wrap:wrap;justify-content:center}
+.tq-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;text-shadow:0 0 3px #000}
+.tq-sel{display:flex;align-items:center;gap:4px}
+.tq-arrow{width:30px;height:38px;padding:0;border:1px solid #ffffff44;border-radius:8px;background:#0a1714cc;color:var(--t);font:inherit;font-size:12px;cursor:pointer;touch-action:none}
+.tq-chip{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:112px;height:38px;padding:0 10px;border:1px solid var(--tq);border-radius:10px;background:#0a1714e6;color:var(--t);font:inherit;cursor:pointer;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.tq-chip .tq-n{font-size:13px;line-height:1.15}
+.tq-chip .tq-sub{font-size:9px;color:var(--mu)}
+.tq-chip .tq-cd{position:absolute;left:0;right:0;bottom:0;height:0;background:#000000a8}
+.tq-chip .tq-t{position:absolute;top:1px;right:5px;font-size:9.5px;font-style:normal;color:#fff}
+.tq-chip.no{opacity:.5}
+.tq-chip.act{box-shadow:0 0 10px var(--tq);background:#12332ce6}
+.tq-dots{display:flex;gap:5px}
+.tq-dots i{width:7px;height:7px;border-radius:50%;background:#ffffff33;cursor:pointer}
+.tq-dots i.on{background:var(--tq);box-shadow:0 0 5px var(--tq)}
+.tq-doms{display:flex;gap:8px}
+.tq-dom{font-size:9.5px;color:var(--mu);opacity:.7}
+.tq-dom.ready{color:var(--tq);opacity:1;font-weight:700}
+.tq-hint{font-size:9.5px;color:var(--mu);opacity:.8}
+@media (pointer:coarse){.tq-hint{display:none}}
+.tq-rings{display:none;gap:3px;flex-wrap:wrap;justify-content:center;max-width:300px}
 .tq-rings.on{display:flex}
-.tq-ring{min-width:40px;min-height:36px;padding:2px 6px;border:1px solid #ffffff44;border-radius:8px;background:#0a1714e6;color:var(--t);font:inherit;font-size:13px;font-weight:700;cursor:pointer;touch-action:none}
+.tq-ring{min-width:30px;min-height:28px;padding:1px 4px;border:1px solid #ffffff44;border-radius:7px;background:#0a1714e6;color:var(--t);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;touch-action:none}
 .tq-ring.cw{border-color:#8fe3cf;color:#8fe3cf}
 .tq-ring.ccw{border-color:#d9c98a;color:#d9c98a}
 .tq-ring.blast{border-color:#ee6a7c}
 .tq-ring.blast.on{background:#ee6a7c;color:#06100d}
+
+/* ---------- 手機／小螢幕：訓練面板縮小 ---------- */
+@media (pointer:coarse), (max-width:720px), (max-height:520px){
+  #tr{width:min(88vw,380px);padding:3px 5px;font-size:10px;top:max(34px,calc(env(safe-area-inset-top) + 30px))}
+  #tr button{min-height:22px;padding:1px 6px;font-size:10px;border-radius:6px}
+  #tr .tr-head{gap:3px;margin-bottom:2px}
+  #tr .tr-drag{font-size:10px;padding:2px 3px}
+  #tr .tr-tabs{gap:2px}
+  #tr .tr-actions{gap:2px}
+  #tr .tr-hint{display:none}
+  #tr .tr-tip{font-size:10px;padding:3px 5px;margin-bottom:3px}
+  #tr .tr-sep{font-size:9.5px;padding:0 2px}
+  #tr .tr-b{gap:3px;max-height:min(18vh,96px)}
+  #trt{font-size:10px;padding:2px 8px}
+}

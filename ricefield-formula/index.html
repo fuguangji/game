@@ -1,0 +1,21 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>稻香方程式：空天黎明</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#1d2b1a;font-family:system-ui,"Noto Sans TC",sans-serif;color:#f6ecd0;touch-action:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#ui{position:fixed;inset:0;pointer-events:none}
+#ui>*{pointer-events:auto}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(#2c4a3acc,#6b5a22cc);text-align:center;padding:16px;overflow:auto}
+button{font:inherit;color:#2b1d08;background:#f2c75c;border:0;border-radius:8px;padding:8px 14px;margin:2px;cursor:pointer}
+button:hover{background:#ffdf8a}button:disabled{opacity:.4}button.sel{outline:3px solid #fff}
+#panel{position:absolute;left:0;top:0;bottom:0;width:190px;background:#1d2b1aee;padding:8px;overflow:auto;font-size:13px}
+#panel button{width:100%;text-align:left;font-size:13px}
+#st{white-space:pre-line;line-height:1.5;margin-top:6px}
+#msg{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#a33;padding:6px 14px;border-radius:8px;display:none;pointer-events:none}
+.tb{position:absolute;bottom:14px;width:74px;height:74px;border-radius:50%;font-size:15px;opacity:.8}
+</style></head><body>
+<canvas id="c"></canvas><div id="ui"></div>
+<script src="src/config/parts.js"></script><script src="src/config/stages.js"></script>
+<script src="src/core/storage.js"></script><script src="src/builder/builder.js"></script>
+<script src="src/flight/flight.js"></script><script src="src/tutorial.js"></script><script src="src/main.js"></script>
+</body></html>

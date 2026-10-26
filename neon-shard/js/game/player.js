@@ -7,6 +7,7 @@ import { burst, hurt, keys, mouse, mv, shoot, ta, tm } from "./battle.js";
 import { collectPk } from "./pickups.js";
 import { UL } from "./progress.js";
 import { applyStatus, isBlocked, speedMultiplier, tickStatuses } from "./status-effects.js";
+import { skillSelected } from "./techniques.js";
 import { standOnTile } from "./tiles.js";
 import { WP } from "./weapons.js";
 
@@ -125,8 +126,8 @@ export function updPl(dt) {
     p.pvy *= f;
     if (Math.hypot(p.pvx, p.pvy) < 1) p.pvx = p.pvy = 0;
   }
-  if (mouse.down && WP[p.w].auto) shoot();
-  if (ta.act && WP[p.w].auto) {
+  if (mouse.down && WP[p.w].auto && !skillSelected()) shoot();
+  if (ta.act && WP[p.w].auto && !skillSelected()) {
     const dq = Math.hypot(ta.x - ta.sx, ta.y - ta.sy);
     if (dq > G.CZ) {
       shoot();
