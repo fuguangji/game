@@ -175,7 +175,7 @@ function requireSigningKey(profile, body, req, expectedRevision) {
     throw new HttpError(400, "INVALID_PAYLOAD", "The signed revision does not match the request.");
   }
   const message = saveSignatureMessage({
-    userId: req.user.id,
+    userId: requestUserId(req),
     method: req.method,
     path: req.path,
     body,
@@ -337,6 +337,7 @@ app.post("/api/auth/refresh", authLimiter, async (req, res, next) => {
 
 app.post("/api/auth/logout", requireUser, async (req, res, next) => {
   try {
+    if (req.user.authProvider === "firebase") return res.status(204).end();
     const { error } = await admin.auth.admin.signOut(req.accessToken);
     if (error) throw new HttpError(400, "LOGOUT_FAILED", "Could not end this session.");
     res.status(204).end();
@@ -353,7 +354,7 @@ app.get("/api/profile/me", requireUser, async (req, res, next) => {
     const profile = await getProfile(requestUserId(req), req.user.authProvider);
     res.set("Cache-Control", "no-store");
     res.json({
-      userId: req.user.id,
+      userId: requestUserId(req),
       displayName: profile.display_name,
       keysRegistered: Boolean(profile.signing_public_key && profile.encryption_public_key && profile.key_id),
     });
@@ -411,9 +412,9 @@ app.put("/api/keys", requireUser, async (req, res, next) => {
 
 app.get("/api/player-data", requireUser, async (req, res, next) => {
   try {
-    const { data, error } = await admin.from("player_data")
+    const { data, error } = await admin.from(playerDataTable(req))
       .select("save_data,sensitive_ciphertext,crypto_version,key_id,schema_version,revision,updated_at")
-      .eq("user_id", req.user.id)
+      .eq(playerDataUserColumn(req), requestUserId(req))
       .maybeSingle();
     if (error) throw new HttpError(500, "INTERNAL_ERROR", "The request could not be completed.");
     if (!data) throw new HttpError(404, "SAVE_NOT_FOUND", "No save exists for this account.");
@@ -437,8 +438,8 @@ async function writeInitialSave(req, res, next) {
     }
     const profile = await getProfile(requestUserId(req), req.user.authProvider);
     requireSigningKey(profile, input, req, null);
-    const { data, error } = await admin.from("player_data").insert({
-      user_id: req.user.id,
+    const { data, error } = await admin.from(playerDataTable(req)).insert({
+      [playerDataUserColumn(req)]: requestUserId(req),
       save_data: input.saveData,
       sensitive_ciphertext: JSON.stringify(input.sensitiveEnvelope),
       crypto_version: input.sensitiveEnvelope.cryptoVersion,
@@ -473,8 +474,8 @@ async function updateSave(req, res, next) {
       .select("revision,updated_at").maybeSingle();
     if (error) throw new HttpError(422, "SAVE_REJECTED", "The save could not be stored.");
     if (!data) {
-      const { data: exists, error: readError } = await admin.from("player_data")
-        .select("user_id").eq("user_id", req.user.id).maybeSingle();
+      const { data: exists, error: readError } = await admin.from(playerDataTable(req))
+        .select(playerDataUserColumn(req)).eq(playerDataUserColumn(req), requestUserId(req)).maybeSingle();
       if (readError) throw new HttpError(500, "INTERNAL_ERROR", "The request could not be completed.");
       if (!exists) throw new HttpError(404, "SAVE_NOT_FOUND", "No save exists for this account.");
       throw new HttpError(409, "REVISION_CONFLICT", "The save changed elsewhere. Reload before saving again.");
@@ -509,10 +510,10 @@ app.get("/api/profiles/:displayName", async (req, res, next) => {
 app.put("/api/profile", requireUser, async (req, res, next) => {
   try {
     const input = parseBody(profileUpdateSchema, req.body);
-    const { data, error } = await admin.from("profiles").update({
+    const { data, error } = await admin.from(profileTable(req)).update({
       display_name: input.displayName,
       updated_at: new Date().toISOString(),
-    }).eq("user_id", req.user.id).select("display_name").single();
+    }).eq(profileUserColumn(req), requestUserId(req)).select("display_name").single();
     if (error?.code === "23505") throw new HttpError(409, "DISPLAY_NAME_TAKEN", "That display name is already in use.");
     if (error || !data) throw new HttpError(500, "PROFILE_UPDATE_FAILED", "Could not update the profile.");
     res.json(publicProfile(data));
