@@ -101,39 +101,56 @@
 .ns-foot{margin-top:4px}
 @media(min-width:620px){.ns-sync{grid-template-columns:1fr 1fr}}
 
-/* ---------- 術式系統：能量條 + 目前選定的格子（手機不擠） ---------- */
-#tqBar{position:fixed;left:50%;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 4px);transform:translateX(-50%);z-index:6;display:none;flex-direction:column;align-items:center;gap:4px;max-width:calc(100vw - 16px);pointer-events:none;--tq:#8fe3cf}
+/* ---------- 術式系統：能量條 + 全部技能按鈕（展開） ---------- */
+/* 容器本身不吃觸控（pointer-events:none），只有按鈕吃，所以不會擋到瞄準與移動區 */
+/* 桌機放左下角（中間是畫面自己畫的武器與道具卡，避免蓋住） */
+#tqBar{position:fixed;left:96px;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 10px);z-index:6;display:none;flex-direction:column;align-items:flex-start;gap:5px;max-width:calc(100vw - 112px);pointer-events:none;--tq:#8fe3cf}
 #tqBar.on{display:flex}
-#tqBar>*{pointer-events:auto}
-.tq-meters{display:flex;flex-direction:column;gap:2px;width:min(220px,60vw)}
-.tq-meter{position:relative;height:11px;border:1px solid #ffffff33;border-radius:6px;background:#06100d;overflow:hidden}
-.tq-meter.alt{height:9px}
+.tq-meters{display:flex;flex-direction:column;gap:3px;width:min(320px,86vw)}
+.tq-meter{position:relative;height:13px;border:1px solid #ffffff33;border-radius:7px;background:#06100d;overflow:hidden}
+.tq-meter.alt{height:10px}
 .tq-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--tq);transition:width .1s linear}
-.tq-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;text-shadow:0 0 3px #000}
-.tq-sel{display:flex;align-items:center;gap:4px}
-.tq-arrow{width:30px;height:38px;padding:0;border:1px solid #ffffff44;border-radius:8px;background:#0a1714cc;color:var(--t);font:inherit;font-size:12px;cursor:pointer;touch-action:none}
-.tq-chip{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:112px;height:38px;padding:0 10px;border:1px solid var(--tq);border-radius:10px;background:#0a1714e6;color:var(--t);font:inherit;cursor:pointer;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
-.tq-chip .tq-n{font-size:13px;line-height:1.15}
-.tq-chip .tq-sub{font-size:9px;color:var(--mu)}
-.tq-chip .tq-cd{position:absolute;left:0;right:0;bottom:0;height:0;background:#000000a8}
-.tq-chip .tq-t{position:absolute;top:1px;right:5px;font-size:9.5px;font-style:normal;color:#fff}
-.tq-chip.no{opacity:.5}
-.tq-chip.act{box-shadow:0 0 10px var(--tq);background:#12332ce6}
-.tq-dots{display:flex;gap:5px}
-.tq-dots i{width:7px;height:7px;border-radius:50%;background:#ffffff33;cursor:pointer}
-.tq-dots i.on{background:var(--tq);box-shadow:0 0 5px var(--tq)}
-.tq-doms{display:flex;gap:8px}
-.tq-dom{font-size:9.5px;color:var(--mu);opacity:.7}
-.tq-dom.ready{color:var(--tq);opacity:1;font-weight:700}
+.tq-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;text-shadow:0 0 3px #000}
+.tq-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-start;max-width:440px}
+.tq-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:58px;height:58px;padding:2px;border:1px solid var(--tq);border-radius:10px;background:#0a1714e6;color:var(--t);font:inherit;cursor:pointer;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;pointer-events:auto}
+.tq-btn .tq-k{position:absolute;top:2px;left:4px;font-size:9px;color:var(--tq)}
+.tq-btn .tq-n{font-size:11.5px;font-weight:700;line-height:1.15;text-align:center}
+.tq-btn .tq-c{font-size:9.5px;color:var(--mu)}
+.tq-btn .tq-cd{position:absolute;left:0;right:0;bottom:0;height:0;background:#000000a8;pointer-events:none}
+.tq-btn .tq-t{position:absolute;top:2px;right:4px;font-size:10px;font-style:normal;color:#fff;pointer-events:none}
+.tq-btn.no{opacity:.5}
+.tq-btn.act{box-shadow:0 0 12px var(--tq);background:#12332ce6}
+.tq-btn.sel{box-shadow:0 0 0 2px var(--tq),0 0 10px var(--tq)}
+.tq-btn.dom{border-style:double;border-width:3px;width:64px}
+.tq-btn.dom.ready{box-shadow:0 0 16px var(--tq);animation:nsPulse 1.2s ease-in-out infinite}
+.tq-basic{width:46px}
 .tq-hint{font-size:9.5px;color:var(--mu);opacity:.8}
-@media (pointer:coarse){.tq-hint{display:none}}
 .tq-rings{display:none;gap:3px;flex-wrap:wrap;justify-content:center;max-width:300px}
 .tq-rings.on{display:flex}
-.tq-ring{min-width:30px;min-height:28px;padding:1px 4px;border:1px solid #ffffff44;border-radius:7px;background:#0a1714e6;color:var(--t);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;touch-action:none}
+.tq-ring{min-width:32px;min-height:30px;padding:1px 4px;border:1px solid #ffffff44;border-radius:7px;background:#0a1714e6;color:var(--t);font:inherit;font-size:12px;font-weight:700;cursor:pointer;touch-action:none;pointer-events:auto}
 .tq-ring.cw{border-color:#8fe3cf;color:#8fe3cf}
 .tq-ring.ccw{border-color:#d9c98a;color:#d9c98a}
 .tq-ring.blast{border-color:#ee6a7c}
 .tq-ring.blast.on{background:#ee6a7c;color:#06100d}
+/* 手機（粗指標）：縮成右側邊緣的小格子，避開左下搖桿、右下瞄準區、DASH 與 SUPER；沒有滾輪所以不顯示「普攻」與提示 */
+@media (pointer:coarse){
+  #tqBar{left:auto;right:calc(env(safe-area-inset-right) + 2px);bottom:auto;top:140px;align-items:flex-end;gap:3px;max-width:none}
+  .tq-meters{width:88px}
+  .tq-meter{height:10px}
+  .tq-meter.alt{height:8px}
+  .tq-label{font-size:8px}
+  .tq-row{display:grid;grid-template-columns:repeat(2,42px);gap:3px;justify-content:end;max-width:none}
+  .tq-btn{width:42px;height:38px;padding:1px;border-radius:8px}
+  .tq-btn .tq-k{display:none}
+  .tq-btn .tq-n{font-size:9.5px;line-height:1.1}
+  .tq-btn .tq-c{font-size:8px}
+  .tq-btn .tq-t{top:0;right:3px;font-size:8.5px}
+  .tq-btn.dom{width:42px;border-width:2px}
+  .tq-btn.dom.d0,.tq-basic,.tq-hint{display:none}
+  .tq-rings{display:none;grid-template-columns:repeat(3,28px);gap:2px}
+  .tq-rings.on{display:grid}
+  .tq-ring{min-width:28px;min-height:24px;font-size:10px;padding:0}
+}
 
 /* ---------- 手機／小螢幕：訓練面板縮小 ---------- */
 @media (pointer:coarse), (max-width:720px), (max-height:520px){

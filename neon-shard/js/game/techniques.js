@@ -561,7 +561,7 @@ function sync(force = false) {
     sel: selectedSlot(),
     domains: tq.domains.map((d, i) => ({ name: d.name, key: i ? "E" : "空白鍵", ready: free || p.ult >= 100, energyFrac: d.energyFrac ?? 0 })),
     rings: G.dom?.ringUi ? G.dom.ringUi() : null,
-    handlers: { cycle: cycleSlot, select: selectSlot, cast: castSelected, domain: castDomain },
+    handlers: { select: selectSlot, skill: castSkill, domain: castDomain },
     domainOn: !!G.dom,
     sealed: isBlocked(p, "skill"),
   });

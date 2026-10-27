@@ -43,101 +43,102 @@ registerTechnique({
       backlash: 0.02,
       desc: "在自身建立起屏障，每一次的攻擊都賦予恐懼",
       cast({ p, x, y }) {
+        applyStatus(p,"guard",{duration:5})
         field({
-          x: cx0,
-          y: cy0,
+          x: x,
+          y: y,
           r: 190,
-          t: 5,
-          col: "#5edfff",
+          t: 3,
+          col: "#280c55",
           every: 0.35,
-          dmg: 6,
+          dmg: 0,
           tag: "water",
           each(dt, f) {
             for (const e of enemiesIn(f.x, f.y, f.r))
-              applyEnemyFx(e, "frozen", { duration: 1.2 });
-          },
-          tick(f) {
-            for (const e of enemiesIn(f.x, f.y, f.r)) {
-              const q = Math.random() * TAU;
-              e.kx += (Math.cos(q) * 600) / e.m;
-              e.ky += (Math.sin(q) * 600) / e.m;
-            }
+              applyEnemyFx(e, "afraid", { duration: 1.2 });
           },
           draw(cx, f) {
             const TAU = Math.PI * 2;
-            const time = Date.now() * 0.001; // 動態波動（若不需要動態，可將 time 設為固定常數）
+            // 1. 生命週期計時：隨著時間（這裡設定約 2 秒一循環），模擬從「完好 -> 碎裂 -> 剝離飛散」
+            const time = Date.now() * 0.001;
+            const progress = (time * 0.5) % 1.0;
 
             cx.save();
-            // 1. 冰裂紋的晶瑩色調：使用極亮藍白色，搭配輕微發光
-            cx.strokeStyle = "#e8f8ff";
-            cx.lineWidth = 1.2;
-            cx.lineJoin = "miter"; // 讓折角保持銳利
-            cx.globalAlpha = 0.6;
+            // 2. 鏡面折射色調：高亮白邊，半透明的晶瑩藍白填充
+            cx.lineJoin = "miter";
+            cx.miterLimit = 4;
 
-            cx.shadowColor = "#93c5fd"; // 淡藍色擬真冰發光
-            cx.shadowBlur = 4;
-
-            // 9 條主裂紋脈絡
-            for (let k = 0; k < 9; k++) {
-              // 固定的基礎發散角度，加上一點點 k 的交錯擾動
-              const baseAngle = (k * TAU) / 9 + 0.3;
-
-              cx.beginPath();
-              cx.moveTo(f.x, f.y);
-
-              // 2. 冰裂紋段數：每一條裂紋由 3 個不規則折線段（Segment）串接而成
-              let currentX = f.x;
-              let currentY = f.y;
-              const segments = 3;
-
-              for (let s = 1; s <= segments; s++) {
-                // 比例進度 (0.33, 0.66, 1.0)
-                const progress = s / segments;
-
-                // 3. 冰裂隨機擾動：利用正弦波與索引值，計算出每個折點的「角度偏折」與「長度縮放」
-                // 加入極微量的 time * 0.05 讓冰裂紋有非常緩慢、不易察覺的冰晶生長動態
-                const angleNoise =
-                  Math.sin(k * 4.5 + s * 12.3 + time * 0.05) * 0.25;
-                const lengthNoise = 0.8 + 0.3 * Math.cos(k * 7.1 + s * 3.4);
-
-                const segmentAngle = baseAngle + angleNoise;
-                const segmentDist = f.r * progress * lengthNoise;
-
-                // 計算此折點的座標
-                const nextX = f.x + Math.cos(segmentAngle) * segmentDist;
-                const nextY = f.y + Math.sin(segmentAngle) * segmentDist;
-
-                // 4. 連線至下一個折點
-                cx.lineTo(nextX, nextY);
-
-                // 5. 冰裂分叉（細微支脈）：在主裂紋的半途，隨機向外抽出一根細小的側裂紋
-                if (s === 2 && k % 2 === 0) {
-                  cx.save();
-                  cx.lineWidth = 0.6; // 支脈比較細
-                  cx.globalAlpha = 0.4;
-
-                  // 往左或往右偏折較大的角度 (約 45 ~ 60 度)
-                  const forkAngle = segmentAngle + (k % 4 === 0 ? 0.9 : -0.9);
-                  const forkDist = segmentDist + f.r * 0.2;
-
-                  cx.moveTo(nextX, nextY);
-                  cx.lineTo(
-                    f.x + Math.cos(forkAngle) * forkDist,
-                    f.y + Math.sin(forkAngle) * forkDist,
-                  );
-                  cx.stroke();
-                  cx.restore();
-                }
-
-                // 迭代座標
-                currentX = nextX;
-                currentY = nextY;
-              }
-
-              // 繪製整條主裂紋
-              cx.stroke();
+            // 預先計算 9 個碎片的頂點角度（讓每塊碎片的形狀完全隨機且固定）
+            const angles = [];
+            for (let k = 0; k <= 9; k++) {
+              // 基礎角度加上一個基於質數的固定亂數擾動，打破完美的圓形分割
+              const noise = Math.sin(k * 23.45) * 0.15;
+              angles.push((k * TAU) / 9 + noise);
             }
 
+            // 繪製 9 塊不規則的幾何三角碎片
+            for (let k = 0; k < 9; k++) {
+              const angle1 = angles[k];
+              const angle2 = angles[k + 1];
+
+              // 3. 碎裂解體物理：隨著 progress 增加，碎片產生往外剝離的「位移」與「旋轉」
+              // 越往外飛，動作越明顯。利用指數曲線讓爆發瞬間更有衝擊力
+              const pushForce = Math.pow(progress, 2.5);
+              const moveAngle = (angle1 + angle2) / 2; // 碎片的中心發散方向
+
+              const maxOffset = f.r * 0.4; // 最大飛散位移
+              const offsetX = Math.cos(moveAngle) * maxOffset * pushForce;
+              const offsetY = Math.sin(moveAngle) * maxOffset * pushForce;
+
+              // 4. 計算碎片的三個幾何頂點（相對於中心 f.x, f.y）
+              // 頂點 1：中心點（會隨著碎片一起往外位移）
+              const p0x = f.x + offsetX;
+              const p0y = f.y + offsetY;
+
+              // 頂點 2 & 3：外圍弧線上的兩個不規則點（長度也加入隨機鋸齒感）
+              const r1 = f.r * (0.85 + 0.15 * Math.sin(k * 45.6));
+              const r2 = f.r * (0.85 + 0.15 * Math.sin((k + 1) * 45.6));
+
+              const p1x = f.x + Math.cos(angle1) * r1 + offsetX;
+              const p1y = f.y + Math.sin(angle1) * r1 + offsetY;
+              const p2x = f.x + Math.cos(angle2) * r2 + offsetX;
+              const p2y = f.y + Math.sin(angle2) * r2 + offsetY;
+
+              // 5. 開始繪製封閉的幾何玻璃碎片
+              cx.beginPath();
+              cx.moveTo(p0x, p0y);
+              cx.lineTo(p1x, p1y);
+              cx.lineTo(p2x, p2y);
+              cx.closePath(); // 強制封閉成三角形
+
+              // 6. 鏡面折射填充：模擬玻璃反射光線的半透明質感
+              // 隨著旋轉位移，透明度會忽明忽暗，產生「閃爍折射」
+              const shimmer = 0.1 + 0.25 * Math.abs(Math.sin(time * 8 + k));
+              const alphaFade = Math.sin(progress * Math.PI); // 在生命週期結束時淡出
+
+              cx.fillStyle = "#e0f2fe"; // 晶瑩的淡天藍色
+              cx.globalAlpha = (0.05 + shimmer) * alphaFade;
+              cx.fill();
+
+              // 7. 鏡面銳利裂骨：繪製碎片邊框
+              cx.strokeStyle = "#ffffff"; // 純白極細邊框
+              cx.lineWidth = 1.0;
+              cx.globalAlpha = 0.7 * alphaFade;
+              cx.stroke();
+
+              // 8. 額外細節：在碎片邊緣點綴閃爍的「玻璃反光點/碎屑」
+              if (k % 2 === 0 && progress > 0.2) {
+                cx.save();
+                cx.fillStyle = "#ffffff";
+                cx.shadowColor = "#e0f2fe";
+                cx.shadowBlur = 4;
+                cx.globalAlpha = alphaFade;
+                cx.beginPath();
+                cx.arc(p1x + Math.sin(time * 15 + k) * 2, p1y, 0.8, 0, TAU);
+                cx.fill();
+                cx.restore();
+              }
+            }
             cx.restore();
           },
         });
@@ -149,13 +150,12 @@ registerTechnique({
       cd: 3,
       color: "#ff8a5a",
       backlash: 0.05,
-      desc: "朝前方射出 5 道符咒，命中的敵人受到燃燒",
+      desc: "將術式壓縮智超臨界流體，一次貫穿，極致的恐懼稍縱即逝",
       cast({ p, x, y }) {
         const a = Math.atan2(y - p.y, x - p.x);
-        for (const k of [-0.3, -0.15, 0, 0.15, 0.3])
-          beam(p.x, p.y, a + k, 520, 14, 14, {
-            col: "#ff8a5a",
-            fx: [["burn", { duration: 10, stacks: 2 }]],
+        beam(p.x, p.y, a, 1000, 100, 14, {
+            col: "#a70000",
+            fx: [["afraid", { duration: 1, stacks: 5 }]],
           });
       },
     },
@@ -165,7 +165,7 @@ registerTechnique({
       cd: 4,
       backlash: 0.05,
       color: "#fded0f",
-      desc: "以自身為中心召喚雷擊，命中的敵人受到麻痺（2 秒）",
+      desc: "召喚雷擊，命中的敵人受到麻痺（0.5秒）及恐懼1級",
       cast({ p, x, y }) {
         aoe(x, y, 170, 30, { kb: 100, walls: 10 });
         field({
@@ -173,7 +173,7 @@ registerTechnique({
           y,
           r: 130,
           t: 1,
-          fx: [["shock", { duration: 2 }]],
+          fx: [["shock", { duration: 2 }],["afraid",{duration:3}]],
           col: "#fded0f",
           every: 0.3,
           dmg: 1,
@@ -204,7 +204,7 @@ registerTechnique({
               // 4. 雷擊主幹：設定為超亮核心（白藍色），線條較粗
               cx.strokeStyle = "#ffffff";
               cx.lineWidth = 2.0;
-              cx.shadowColor = "#a855f7"; // 強烈的電弧紫色外發光
+              cx.shadowColor = "#8100fa"; // 強烈的電弧紫色外發光
               cx.shadowBlur = 10;
               cx.globalAlpha = 0.9;
 

@@ -1,9 +1,12 @@
 /**
- * ui/technique-ui — 術式系統的畫面：能量條、目前選定的格子（普通攻擊或某個技能）、術式場提示、同心圓面板
+ * ui/technique-ui — 術式系統的畫面：能量條、全部技能按鈕（展開，名稱與耗能一目了然）、術式場鈕、同心圓面板
  *
- * 版面刻意做得很小，手機不會擠：同一時間只顯示「目前選定的那一格」，左右箭頭（或桌機的滾輪）切換，
- * 點它（或桌機按左鍵、手機在右半邊拖曳後放開）就是發動。
- * 只負責顯示與轉交點擊，不認識任何遊戲規則；由 techniques.js 每 0.1 秒傳入一份 vm 狀態。
+ * - 所有技能都直接列出來，新手不必背技能：點哪個就放哪個（手機與桌機都一樣）。
+ * - 桌機另外有「選定」功能：滾輪切換、左鍵發動；被選定的按鈕會亮框，第一顆「普攻」代表普通攻擊。
+ *   手機沒有滾輪，永遠不會進入選定狀態，所以長按瞄準一定是普通攻擊。
+ * - 版面：桌機在畫面下方中間；手機（粗指標）縮成右側邊緣的小格子，容器本身不吃觸控，只有按鈕吃，
+ *   不會擋到瞄準與移動區（見 css/ui-kit.css）。
+ * 只負責顯示與轉交點擊，不認識遊戲規則；由 techniques.js 每 0.1 秒傳入一份 vm 狀態。
  */
 import { h } from "../core/dom-utils.js";
 
@@ -18,25 +21,29 @@ function build() {
 
 const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
 
-/** 重新建立與目前武器相符的元件（換武器、格子數改變時才會呼叫） */
+/** 重新建立與目前武器相符的元件（換武器、技能數改變時才會呼叫） */
 function rebuild(vm) {
   const en = h("div", { class: "tq-meter" }, h("i", { class: "tq-fill" }), h("span", { class: "tq-label" }));
   const extra = vm.meter ? h("div", { class: "tq-meter alt" }, h("i", { class: "tq-fill" }), h("span", { class: "tq-label" })) : null;
-  const cd = h("i", { class: "tq-cd" }), name = h("b", { class: "tq-n" }), sub = h("small", { class: "tq-sub" }), time = h("em", { class: "tq-t" });
-  const chip = h("button", { type: "button", class: "tq-chip", onpointerdown: press(() => vm.handlers.cast()) }, name, sub, cd, time);
-  const prev = h("button", { type: "button", class: "tq-arrow", "aria-label": "上一個", onpointerdown: press(() => vm.handlers.cycle(-1)) }, "◀");
-  const next = h("button", { type: "button", class: "tq-arrow", "aria-label": "下一個", onpointerdown: press(() => vm.handlers.cycle(1)) }, "▶");
-  const dots = h("div", { class: "tq-dots" }, ...vm.slots.map((_, i) => h("i", { onpointerdown: press(() => vm.handlers.select(i)) })));
-  const hint = h("div", { class: "tq-hint" }, "滾輪切換・左鍵發動");
-  const domains = vm.domains.map((d) => h("small", { class: "tq-dom", title: d.name }, `${d.key}：${d.name}`));
+  const basic = h("button", { type: "button", class: "tq-btn tq-basic", title: "普通攻擊（滾輪切回這格）", onpointerdown: press(() => vm.handlers.select(0)) },
+    h("span", { class: "tq-n" }, "普攻"), h("small", { class: "tq-c" }, "左鍵"));
+  const skills = vm.slots.slice(1).map((s, i) => {
+    const cd = h("i", { class: "tq-cd" }), time = h("em", { class: "tq-t" }), cost = h("small", { class: "tq-c" });
+    const btn = h("button", { type: "button", class: "tq-btn", title: s.desc, onpointerdown: press(() => vm.handlers.skill(i)) },
+      h("b", { class: "tq-k" }, s.key), h("span", { class: "tq-n" }, s.name), cost, cd, time);
+    return { btn, cd, time, cost };
+  });
+  const domains = vm.domains.map((d, i) => ({
+    btn: h("button", { type: "button", class: `tq-btn dom d${i}`, title: d.name, onpointerdown: press(() => vm.handlers.domain(i)) },
+      h("b", { class: "tq-k" }, d.key), h("span", { class: "tq-n" }, d.name), h("small", { class: "tq-c" }, "術式場")),
+  }));
   const rings = h("div", { class: "tq-rings" });
-  ui.ref = { en, extra, cd, name, sub, time, chip, dots, domains, rings, ringBtns: [], blastBtn: null };
+  const hint = h("div", { class: "tq-hint" }, "滾輪切換・左鍵發動選定的格子");
+  ui.ref = { en, extra, basic, skills, domains, rings, ringBtns: [], blastBtn: null };
   ui.bar.replaceChildren(
     h("div", { class: "tq-meters" }, en, ...(extra ? [extra] : [])),
     rings,
-    h("div", { class: "tq-sel" }, prev, chip, next),
-    dots,
-    h("div", { class: "tq-doms" }, ...domains),
+    h("div", { class: "tq-row" }, basic, ...skills.map((s) => s.btn), ...domains.map((d) => d.btn)),
     hint,
   );
 }
@@ -57,27 +64,33 @@ export function syncTechniqueUi(vm) {
   if (!vm) { ui.bar.classList.remove("on"); built = ""; return; }
   const sig = `${vm.weapon}|${vm.slots.length}|${vm.domains.length}|${vm.meter ? 1 : 0}`;
   if (sig !== built) { built = sig; rebuild(vm); }
-  const r = ui.ref, slot = vm.slots[vm.sel];
+  const r = ui.ref;
   ui.bar.classList.add("on");
   ui.bar.style.setProperty("--tq", vm.color);
   fill(r.en, vm.en / vm.enMax, `能量 ${Math.round(vm.en)}`, vm.en > vm.enMax ? "#7ad6ff" : null);
   if (vm.meter) fill(r.extra, vm.meter.value / 100, `${vm.meter.name} ${Math.round(vm.meter.value)}`, vm.meter.color);
-  r.name.textContent = slot.name;
-  r.sub.textContent = vm.sel === 0 ? "" : `${slot.key} · ${slot.cost ? `耗能 ${slot.cost}` : "免費"}`;
-  r.chip.title = slot.desc;
-  r.cd.style.height = slot.cdMax > 0 ? `${Math.min(1, slot.cd / slot.cdMax) * 100}%` : "0%";
-  r.time.textContent = slot.cd > 0 ? slot.cd.toFixed(slot.cd < 10 ? 1 : 0) : "";
-  r.chip.classList.toggle("no", vm.sel > 0 && (vm.en < slot.cost || vm.sealed));
-  r.chip.classList.toggle("act", slot.active);
-  [...r.dots.children].forEach((d, i) => d.classList.toggle("on", i === vm.sel));
-  vm.domains.forEach((d, i) => r.domains[i].classList.toggle("ready", d.ready && !vm.domainOn));
+  r.basic.classList.toggle("sel", vm.sel === 0);
+  vm.slots.slice(1).forEach((s, i) => {
+    const el = r.skills[i];
+    el.cd.style.height = s.cdMax > 0 ? `${Math.min(1, s.cd / s.cdMax) * 100}%` : "0%";
+    el.time.textContent = s.cd > 0 ? s.cd.toFixed(s.cd < 10 ? 1 : 0) : "";
+    el.cost.textContent = s.cost ? `${s.cost}` : "免費";
+    el.btn.classList.toggle("no", vm.en < s.cost || vm.sealed);
+    el.btn.classList.toggle("act", s.active);
+    el.btn.classList.toggle("sel", vm.sel === i + 1);
+  });
+  vm.domains.forEach((d, i) => {
+    const el = r.domains[i];
+    el.btn.classList.toggle("ready", d.ready && !vm.domainOn);
+    el.btn.classList.toggle("no", !d.ready || vm.domainOn || vm.sealed);
+  });
   syncRings(vm);
 }
 
 /** 塵流懸圖：9 個同心圓的控制面板（點一下切換旋轉，開啟「爆破」後點一下引爆該圈） */
 function syncRings(vm) {
   const r = ui.ref, ringsData = vm.rings;
-  r.ringsData = ringsData;
+  r.ringsData = ringsData; // 按鈕永遠呼叫最新一次的資料（重新展開術式場後閉包會換新）
   if (!ringsData) { r.rings.classList.remove("on"); return; }
   if (!r.ringBtns.length) {
     r.ringBtns = Array.from({ length: 9 }, (_, i) => h("button", { type: "button", class: "tq-ring", onpointerdown: press(() => r.ringsData?.tap(i + 1)) }, String(i + 1)));
