@@ -53,6 +53,23 @@ export const STATUS = Object.freeze({
     label: "術式熔斷", color: "#ff9a3d", icon: "pull", defaultDuration: 4,
     blocks: ["skill"], immuneTo: "sealImmune",
   },
+  fast: {
+    label: "加速", color: "#ffb84d", icon: "fast", defaultDuration: 2.2, maxStacks: 2,
+    speedMul: (n) => 2,
+  },
+  burn: {
+    label: "灼燒", color: "#ff4d4d", icon: "fire", defaultDuration: 3, maxStacks: 3,
+    /** 每 0.5 秒扣血，層數越多越痛；用安靜扣血，不會每次都震動閃紅 */
+    onTick(p, s, dt, api) {
+      s.acc += dt;
+      while (s.acc >= 0.5) {
+        s.acc -= 0.5;
+        api.hurt(0.7 * s.n, { quiet: true });
+      }
+    },
+    /** 受傷倍率：灼燒時受到的傷害會更痛 */
+    damageTakenMul: (n) => 1 + 0.1 * n,
+  },
   soulseal: {
     label: "靈魂熔斷", color: "#c070ff", icon: "slow", defaultDuration: 4,
     blocks: ["skill", "attack", "move"], immuneTo: "sealImmune", speedMul: () => 0,

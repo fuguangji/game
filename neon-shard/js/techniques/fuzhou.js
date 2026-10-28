@@ -297,7 +297,7 @@ registerTechnique({
           col: "#5effd7",
           every: 0.35,
           dmg: 6,
-          tag: "water",
+          tag: "poison",
           each(dt, f) {
             for (const e of enemiesIn(f.x, f.y, f.r))
               applyEnemyFx(e, "frozen", { duration: 1.2 });

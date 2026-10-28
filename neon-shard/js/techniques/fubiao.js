@@ -150,13 +150,14 @@ registerTechnique({
       cd: 3,
       color: "#ff8a5a",
       backlash: 0.05,
-      desc: "將術式壓縮智超臨界流體，一次貫穿，極致的恐懼稍縱即逝",
+      desc: "將術式壓縮成超臨界流體，一次貫穿，極致的恐懼稍縱即逝",
       cast({ p, x, y }) {
         const a = Math.atan2(y - p.y, x - p.x);
-        beam(p.x, p.y, a, 1000, 100, 14, {
+        beam(p.x, p.y, a, 1000, 10, 14, {
             col: "#a70000",
             fx: [["afraid", { duration: 1, stacks: 5 }]],
           });
+        burst(p.x, p.y, "#501aa7", 60, 420, 5, 0.8);
       },
     },
     {
