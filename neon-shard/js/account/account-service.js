@@ -12,24 +12,32 @@ export class AccountService extends EventTarget {
   #crypto;
   #keys = null;
   #profile = null;
+  #sharedAuth = null;
+  #sharedUser = null;
+  #sharedAuthStarted = false;
+  #sharedAuthUnsubscribe = null;
 
   /**
    * @param {{api: import('./api-client.js').ApiClient, sessions: import('./session-store.js').SessionStore,
    *          crypto: {createAccountKeys:Function, unlockAccountKeys:Function, encryptSave:Function, decryptSave:Function, signSaveRequest:Function}}} o
    */
-  constructor({ api, sessions, crypto }) {
+  constructor({ api, sessions, crypto, sharedAuth = null }) {
     super();
     this.#api = api;
     this.#sessions = sessions;
     this.#crypto = crypto;
-    api.onSessionExpired = () => this.#reset("登入已過期，請重新登入。");
+    this.#sharedAuth = sharedAuth;
+    api.onSessionExpired = () => {
+      if (this.#sharedUser && this.#sharedAuth) this.#sharedAuth.signOut().catch((error) => console.warn("[account] expired Firebase session sign-out failed", error));
+      this.#reset("登入已過期，請重新登入。");
+    };
   }
 
-  get signedIn() { return this.#sessions.current !== null; }
+  get signedIn() { return this.#sharedUser !== null || this.#sessions.current !== null; }
   get unlocked() { return this.#keys !== null; }
   get profile() { return this.#profile; }
   get displayName() { return this.#profile?.displayName || GUEST; }
-  get userId() { return this.#sessions.current?.userId ?? this.#profile?.userId ?? null; }
+  get userId() { return this.#sharedUser?.uid ?? this.#sessions.current?.userId ?? this.#profile?.userId ?? null; }
 
   #emit(notice = "") {
     this.dispatchEvent(new CustomEvent("change", { detail: { notice } }));
@@ -61,6 +69,32 @@ export class AccountService extends EventTarget {
 
   /** 頁面載入後若還有 session，補抓暱稱（不需要密碼；金鑰仍需使用者輸入密碼解鎖） */
   async restore() {
+    if (this.#sharedAuth && !this.#sharedAuthStarted) {
+      this.#sharedAuthStarted = true;
+      try {
+        const unsubscribe = await this.#sharedAuth.observeAuth(async (user) => {
+          this.#sharedUser = user;
+          if (!user) {
+            this.#keys = null;
+            this.#profile = null;
+            this.#emit();
+            return;
+          }
+          try {
+            await this.#sharedAuth.verifyIdentity();
+            await this.#loadProfile();
+          } catch (error) {
+            console.warn("[account] shared identity bootstrap failed", error);
+          }
+          this.#emit();
+        }, (error) => console.warn("[account] shared auth state error", error));
+        this.#sharedAuthUnsubscribe = unsubscribe;
+      } catch (error) {
+        this.#sharedAuthStarted = false;
+        console.warn("[account] shared auth initialization failed", error);
+      }
+    }
+    if (this.#sharedAuth) return;
     if (!this.signedIn || this.#profile) return;
     try {
       await this.#loadProfile();
@@ -89,6 +123,17 @@ export class AccountService extends EventTarget {
     this.#emit();
   }
 
+  /** 使用共用 Firebase 身分建立或解鎖雲端存檔加密金鑰。 */
+  async initializeOrUnlockKeys(password) {
+    const userId = this.userId;
+    if (!this.signedIn || !userId) throw new ApiError("尚未登入，請先登入共用帳號。", { code: "NOT_SIGNED_IN" });
+    if (!this.#sharedUser) throw new ApiError("目前不是 Firebase 共用帳號工作階段，請重新登入。", { code: "NOT_SHARED_SESSION" });
+    await this.#sharedAuth.verifyIdentity();
+    await this.#unlockOrCreateKeys(userId, password);
+    await this.#loadProfile();
+    this.#emit();
+  }
+
   /** 已有 session 但金鑰未解鎖（例如重新整理頁面後）時，用密碼解鎖 */
   async unlock(password) {
     const profile = await this.#loadProfile();
@@ -100,10 +145,12 @@ export class AccountService extends EventTarget {
 
   async logOut() {
     try {
-      await this.#api.request("/api/auth/logout", { method: "POST" });
+      if (this.#sharedUser && this.#sharedAuth) await this.#sharedAuth.signOut();
+      else await this.#api.request("/api/auth/logout", { method: "POST" });
     } catch (error) {
-      console.warn("[account] logout request failed", error); // 伺服器登出失敗也要清掉本機登入
+      console.warn("[account] logout request failed", error);
     } finally {
+      this.#sharedUser = null;
       this.#sessions.clear();
       this.#reset();
     }

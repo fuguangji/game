@@ -2,7 +2,8 @@
  * 登入工作階段（sessionStorage）。
  * 只接受格式正確的資料；損毀、被改過或缺欄位的內容一律視為「未登入」。
  */
-export const SESSION_KEY = "neonShardAuthSession";
+// Bump the key while moving identity to Firebase. The old Supabase session is deliberately not trusted or reused.
+export const SESSION_KEY = "neonCircuitFirebaseMigrationSessionV2";
 
 export class SessionStore {
   #storage;

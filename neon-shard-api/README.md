@@ -1,77 +1,56 @@
-# Neon-shard API
+# NEON SHARD API
 
-Node.js API intended for Render. GitHub Pages remains the frontend and calls this API only. The API uses Supabase Auth for identity and a server-only Supabase service-role key for database access.
+Render hosts the server-side API. Firebase is the identity and account-data provider; GitHub Pages hosts the frontend.
 
-## Current implementation
+## Architecture
 
-- Supabase Auth proxy: signup, password login, refresh, logout.
-- Authenticated own-profile and key-metadata endpoints.
-- First-time P-256 key registration with proof of possession.
-- Browser-side Argon2id password KDF, encrypted private-key bundle, ECDH + HKDF-SHA-256 + AES-256-GCM save encryption.
-- ECDSA P-256/SHA-256 signatures over canonical request JSON, verified by Render.
-- Save upload/download, revision-based optimistic concurrency, request validation, 64 KiB body limit, rate limits, CORS allowlist, and safe public profile lookup.
-- Unit tests for schema validation, signatures, and browser crypto round-trip.
+- **Firebase Authentication** handles email/password registration, sign-in, sign-out, and ID-token refresh in the browser.
+- **Firebase Admin SDK** verifies ID tokens on Render. The API derives the trusted account UID from the verified token and never trusts a UID supplied by the client.
+- **Cloud Firestore** stores account profiles, display-name reservations, encryption-key metadata, and encrypted cloud saves. Save data is scoped by UID under `users/{uid}`.
+- **Realtime Database** remains dedicated to the existing WebRTC room/signaling flow.
+- Firestore browser rules deny direct client access to account and save documents. Render's Admin SDK is the only data-access path for those collections.
 
-This remains a pre-deployment integration branch. Do not deploy as production-ready until all CI checks pass and manual browser tests are completed.
+## Owner configuration
+
+1. Fill the public Firebase Web App values in `account/firebase-config.js`. This file intentionally contains placeholders until the project owner fills them in.
+2. In Firebase Console, enable **Email/Password** in Authentication.
+3. Create a Cloud Firestore database and publish the repository's `firestore.rules`.
+4. In Render, set `FIREBASE_SERVICE_ACCOUNT_JSON` to the complete service-account JSON value. This is a server secret; never commit it.
+5. Set `ALLOWED_ORIGINS` to the exact deployed website origin(s).
+6. Redeploy the Render service and check `/api/health` and `/api/ready`.
+
+Until the Firebase service account is configured, the API process can still start and health checks can respond, but identity/profile/save endpoints correctly return `503 FIREBASE_ADMIN_NOT_CONFIGURED`.
 
 ## Routes
 
-- `GET /api/health`
-- `POST /api/auth/signup` — `{ email, password, displayName }`
-- `POST /api/auth/login` — `{ email, password }`
-- `POST /api/auth/refresh` — `{ refreshToken }`
-- `POST /api/auth/logout` — Bearer access token
-- `GET /api/profile/me` — current user's display name and key setup status
-- `PUT /api/profile` — update the authenticated user's own display name
-- `GET /api/profiles/:displayName` — returns public display name only
-- `GET /api/keys` — current user's encrypted key bundle and public-key metadata
-- `PUT /api/keys` — first-time key registration; key rotation is deliberately rejected pending a recovery design
-- `GET /api/player-data` — current user's save
-- `POST /api/player-data` — create a save only if absent
-- `PUT /api/player-data` — update with required `expectedRevision`
+- `GET /api/health` — process health.
+- `GET /api/ready` — Firebase Admin and Firestore readiness.
+- `GET /api/identity/me` — verifies a Firebase ID token and initializes/returns its Firestore profile.
+- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` — intentionally return `410 USE_FIREBASE_AUTH`; passwords must go directly to Firebase Authentication from `/account/`.
+- `POST /api/auth/logout` — authenticated no-content response; the browser signs out through Firebase Auth.
+- `GET /api/profile/me` — current UID, display name, and key-setup status.
+- `PUT /api/profile` — update the authenticated user's display name.
+- `GET /api/profiles/:displayName` — public display-name lookup only.
+- `GET /api/keys` / `PUT /api/keys` — read or register encryption-key metadata; first registration requires proof of possession.
+- `GET /api/player-data` — read the authenticated user's cloud save.
+- `POST /api/player-data` — create a save if absent.
+- `PUT /api/player-data` — update a save using `expectedRevision` optimistic concurrency.
 
-Protected routes derive the user ID from a validated Supabase access token. Request-body user IDs are not accepted.
+## Save encryption and integrity
 
-## Crypto protocol (version 1)
+- Password-derived key wrapping uses the existing browser-side Argon2id protocol. The password and private keys are never sent to Render.
+- Each save's sensitive envelope is encrypted in the browser with AES-GCM and stored by Firestore as ciphertext.
+- The browser signs save requests with ECDSA P-256; Render validates the signature, user UID, key ID, timestamp, and revision.
+- Firestore save documents are stored under `users/{uid}/gameData/currentSave`, and key metadata is stored on `users/{uid}`.
+- Firestore transaction logic prevents two initial saves, checks revision conflicts, and reserves display names.
 
-- Password KDF: Argon2id, `t=2`, `m=19456 KiB`, `p=1`, `dkLen=32`; random 16-byte per-account salt.
-- Long-term encryption key: ECDH P-256 key pair generated in the browser.
-- Signing key: ECDSA P-256, SHA-256.
-- Private ECDH/signing keys are exported only during first-time creation, placed in a JSON bundle, and wrapped with AES-256-GCM under the password-derived key. The server stores only the wrapped bundle, its IV, the salt, and public keys.
-- Each save uses a fresh ephemeral ECDH P-256 key pair. HKDF-SHA-256 derives a per-save AES-256-GCM key from the shared secret and context-bound info. AES-GCM uses a fresh 96-bit IV and a 128-bit authentication tag.
-- AAD binds the ciphertext to the user ID, key ID, protocol version, schema version, and ephemeral public key.
-- Browser ECDSA signatures use IEEE-P1363 `r||s` encoding. The signature binds purpose, authenticated user ID, method, path, timestamp, key ID, expected revision, ordinary JSON summary, and encrypted envelope. Signatures expire after five minutes.
-- Argon2id currently loads from a pinned ESM CDN import (`@noble/hashes@1.8.0`). The browser must be online for first-time key setup/unlock unless the dependency is later vendored and audited.
+## Local checks
 
-### Data split
-
-The current first integration conservatively encrypts the full local `SV` save payload, because the game has not yet classified individual fields as safe to expose. `save_data` contains only a non-sensitive format marker, save timestamp, and coarse currency summary. This protects the full progression payload from being readable in the database; if you later decide specific progression fields are intentionally public, the split can be refined explicitly.
-
-### Limitations
-
-- Client signatures prove possession of the registered signing key and request integrity, not honest gameplay. A modified browser can still fabricate game state and sign it.
-- The service-role key bypasses RLS; the API must enforce ownership on every protected operation.
-- The first version does not support silent key rotation or automatic recovery. Password reset without the old password or a separately designed recovery mechanism can make sensitive saves unrecoverable.
-- Render never receives or logs a password intentionally, and never decrypts the private-key bundle or save envelope.
-- Browser-side Argon2id/ECDH/HKDF/AES-GCM must be tested on real mobile browsers before release.
-
-## Environment variables
-
-Copy `.env.example` to a local `.env` for development. Configure the values as Render environment variables for deployment. Never commit actual secrets.
-
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server-only)
-- `ALLOWED_ORIGINS` (comma-separated exact origins)
-- `PORT` (Render supplies this automatically)
-
-## Local run
+Run inside `neon-shard-api`:
 
 ```sh
-npm install
-cp .env.example .env
-# Fill .env with values; never commit .env.
 npm run check
 npm test
-npm start
 ```
+
+Live authentication and Firestore integration tests require the owner's Firebase project and Render service-account configuration.

@@ -2,23 +2,23 @@
   "name": "neon-shard-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Render API for Neon-shard backed by Supabase Auth and PostgreSQL",
+  "description": "Render API for NovaCircuit identity verification and NEON SHARD encrypted saves",
   "type": "module",
   "engines": {
     "node": "24.22.1"
   },
   "scripts": {
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/room-manager.js && node --check src/rate-limiter.js && node --check src/security.js && node --check src/validation.js && node --check src/display-name.js && node --check ../neon-shard/js/account/cloud-crypto.js && node --check ../neon-shard/js/account/api-client.js && node --check ../neon-shard/js/account/account-service.js",
+    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/room-manager.js && node --check src/rate-limiter.js && node --check src/security.js && node --check src/validation.js && node --check src/display-name.js && node --check src/firebase-store.js && node --check ../neon-shard/js/account/cloud-crypto.js && node --check ../neon-shard/js/account/api-client.js && node --check ../neon-shard/js/account/account-service.js && node --check ../account/shared-auth.js",
     "test": "node --test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.57.4",
     "cors": "2.8.5",
     "express": "5.1.0",
     "express-rate-limit": "8.1.0",
     "helmet": "8.1.0",
     "zod": "4.1.5",
-    "ws": "8.18.3"
+    "ws": "8.18.3",
+    "firebase-admin": "13.5.0"
   }
 }

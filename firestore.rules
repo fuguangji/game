@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Account profiles, display-name index and cloud saves are accessed only by
+    // the Render API using the Firebase Admin SDK. Never expose save records
+    // directly to browser clients; Admin SDK requests bypass these rules.
+    match /users/{uid} {
+      allow read, write: if false;
+      match /gameData/{document=**} {
+        allow read, write: if false;
+      }
+    }
+    match /displayNames/{name} {
+      allow read, write: if false;
+    }
+    match /_health/{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

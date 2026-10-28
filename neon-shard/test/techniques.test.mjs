@@ -81,7 +81,7 @@ test("規則：術式熔斷只擋術式（普通攻擊照常）；靈魂熔斷�
 });
 
 test("規則：術式反噬不會致死（最少留 1 點）；無視反噬時不受反噬", () => {
-  const p = scene("幻日虹");
+  const p = scene("青羽鎩");
   p.hp = 2;
   X.selfBacklash(5);
   assert.equal(p.hp, 1);
@@ -144,7 +144,7 @@ test("規則：霜雪風域讓場內敵人看不見你，且幾乎無法傷到�
 });
 
 test("敵人效果：熔斷的敵人不會開火、靈魂熔斷不能移動；Boss 免疫靈魂熔斷", () => {
-  const p = scene("幻日虹");
+  const p = scene("青羽鎩");
   const e = X.mkEn(X.enemyCatalog.byName("毒霧").typeId, p.x + 200, p.y); e.hp = e.mhp = 1e5; G.en.push(e);
   X.applyEnemyFx(e, "seal", { duration: 5 });
   G.bl.length = 0; X.fire(e);
