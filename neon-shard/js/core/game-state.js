@@ -89,6 +89,8 @@ export class GameState {
   TS = undefined;
   pendEn = undefined;
   last = undefined;
+  camPx = undefined; // 上一次模擬結束時的鏡頭位置（動態補償用，見 core/interpolation.js）
+  camPy = undefined;
 }
 
 export const G = Object.seal(new GameState());

@@ -11,7 +11,6 @@
  */
 import { h } from "../core/dom-utils.js";
 import { confirmDialog } from "../ui/feedback.js";
-import { observeAuth, signOutShared, verifyIdentityWithApi } from "../../../account/shared-auth.js";
 
 const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,8 +52,6 @@ export class AccountView {
   #statusEl = null;
   #lastSync = null;
   #listeners = new Set();
-  #sharedUser = null;
-  #authUnsubscribe = null;
 
   /**
    * @param {HTMLElement} container
@@ -83,7 +80,6 @@ export class AccountView {
 
   destroy() {
     this.#abort.abort();
-    this.#authUnsubscribe?.();
     this.#listeners.clear();
     if (AccountView.#current === this) AccountView.#current = null;
   }
@@ -97,17 +93,6 @@ export class AccountView {
     }, { signal: this.#abort.signal });
     this.render();
     this.#service.restore();
-    observeAuth((user) => {
-      this.#sharedUser = user;
-      if (!this.#container.isConnected) return this.destroy();
-      this.render();
-      for (const fn of this.#listeners) fn();
-    }, (error) => console.warn("[account] shared Firebase auth state unavailable", error))
-      .then((unsubscribe) => {
-        if (this.#abort.signal.aborted) unsubscribe();
-        else this.#authUnsubscribe = unsubscribe;
-      })
-      .catch((error) => console.warn("[account] shared Firebase auth initialization failed", error));
   }
 
   #setNotice(text, error = false) {
@@ -148,9 +133,8 @@ export class AccountView {
   render() {
     this.#statusEl = h("p", { class: "ns-status" + (this.#notice.error ? " err" : ""), role: "status", "aria-live": "polite" }, this.#notice.text);
     const panel = h("section", { class: "ns-account" });
-    if (this.#sharedUser) this.#renderSharedSignedIn(panel);
-    else if (this.#service.signedIn) this.#renderSignedIn(panel);
-    else this.#renderSignedOut(panel);
+    if (!this.#service.signedIn) this.#renderSignedOut(panel);
+    else this.#renderSignedIn(panel);
     this.#container.replaceChildren(panel);
   }
 
@@ -191,72 +175,70 @@ export class AccountView {
 
   /* ---------- 未登入 ---------- */
   #renderSignedOut(panel) {
-    const accountUrl = new URL("../../../account/", import.meta.url);
-    accountUrl.searchParams.set("returnTo", globalThis.location?.href || new URL("../../../neon-shard/", import.meta.url).href);
-    const openAccount = h("a", { class: "x-btn pri blk", href: accountUrl.href }, "前往共用帳號中心");
-    panel.append(
-      h("header", { class: "ns-intro" },
-        h("h2", {}, "NovaCircuit 共用帳號"),
-        h("p", {}, "所有遊戲統一在同一個帳號中心登入或註冊。登入後會返回目前遊戲，其他同來源遊戲頁也能沿用 Firebase 登入狀態。"),
-        h("ul", { class: "ns-points" },
-          h("li", {}, "🔐 密碼只交給 Firebase Authentication，不交給遊戲頁面。"),
-          h("li", {}, "🪪 遊戲伺服器會驗證 Firebase ID Token，不能只相信前端傳來的 UID。"),
-          h("li", { class: "warn" }, "☁️ 共用身分已與雲端存檔 API 分開；存檔遷移完成前，不要把「已登入」誤認為雲端存檔已可用。"))),
-      openAccount,
-      this.#statusEl);
-  }
-
-  #renderSharedSignedIn(panel) {
-    if (this.#service.unlocked) return this.#renderSignedIn(panel);
-    const user = this.#sharedUser;
-    const name = user.displayName || user.email || "已登入玩家";
-    const accountUrl = new URL("../../../account/", import.meta.url);
-    accountUrl.searchParams.set("returnTo", globalThis.location?.href || new URL("../../../neon-shard/", import.meta.url).href);
-    const head = h("header", { class: "ns-me" },
-      h("div", { class: "ns-avatar-dot", "aria-hidden": "true" }, [...name][0] ?? "?"),
-      h("div", {}, h("h2", {}, name),
-        h("div", { class: "ns-badges" }, h("span", { class: "ns-badge ok" }, "Firebase 已登入"))));
-    const details = h("p", { class: "ns-meta" }, user.email || "此帳號未提供電子郵件",
-      h("br"), "Firebase UID：", user.uid);
+    const signup = this.#mode === "signup";
+    const email = this.#field({ label: "電子郵件", type: "email", autocomplete: "email", maxLength: 254, help: signup ? "用來登入與接收驗證信。" : "" });
     const password = this.#field({
-      label: "帳號密碼（用來保護雲端存檔）",
-      type: "password",
-      password: true,
-      autocomplete: "current-password",
-      maxLength: 256,
-      help: "第一次使用會建立本機加密金鑰；之後登入則用相同密碼解鎖。密碼不會送到遊戲伺服器，也不會被儲存。",
+      label: "密碼", type: "password", password: true, maxLength: 256, minLength: signup ? MIN_PASSWORD : 1,
+      autocomplete: signup ? "new-password" : "current-password",
+      help: signup ? `至少 ${MIN_PASSWORD} 個字元。這個密碼同時保護你的雲端存檔，請記好。` : "",
     });
-    const keyForm = h("form", { class: "ns-form", onsubmit: (event) => {
-      event.preventDefault();
-      if (!password.input.value) {
-        password.fail("請輸入密碼。");
-        password.input.focus();
-        return;
-      }
+    const nickname = signup ? this.#field({ label: "遊戲暱稱", type: "text", autocomplete: "nickname", maxLength: 24, help: "1～24 個字，會顯示在個人檔案。不能包含 < > & \" ' ` % _ \\" }) : null;
+
+    // 即時提示：邊打邊告訴玩家還缺什麼，而不是按下送出才被罵
+    if (signup) {
+      password.input.addEventListener("input", () => {
+        const left = MIN_PASSWORD - password.input.value.length;
+        password.fail("");
+        if (left > 0) password.setHelp(`還差 ${left} 個字元。`);
+        else password.setHelp("✓ 長度足夠。這個密碼同時保護你的雲端存檔，請記好。", true);
+      });
+      nickname.input.addEventListener("input", () => {
+        const value = nickname.input.value.trim();
+        nickname.fail("");
+        if (value && !NICKNAME_PATTERN.test(value)) nickname.setHelp("暱稱含有不允許的符號，請移除。");
+        else nickname.setHelp(`${value.length} / 24 字`, !!value);
+      });
+    }
+    email.input.addEventListener("input", () => email.fail(""));
+
+    const validate = () => {
+      const problems = [];
+      if (!EMAIL_PATTERN.test(email.input.value.trim())) problems.push([email, "請輸入正確的電子郵件，例如 name@example.com。"]);
+      if (!password.input.value) problems.push([password, "請輸入密碼。"]);
+      else if (signup && password.input.value.length < MIN_PASSWORD) problems.push([password, `密碼至少要 ${MIN_PASSWORD} 個字元。`]);
+      if (signup && !NICKNAME_PATTERN.test(nickname.input.value.trim())) problems.push([nickname, "暱稱需為 1～24 個字，且不能包含 < > & \" ' ` % _ \\ 或控制字元。"]);
+      for (const f of [email, password, nickname]) f?.fail("");
+      for (const [field, message] of problems) field.fail(message);
+      problems[0]?.[0].input.focus();
+      return problems.length === 0;
+    };
+
+    const submit = h("button", { type: "submit", class: "x-btn pri blk" }, signup ? "建立帳號" : "登入");
+    const form = h("form", { class: "ns-form", novalidate: true, onsubmit: (e) => {
+      e.preventDefault();
+      if (!validate()) { this.#setNotice("請先修正標示的欄位。", true); return; }
       this.#run(async () => {
-        await this.#service.initializeOrUnlockKeys(password.input.value);
-        password.input.value = "";
-        this.#setNotice("雲端存檔金鑰已準備好。");
-      }, { busyText: "正在初始化／解鎖加密金鑰…" });
-    } }, password.wrap, h("button", { type: "submit", class: "x-btn pri blk" }, "初始化／解鎖雲端存檔"));
-    const verify = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
-      const identity = await verifyIdentityWithApi();
-      if (identity.uid !== user.uid) throw new Error("伺服器回傳的 UID 與目前登入帳號不一致。");
-      this.#setNotice("伺服器已驗證目前帳號身分。");
-    }, { busyText: "正在驗證伺服器身分…" }) }, "驗證伺服器身分");
-    const manage = h("a", { class: "x-btn", href: accountUrl.href }, "管理共用帳號");
-    const logout = h("button", { type: "button", class: "x-btn sm", onclick: () => this.#run(async () => {
-      await signOutShared();
-      this.#setNotice("已登出共用帳號。");
-    }, { busyText: "正在登出…" }) }, "登出");
+        const creds = { email: email.input.value.trim(), password: password.input.value };
+        if (signup) {
+          const { needsEmailConfirmation } = await this.#service.signUp({ ...creds, displayName: nickname.input.value.trim() });
+          this.#setNotice(needsEmailConfirmation ? "帳號已建立！請到信箱點擊驗證連結，完成後回到這裡「登入」。" : "帳號建立完成，存檔加密金鑰已準備好。");
+        } else {
+          await this.#service.logIn(creds);
+          this.#setNotice("登入成功，可以開始同步存檔了。");
+        }
+      }, { busyText: signup ? "正在建立帳號並產生加密金鑰…" : "登入中…", action: signup ? "signup" : "login" });
+    } }, email.wrap, password.wrap, nickname?.wrap, submit);
+
     panel.append(
       h("header", { class: "ns-intro" },
-        h("h2", {}, "共用帳號已登入"),
-        h("p", {}, "此登入狀態由 Firebase Authentication 管理，同來源的遊戲頁可以共用。")),
-      head, details,
-      h("p", { class: "ns-meta" }, "第一次使用請初始化加密金鑰；之後使用同一密碼解鎖。登入身分與存檔加密金鑰是兩回事。"),
-      keyForm,
-      h("div", { class: "ns-row" }, verify, manage, logout),
+        h("h2", {}, "雲端存檔 ", h("span", { class: "ns-pill" }, "選用")),
+        h("p", {}, "不登入也能完整遊玩，進度會保存在這台裝置。登入後，可以在不同裝置之間接關。"),
+        h("ul", { class: "ns-points" },
+          h("li", {}, "🔒 存檔內容會先在這台裝置加密，再上傳。"),
+          h("li", {}, "📱 換手機或電腦時，登入後按「從雲端載入」就能接關。"),
+          h("li", { class: "warn" }, "⚠️ 忘記密碼可能就解不開雲端存檔，請把密碼記好。"))),
+      this.#seg(),
+      form,
       this.#statusEl);
   }
 

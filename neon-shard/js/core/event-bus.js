@@ -8,6 +8,8 @@ export const GameEvents = Object.freeze({
   PLAYER_SHOT: "player:shot", // { autoAim: boolean }
   PLAYER_DASH: "player:dash",
   SKILL_CAST: "technique:cast",
+  SKILL_SELECTED: "technique:selected", // { slot }  選定了某個技能格（手機：點技能鈕；電腦：滾輪）
+  SKILL_CANCELLED: "technique:cancelled", // 手機：瞄準後把搖桿拖回中心放開，取消施放
   PLAYER_HURT: "player:hurt", // { damage }  監聽者可修改 damage
   ULTIMATE_USED: "ultimate:used",
   ENEMY_KILLED: "enemy:killed", // { enemy }

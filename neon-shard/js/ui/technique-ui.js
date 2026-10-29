@@ -1,11 +1,12 @@
 /**
  * ui/technique-ui — 術式系統的畫面：能量條、全部技能按鈕（展開，名稱與耗能一目了然）、術式場鈕、同心圓面板
  *
- * - 所有技能都直接列出來，新手不必背技能：點哪個就放哪個（手機與桌機都一樣）。
- * - 桌機另外有「選定」功能：滾輪切換、左鍵發動；被選定的按鈕會亮框，第一顆「普攻」代表普通攻擊。
- *   手機沒有滾輪，永遠不會進入選定狀態，所以長按瞄準一定是普通攻擊。
- * - 版面：桌機在畫面下方中間；手機（粗指標）縮成右側邊緣的小格子，容器本身不吃觸控，只有按鈕吃，
- *   不會擋到瞄準與移動區（見 css/ui-kit.css）。
+ * - 所有技能都直接列出來，新手不必背技能。
+ * - 電腦：點按鈕就施放；另外有「選定」功能：滾輪切換、左鍵發動，被選定的按鈕會亮框，第一顆「普攻」代表普通攻擊。
+ * - 手機：點按鈕只是「選定」（再點取消），接著用右半邊的瞄準搖桿瞄準、放開才施放；
+ *   「普攻」鈕永遠看得到，點它回到普通攻擊。這樣點選技能時不會誤發動（見 input-mobile.js）。
+ * - 版面：電腦在畫面左下；手機縮成右側邊緣的兩欄按鈕，容器本身不吃觸控，只有按鈕吃，
+ *   不會擋到瞄準與移動區（見 css/ui-kit.css 的 html[data-platform="mobile"]）。
  * 只負責顯示與轉交點擊，不認識遊戲規則；由 techniques.js 每 0.1 秒傳入一份 vm 狀態。
  */
 import { h } from "../core/dom-utils.js";
@@ -25,11 +26,11 @@ const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
 function rebuild(vm) {
   const en = h("div", { class: "tq-meter" }, h("i", { class: "tq-fill" }), h("span", { class: "tq-label" }));
   const extra = vm.meter ? h("div", { class: "tq-meter alt" }, h("i", { class: "tq-fill" }), h("span", { class: "tq-label" })) : null;
-  const basic = h("button", { type: "button", class: "tq-btn tq-basic", title: "普通攻擊（滾輪切回這格）", onpointerdown: press(() => vm.handlers.select(0)) },
-    h("span", { class: "tq-n" }, "普攻"), h("small", { class: "tq-c" }, "左鍵"));
+  const basic = h("button", { type: "button", class: "tq-btn tq-basic", title: vm.mobile ? "普通攻擊" : "普通攻擊（滾輪切回這格）", "aria-label": "普通攻擊", onpointerdown: press(() => vm.handlers.select(0)) },
+    h("span", { class: "tq-n" }, "普攻"), h("small", { class: "tq-c" }, vm.mobile ? "拖曳" : "左鍵"));
   const skills = vm.slots.slice(1).map((s, i) => {
     const cd = h("i", { class: "tq-cd" }), time = h("em", { class: "tq-t" }), cost = h("small", { class: "tq-c" });
-    const btn = h("button", { type: "button", class: "tq-btn", title: s.desc, onpointerdown: press(() => vm.handlers.skill(i)) },
+    const btn = h("button", { type: "button", class: "tq-btn", title: s.desc, "aria-label": s.name, onpointerdown: press(() => vm.handlers.skill(i)) },
       h("b", { class: "tq-k" }, s.key), h("span", { class: "tq-n" }, s.name), cost, cd, time);
     return { btn, cd, time, cost };
   });
@@ -38,7 +39,7 @@ function rebuild(vm) {
       h("b", { class: "tq-k" }, d.key), h("span", { class: "tq-n" }, d.name), h("small", { class: "tq-c" }, "術式場")),
   }));
   const rings = h("div", { class: "tq-rings" });
-  const hint = h("div", { class: "tq-hint" }, "滾輪切換・左鍵發動選定的格子");
+  const hint = h("div", { class: "tq-hint" }, vm.mobile ? "" : "滾輪切換・左鍵發動選定的格子");
   ui.ref = { en, extra, basic, skills, domains, rings, ringBtns: [], blastBtn: null };
   ui.bar.replaceChildren(
     h("div", { class: "tq-meters" }, en, ...(extra ? [extra] : [])),
@@ -62,10 +63,11 @@ function fill(el, frac, label, color) {
 export function syncTechniqueUi(vm) {
   if (!ui) { if (!vm) return; build(); }
   if (!vm) { ui.bar.classList.remove("on"); built = ""; return; }
-  const sig = `${vm.weapon}|${vm.slots.length}|${vm.domains.length}|${vm.meter ? 1 : 0}`;
+  const sig = `${vm.weapon}|${vm.slots.length}|${vm.domains.length}|${vm.meter ? 1 : 0}|${vm.mobile ? "m" : "d"}`;
   if (sig !== built) { built = sig; rebuild(vm); }
   const r = ui.ref;
   ui.bar.classList.add("on");
+  ui.bar.classList.toggle("armed", vm.sel > 0); // 已選定技能：手機版用來讓整排按鈕變暗一點，只突顯被選的那顆
   ui.bar.style.setProperty("--tq", vm.color);
   fill(r.en, vm.en / vm.enMax, `能量 ${Math.round(vm.en)}`, vm.en > vm.enMax ? "#7ad6ff" : null);
   if (vm.meter) fill(r.extra, vm.meter.value / 100, `${vm.meter.name} ${Math.round(vm.meter.value)}`, vm.meter.color);

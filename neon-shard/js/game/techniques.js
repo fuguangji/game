@@ -19,6 +19,7 @@
 import { GameEvents, bus } from "../core/event-bus.js";
 import { G } from "../core/game-state.js";
 import { fsm } from "../core/state-machine.js";
+import { platform } from "../core/platform.js";
 import { MW, T, TAU } from "../core/viewport.js";
 import { syncTechniqueUi } from "../ui/technique-ui.js";
 import { toast } from "../ui/feedback.js";
@@ -102,8 +103,11 @@ export function selectSlot(i) {
   const w = WP[G.pl.w], n = slotCount();
   if (!w || n < 2) return false;
   ensure(G.pl);
-  G.pl.sels[w.id] = ((i % n) + n) % n;
+  const next = ((i % n) + n) % n;
+  const changed = G.pl.sels[w.id] !== next;
+  G.pl.sels[w.id] = next;
   sync(true);
+  if (changed && next > 0) bus.emit(GameEvents.SKILL_SELECTED, { slot: next });
   return true;
 }
 
@@ -114,6 +118,38 @@ export const cycleSlot = (dir) => (slotCount() < 2 ? false : selectSlot(selected
 export function castSelected() {
   const i = selectedSlot() - 1;
   return i >= 0 ? castSkill(i) : false;
+}
+
+/** 目前選定的技能（選的是普通攻擊或沒有技能時為 null） */
+export function selectedSkill() {
+  const i = selectedSlot() - 1;
+  return i >= 0 ? (currentTechnique()?.skills[i] ?? null) : null;
+}
+
+/** 選定的技能是不是「蓄力中、等著再按一次釋放」（手機：這種技能施放後不能自動切回普攻，否則沒辦法釋放） */
+export function isChargingSelected() {
+  const sk = selectedSkill();
+  return !!sk && G.tq.some((f) => f.skill === sk.name && f.release);
+}
+
+/** 手機瞄準預覽用：選定技能的名稱、代表色、能不能施放 */
+export function selectedSkillInfo() {
+  const sk = selectedSkill(), tq = currentTechnique();
+  if (!sk || !tq) return null;
+  const p = G.pl;
+  return { name: sk.name, color: tq.color, ready: (p.cdw?.[sk.name] ?? 0) <= 0 && p.en >= Math.round((typeof sk.cost === "function" ? 0 : (sk.cost ?? 0)) * skillCostMultiplier(p)) };
+}
+
+/**
+ * 手機：點技能鈕。不會施放——只是選定（再點一次取消選定）。
+ * 唯一的例外是「蓄力中」的技能：點它代表立刻釋放，這才是玩家想要的動作。
+ */
+export function tapSkill(i) {
+  const sk = currentTechnique()?.skills[i];
+  if (!sk) return false;
+  const running = G.tq.find((f) => f.skill === sk.name && f.release);
+  if (running) { running.release(running); return true; }
+  return selectSlot(selectedSlot() === i + 1 ? 0 : i + 1);
 }
 
 /** 把第 1 個術式場的名稱設成該武器的大招名稱（SUPER 鈕上的文字）；main.js 在武器初始化後呼叫 */
@@ -158,11 +194,17 @@ export function selfBacklash(frac) {
 const loseHp = (amount) => { G.pl.hp -= amount; };
 
 /* ───────────── 瞄準資訊 ───────────── */
+/** 手機瞄準搖桿的最遠施放距離（世界座標像素）：搖桿推到底 = MOBILE_REACH，剛過死區 = MOBILE_REACH_MIN */
+const MOBILE_REACH = 340;
+const MOBILE_REACH_MIN = 60;
+
 function aimPoint(p) {
-  if (mouse.has) return { x: mouse.x / G.S + G.camx, y: mouse.y / G.S + G.camy };
-  const t = aimT();
+  if (!platform.isMobile && mouse.has) return { x: mouse.x / G.S + G.camx, y: mouse.y / G.S + G.camy };
+  const t = aimT(); // 自動瞄準：搖桿方向附近有敵人就吸附到敵人身上（依「輔助／強」模式）
   if (t) return { x: t.x, y: t.y };
-  return { x: p.x + Math.cos(p.aim) * 260, y: p.y + Math.sin(p.aim) * 260 };
+  // 手機：落點由瞄準搖桿決定——方向 = 搖桿方向，距離 = 推動程度（地面技能、範圍技能才有意義）
+  const reach = platform.isMobile ? MOBILE_REACH_MIN + (MOBILE_REACH - MOBILE_REACH_MIN) * (p.q ?? 1) : 260;
+  return { x: p.x + Math.cos(p.aim) * reach, y: p.y + Math.sin(p.aim) * reach };
 }
 
 const alive = (e) => e.hp > 0 && !e.dk;
@@ -561,7 +603,8 @@ function sync(force = false) {
     sel: selectedSlot(),
     domains: tq.domains.map((d, i) => ({ name: d.name, key: i ? "E" : "空白鍵", ready: free || p.ult >= 100, energyFrac: d.energyFrac ?? 0 })),
     rings: G.dom?.ringUi ? G.dom.ringUi() : null,
-    handlers: { select: selectSlot, skill: castSkill, domain: castDomain },
+    mobile: platform.isMobile,
+    handlers: { select: selectSlot, skill: (i) => (platform.isMobile ? tapSkill(i) : castSkill(i)), domain: castDomain },
     domainOn: !!G.dom,
     sealed: isBlocked(p, "skill"),
   });

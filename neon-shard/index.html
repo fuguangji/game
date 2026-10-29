@@ -2,15 +2,26 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
-    />
+    <!-- 不使用 user-scalable=no：縮放是無障礙需求（Lighthouse 會扣分）。遊戲畫面用 touch-action:none 自己接管手勢 -->
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <title>NEON SHARD</title>
-    <link rel="stylesheet" href="css/account-features.css?v=2" />
-    <link rel="stylesheet" href="css/profile.css?v=1" />
-    <link rel="stylesheet" href="css/ui-kit.css?v=1" />
+    <!-- 在第一次繪製前就標好平台（手機／電腦），CSS 依 html[data-platform] 分版面；core/platform.js 啟動後只會在判斷不同時才改，不會觸發整頁重算樣式 -->
+    <script>
+      document.documentElement.dataset.platform =
+        matchMedia("(pointer:coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(hover:hover) and (pointer:fine)").matches) ? "mobile" : "desktop";
+    </script>
+    <meta name="theme-color" content="#070d12" />
+    <meta
+      name="description"
+      content="NEON SHARD：霓虹幾何風格的俯視角射擊遊戲。瞄準、閃避彈幕、組合芯片與術式武器，電腦與手機都能玩。"
+    />
+    <title>NEON SHARD － 霓虹幾何射擊遊戲</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,2 28,9 28,23 16,30 4,23 4,9' fill='%23070d12' stroke='%238fe3cf' stroke-width='2'/%3E%3Cpolygon points='16,2 28,9 16,16' fill='%238fe3cf'/%3E%3Cpolygon points='16,16 28,23 16,30' fill='%23ee6a7c'/%3E%3C/svg%3E"
+    />
+    <!-- 樣式表由 tools/build.mjs 合併壓縮成 dist/app.css；開發用 index.dev.html 則直接載入 css/*.css -->
+    <link rel="stylesheet" href="dist/app.css?v=fbd38ceb" />
     <style>
       :root {
         --bg: #040a08;
@@ -689,6 +700,22 @@
       .x-ttl {
         flex: 1;
         min-width: 0;
+        margin: 0;
+        font: inherit;
+      }
+      .x-ib {
+        min-height: 40px;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
       .x-ttl b {
         display: block;
@@ -1189,6 +1216,12 @@
       .x-sl.em {
         color: var(--mu);
         box-shadow: inset 0 0 0 1px #ffffff22;
+      }
+      .x-sl.em .n {
+        color: #a3b1e6; /* 空槽編號：原本 #4a5688 對比只有 1.9，無障礙要求 4.5 以上 */
+      }
+      body.inmenu .tb {
+        display: none !important; /* 選單開著時，戰鬥用的虛擬按鈕不該被讀到或點到 */
       }
       .x-sl.on {
         box-shadow:
@@ -1917,10 +1950,11 @@
       }
     </style>
   </head>
-  <body>
-    <canvas id="g"></canvas>
+  <body class="inmenu">
+    <h1 class="sr-only">NEON SHARD － 霓虹幾何射擊遊戲</h1>
+    <canvas id="g" aria-hidden="true"></canvas>
     <div id="sa"></div>
-    <button id="fs" aria-label="fullscreen">
+    <button id="fs" type="button" aria-label="全螢幕">
       <svg
         width="22"
         height="22"
@@ -1935,7 +1969,7 @@
       </svg>
     </button>
     <button id="aa" style="display: none !important">自瞄：開</button>
-    <button id="qt" aria-label="menu">
+    <button id="qt" type="button" aria-label="暫停">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="#8fe3cf">
         <rect x="3" y="2" width="3.5" height="12" />
         <rect x="9.5" y="2" width="3.5" height="12" />
@@ -2033,9 +2067,9 @@
             </svg>個人檔案
           </button>
         </nav>
-        <div class="x-main">
+        <main class="x-main">
           <header class="x-top">
-            <div class="x-ttl" id="xT"></div>
+            <h2 class="x-ttl" id="xT"><b>大廳</b><small>最高分 0</small></h2>
             <div class="x-cur" id="xC"></div>
             <button class="x-ib" id="xfs" type="button" aria-label="全螢幕">
               <svg viewBox="0 0 24 24">
@@ -2043,11 +2077,19 @@
               </svg></button
             ><button id="go" type="button">出戰</button>
           </header>
-          <div class="x-view" id="xV"></div>
-        </div>
+          <!-- 首頁骨架：純 HTML，第一個畫面不必等 JavaScript（FCP／LCP）；遊戲啟動後會被真正的大廳取代 -->
+          <div class="x-view fit" id="xV">
+            <div class="x-split">
+              <div class="x-pn x-hero">
+                <div class="x-wm">NEON SHARD</div>
+                <div class="x-tag">霓虹幾何，瞄準與閃避</div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
       <div class="x-md" id="xm"></div>
     </div>
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="dist/app.js?v=c4ca00f8"></script>
   </body>
 </html>

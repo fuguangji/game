@@ -230,8 +230,25 @@ WPC = Array(WPR.length).fill("coins");   // 原本寫死 Array(24)，一定要�
 - 欄位名稱打錯不會報錯，只是默默不生效。
 
 
+## 建置、開發與效能量測
+
+| 目的 | 指令 |
+|---|---|
+| 開發（不用建置） | `python3 -m http.server 8000`，開 `http://localhost:8000/index.dev.html` |
+| 上線版 | `npm install`（第一次）→ `npm run build` → 提交 `dist/` 與 `index.html` |
+| 測試 | `npm test` |
+| Lighthouse | 用 Chrome 隱身視窗開上線版 `index.html` → DevTools → Lighthouse → Mobile；或 `npx lighthouse http://localhost:8000/index.html --preset=perf --form-factor=mobile` |
+
+要改首頁 HTML 請改 `index.dev.html`（`index.html` 是建置產物）。新增或搬動 `css/*.css` 時，同步更新 `tools/build.mjs` 的 `cssFiles`。
+
 ## 人工檢查清單（改完請自己玩一遍）
 
+- 手機版（Chrome DevTools 裝置模擬或真機，橫向與直向各一次）：點技能鈕只會選定（不施放）→ 右搖桿拖曳出現落點預覽 → 放開施放；
+  拖回中心放開不施放；施放後回到普攻；蓄力類技能再點一次可釋放；左搖桿、DASH、SUPER、槍欄正常；教學是手機版文字與練習。
+- 電腦版：WASD、滑鼠、左鍵、滾輪選定技能、ZXCVBN、Shift、空白鍵、P/Esc；教學是鍵鼠版文字。
+- 畫面效能：設定 → 畫面效能，逐項切換（畫質、解析度、幀率上限、模擬頻率、動態補償、發光、粒子、震動），開「顯示效能資訊」看數字；
+  60 Hz 與 120／144 Hz 螢幕上移動畫面是否平順（關掉「動態補償」對照）。
+- 首頁與圖鑑「操作」分頁的操作簡圖：電腦／手機切換正常，手機橫向首頁不被擠壞。
 - 新手導覽：全新存檔 → 戰鬥教學 → 「繼續：商店與芯片導覽」能走完買芯片、裝芯片；每一步都能「跳過導覽」；個人檔案 → 設定可重看。
 - 登入頁：切換「登入／建立帳號」、密碼顯示／隱藏、欄位提示、錯誤訊息是否好懂；下載雲端存檔前會跳出比對視窗。
 - 訓練場：分頁與說明、敵人與芯片按鈕、清除敵人、離開訓練場、目前手上的槍有亮起。

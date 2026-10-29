@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EDITOR_BODY_RADIUS, EDITOR_BODY_RATIO, MAX_STROKES, MIN_IN_GAME_LINE_WIDTH, SkinStore, paintStrokes, sanitizeStrokes } from "../js/profile/appearance.js";
-import { SettingsStore } from "../js/core/settings-store.js";
+import { SETTING_DEFAULTS, SettingsStore } from "../js/core/settings-store.js";
 import { KEYS, SaveStore } from "../js/core/save-store.js";
 
 const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), raw: m }; };
@@ -84,7 +84,7 @@ test("SkinStore：其他分頁修改時重新讀取", () => {
 
 test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重設", () => {
   const st = memStorage(); const store = new SettingsStore(new SaveStore(st));
-  assert.deepEqual(store.all(), { showAura: true, showSkin: true });
+  assert.deepEqual(store.all(), { ...SETTING_DEFAULTS });
   let events = 0; store.addEventListener("change", () => events++);
   store.set("showAura", false); store.set("showAura", false);
   assert.equal(events, 1, "值沒變就不觸發事件");
@@ -95,7 +95,25 @@ test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重�
   assert.equal(new SettingsStore(new SaveStore(st)).get("showAura"), false, "重新載入後保留");
   const bad = memStorage(); bad.setItem(KEYS.settings, JSON.stringify({ showAura: "x", showSkin: false, evil: 1, __proto__: { x: 1 } }));
   const loaded = new SettingsStore(new SaveStore(bad));
-  assert.deepEqual(loaded.all(), { showAura: true, showSkin: false }, "型別不符與未知欄位被忽略");
+  assert.deepEqual(loaded.all(), { ...SETTING_DEFAULTS, showSkin: false }, "型別不符與未知欄位被忽略");
   store.reset();
-  assert.deepEqual(store.all(), { showAura: true, showSkin: true });
+  assert.deepEqual(store.all(), { ...SETTING_DEFAULTS });
+});
+
+test("SettingsStore：列舉與數值範圍驗證（畫質、幀率、解析度、操作配置）", () => {
+  const st = memStorage(); const store = new SettingsStore(new SaveStore(st));
+  store.set("quality", "low"); store.set("fpsCap", 30); store.set("renderScale", 0.75); store.set("controlMode", "mobile"); store.set("simRate", 120);
+  assert.equal(store.get("quality"), "low");
+  assert.throws(() => store.set("quality", "ultra"), RangeError, "不在列舉裡");
+  assert.throws(() => store.set("fpsCap", 45), RangeError, "幀率只接受固定檔位");
+  assert.throws(() => store.set("renderScale", 0.1), RangeError, "解析度比例有下限");
+  assert.throws(() => store.set("renderScale", NaN), RangeError, "NaN 不是合法數值");
+  assert.throws(() => store.set("controlMode", "tablet"), RangeError);
+  assert.throws(() => store.set("simRate", "60"), TypeError, "型別不符");
+  const bad = memStorage(); bad.setItem(KEYS.settings, JSON.stringify({ quality: "ultra", fpsCap: 999, renderScale: 5, simRate: 120 }));
+  const loaded = new SettingsStore(new SaveStore(bad));
+  assert.equal(loaded.get("quality"), "auto", "存檔裡不合法的列舉退回預設");
+  assert.equal(loaded.get("fpsCap"), 0);
+  assert.equal(loaded.get("renderScale"), 1, "超出範圍退回預設");
+  assert.equal(loaded.get("simRate"), 120, "合法的值保留");
 });

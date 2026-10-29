@@ -44,3 +44,4 @@
 .ns-feature-gate .ns-feature-status{flex:1 1 100%}
 @media(min-width:720px){.ns-account-doc .x-kv4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:420px){.ns-account-doc .x-pn{padding:12px}.ns-account-doc .x-two{grid-template-columns:minmax(0,1fr)}}
+.ns-sub{margin:6px 0 0;font-size:.95rem;color:var(--t)}

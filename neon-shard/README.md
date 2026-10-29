@@ -5,7 +5,8 @@
 ## 執行與檢查
 
 ```
-python3 -m http.server 8000        # 然後開 http://localhost:8000
+python3 -m http.server 8000        # 然後開 http://localhost:8000/index.dev.html（開發版，原始模組）
+npm run build                      # 產生上線版 dist/ 與 index.html（需先 npm install）
 node --import ./test/stubs.mjs --test test/*.test.mjs        # 自動測試
 node --expose-internals tools/check-imports.cjs js           # 匯入／匯出是否對得上
 node --expose-internals tools/check-undefined.cjs js         # 有沒有用到未宣告的名稱

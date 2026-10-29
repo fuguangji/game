@@ -5,6 +5,8 @@ import { EN } from "../game/pickups.js";
 import { mkEIcon, mkIcon } from "../icons.js";
 import { bossCatalog } from "../config/index.js";
 import { bossRows } from "./menu-bag.js";
+import { platform } from "../core/platform.js";
+import { controlCard } from "./control-diagrams.js";
 import { XS, xSub, xbt, xh, xic } from "./menu.js";
 
 // 功能：處理介面系統「xEnemyCmp」相關的資料、互動或顯示。
@@ -180,7 +182,9 @@ export function xCodex(v) {
       ),
     );
   } else if (XS.cx === "o") {
-    box.append(
+    const mobileFirst = platform.isMobile; // 目前平台排在前面
+    box.append(controlCard());
+    const desktopBlock = [
       xh("x-h", "電腦"),
       xh(
         "",
@@ -193,19 +197,21 @@ export function xCodex(v) {
           "<kbd>F</kbd> 全螢幕，<kbd>P</kbd> / <kbd>Esc</kbd> 暫停",
         ]),
       ),
-    );
-    box.append(
+    ];
+    const mobileBlock = [
       xh("x-h", "手機"),
       xh(
         "",
         ul([
-          "左半邊畫面是移動搖桿",
-          "右半邊拖曳瞄準，放開時發射",
-          "SUPER、DASH、換槍使用畫面上的按鈕",
-          "點選畫面下方槍欄換槍，拖曳可互換位置",
+          "左半邊畫面是移動搖桿，右半邊拖曳瞄準、放開時發射",
+          "技能分三步：<b>點右側技能鈕選定</b>（不會直接發動）→ <b>右半邊拖曳瞄準</b>（出現落點預覽）→ <b>放開施放</b>",
+          "瞄準到一半想取消：把搖桿拖回中心虛線圈內再放開；施放後預設自動切回普通攻擊（可在設定關閉）",
+          "「普攻」鈕可隨時切回普通攻擊；蓄力類技能施放後保持選定，再點一次該鈕就能釋放",
+          "SUPER、DASH 是畫面上的按鈕，按住拖曳可指定方向；點選畫面下方槍欄換槍，拖曳可互換位置",
         ]),
       ),
-    );
+    ];
+    box.append(...(mobileFirst ? [...mobileBlock, ...desktopBlock] : [...desktopBlock, ...mobileBlock]));
     box.append(
       xh("x-h", "自動瞄準"),
       xh(

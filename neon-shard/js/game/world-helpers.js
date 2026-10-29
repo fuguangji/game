@@ -1,6 +1,7 @@
 /** game/world-helpers — 地圖格子、碰撞、射線、移動、粒子與掉落等世界基礎工具 */
 import { GameEvents, bus } from "../core/event-bus.js";
 import { G } from "../core/game-state.js";
+import { profile } from "../core/render-profile.js";
 import { MW, N, T, TAU } from "../core/viewport.js";
 import { PN } from "../game-config.js";
 import { coin, cur, jit } from "./pickups.js";
@@ -93,7 +94,8 @@ export function empty(minD, ref, maxD) {
 
 // 功能：在指定位置建立粒子爆發特效。
 export function burst(x, y, col, n, sp, sz, life) {
-  for (let i = 0; i < n && G.pt.length < 700; i++) {
+  const count = n * profile.particles; // 粒子密度（畫質設定）
+  for (let i = 0; i < count && G.pt.length < 700; i++) {
     const a = Math.random() * TAU,
       s = sp * (0.3 + Math.random() * 0.7);
     G.pt.push({

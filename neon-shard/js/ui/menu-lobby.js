@@ -1,6 +1,8 @@
 /** ui/menu-lobby — 大廳、備戰、關卡選擇、結算與暫停畫面 */
 import { bossCatalog } from "../config/index.js";
 import { G } from "../core/game-state.js";
+import { KEYS, store } from "../core/save-store.js";
+import { platform } from "../core/platform.js";
 import { $ } from "../core/viewport.js";
 import { CH, CHS, RC, chipSum, modW } from "../game/chips.js";
 import { buyW } from "../game/pickups.js";
@@ -11,6 +13,7 @@ import { startTutorial } from "../game/tutorial.js";
 import { ALLWEAPON, MAX_LOADOUT, WD } from "../game/weapons.js";
 import { bossRows, xEmb, xEquip, xUnequip } from "./menu-bag.js";
 import { XCAT, XS, wCat, wMode, wNote, wStat, xFlt, xGo, xSide, xSub, xbt, xfmt, xh, xic, xmax } from "./menu.js";
+import { controlCard } from "./control-diagrams.js";
 import { start } from "./render.js";
 import { suggestNextStep } from "./shop-guide.js";
 
@@ -40,6 +43,7 @@ export function xLobby(v) {
     "x-pn x-hero",
     `${xEmb()}<div class="x-wm">NEON SHARD</div><div class="x-tag">霓虹幾何，瞄準與閃避</div><div class="x-hs"><span><b>${G.best}</b>最高分</span><span><b>${cl}/8</b>關卡通關</span><span><b>${SV.own.length}/${ALLWEAPON.getWeapon().length}</b>槍械解鎖</span></div>`,
   );
+  hero.append(controlCard()); // 首頁操作簡圖：預設顯示目前平台（電腦／手機），可切換
   const lst = xh("x-pair");
   const r1 = xbt(
     "x-cd",
@@ -86,7 +90,15 @@ export function xLobby(v) {
   );
   const foot = xh("x-foot");
   foot.append(go, two);
-  const next = suggestNextStep();
+  // 第一次玩：最上面先建議做新手教學（依平台是手機版或電腦版）；教學做完或跳過後才輪到商店導覽等其他建議
+  const tutorialSeen = store.getString(KEYS.tutorialDone) === "1";
+  const next = tutorialSeen
+    ? suggestNextStep()
+    : {
+        text: `第一次玩？花 2 分鐘學會移動、瞄準、射擊與技能（${platform.isMobile ? "手機" : "電腦"}操作版）。`,
+        label: "開始教學",
+        run: startTutorial,
+      };
   const nextCard = next && xh("x-next");
   if (nextCard) {
     nextCard.append(xh("x-tx", `<b>下一步建議</b><small>${next.text}</small>`), xbt("x-btn sm pri", next.label, next.run));

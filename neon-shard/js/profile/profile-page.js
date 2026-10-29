@@ -6,6 +6,7 @@ import { h } from "../core/dom-utils.js";
 import { AppearanceSection } from "./sections/appearance-section.js";
 import { CloudSection } from "./sections/cloud-section.js";
 import { OnlineSection } from "./sections/online-section.js";
+import { PerformanceSection } from "./sections/performance-section.js";
 import { OverviewSection } from "./sections/overview-section.js";
 import { SettingsSection } from "./sections/settings-section.js";
 
@@ -51,7 +52,7 @@ export class ProfilePage {
   }
 
   constructor(container, deps) {
-    this.#sections = [new OverviewSection(deps), new SettingsSection(deps), new AppearanceSection(deps), new CloudSection(deps), new OnlineSection(deps)];
+    this.#sections = [new OverviewSection(deps), new SettingsSection(deps), new PerformanceSection(deps), new AppearanceSection(deps), new CloudSection(deps), new OnlineSection(deps)];
     const nav = h("div", { class: "ns-tabs", role: "tablist", "aria-label": "個人檔案分頁", onkeydown: (e) => this.#onKey(e) });
     const panels = h("div", { class: "ns-tab-panels" });
     for (const section of this.#sections) {

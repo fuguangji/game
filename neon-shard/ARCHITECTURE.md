@@ -238,3 +238,43 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 
 - 導覽靠 `data-coach="…"` 屬性找目標（商城、背包、芯片包卡片等），重繪後每幀重新定位。
 - 新增存檔鍵：`shopGuideDone`、`starterGift`（新手補給只送一次）、`trainingTip`。
+
+## 主迴圈、平台與輸入（效能與手機／電腦分離）
+
+### 模擬與繪製分離（`core/game-loop.js`、`core/interpolation.js`）
+- **模擬**以固定步長前進（設定「模擬頻率」30／60／120 Hz，預設 60），`update(dt)` 每次收到的 dt 永遠相同；
+  掉幀時用「補跑幾步」追上（一次最多 6 步，再落後就放棄追趕，寧可慢動作也不卡死）。以前 dt 隨螢幕幀率變動並被夾在 0.033，
+  低幀率時等於慢動作、子彈穿牆。
+- **繪製**每個 `requestAnimationFrame` 一次，可設幀率上限。戰鬥中帶一個 `alpha`（距離下次模擬多遠）給**動態補償**：
+  繪製前把玩家、敵人、子彈、粒子、鏡頭、動畫時鐘暫時換成「上一步 → 目前」之間的插值，繪製後立刻還原
+  （`finally` 保證還原，模擬永遠看到真實座標）。一步位移 > 160 像素視為瞬移（衝刺、傳送）不插值；新生成的物件第一幀不插值。
+- 選單、暫停是靜止畫面：只在進入時畫最後一幀，之後主迴圈**休眠**（不排 rAF）；狀態切換、任何輸入、視窗縮放會喚醒。
+- 打擊停頓（`G.TSt/TSv`）縮放的是模擬時間，不影響繪製頻率。
+
+### 畫質與渲染設定（`core/render-profile.js`，設定頁「畫面效能」）
+畫質（自動／低／中／高）＝ 一組檔位（發光倍率、粒子倍率、解析度比例、震動、光環）。自動模式依「幀時間移動平均」降檔／升檔
+（降得快、升得慢，剛降過 30 秒內不升，避免來回震盪）。發光（`shadowBlur`）是 Canvas 2D 最貴的效果：直接把 `ctx.shadowBlur`
+改成「寫入時乘上倍率」，倍率 0 時瀏覽器完全不算陰影，不必改六十幾處繪圖程式。解析度比例乘進 `G.DPR`（CSS 大小不變）。
+
+### 平台（`core/platform.js`）與輸入（`core/input*.js`）
+- `platform.mode` = `"mobile" | "desktop"`：設定「操作配置」＝ 自動（依指標類型；觸控螢幕筆電會跟著最近用的輸入切換）／電腦／手機。
+  改變時更新 `<html data-platform>`（CSS 依此分版面）、`G.touchOn`（舊程式沿用），並通知訂閱者。
+- `input-desktop.js`（鍵盤、滑鼠、滾輪）與 `input-mobile.js`（觸控搖桿、按鈕）**各自獨立**，切換平台時整組監聽一次移除（AbortController）。
+  `input.js` 只做分派與兩平台共用的快捷鍵（暫停、全螢幕、Enter）。
+- **手機技能**：點技能鈕只「選定」（`tapSkill`，不施放）→ 右半邊拖曳瞄準（`ui/skill-aim.js` 畫落點預覽，落點距離 = 搖桿推動程度）
+  → 放開才施放（`releaseAim`）；搖桿拖回中心放開 = 取消；施放後預設自動切回普攻（蓄力類技能除外）。
+  以前點技能鈕會直接施放，所以「想選技能」會誤觸發動。電腦版維持原行為（滾輪選定＋左鍵／ZXCVBN）。
+
+### 教學與首頁簡圖
+- 教學依平台分成兩份獨立步驟：`game/tutorial-desktop.js`、`game/tutorial-mobile.js`，場景型關卡共用 `game/tutorial-common.js`。
+  每步有 `title`、`text`、`tip`（補充提示）、`progress`。手機版把技能拆成「點選／瞄準放開／取消」三步練習。
+- 第一次遊玩不再一載入就自動進入戰鬥，而是在大廳最上面顯示「開始教學」建議卡（載入時不跑整個遊戲迴圈，首頁才開得快）。
+- `ui/control-diagrams.js`：操作簡圖（內嵌 SVG，電腦／手機可切換），用在首頁與圖鑑「操作」分頁。
+
+## 建置與效能（Lighthouse）
+- `index.dev.html` = 開發版（直接載入 `js/` 原始 ES 模組）；`npm run build`（`tools/build.mjs`，需 esbuild）把它打包成
+  `dist/app.js`＋`dist/app.css` 並產生上線用 `index.html`（資源加內容雜湊 `?v=`）。**要改首頁 HTML 請改 `index.dev.html`，不要手改 `index.html`。**
+  載入請求從 97 個降到 4 個。
+- 首屏由 HTML 直接給（大廳骨架、`<h1>`、favicon、meta），不必等 JavaScript；骨架與真實大廳結構一致，避免版面位移（CLS）。
+- 啟動工作切成三段，段間 `await yieldToMain()`；`platform` 屬性由 `<head>` 內嵌小腳本在第一次繪製前設好。
+- 無障礙：移除 `user-scalable=no`、補 `aria-label`、`<main>`、`<h1>`、對比度修正、選單開著時隱藏戰鬥按鈕。

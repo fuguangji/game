@@ -132,25 +132,28 @@
 .tq-ring.ccw{border-color:#d9c98a;color:#d9c98a}
 .tq-ring.blast{border-color:#ee6a7c}
 .tq-ring.blast.on{background:#ee6a7c;color:#06100d}
-/* 手機（粗指標）：縮成右側邊緣的小格子，避開左下搖桿、右下瞄準區、DASH 與 SUPER；沒有滾輪所以不顯示「普攻」與提示 */
-@media (pointer:coarse){
-  #tqBar{left:auto;right:calc(env(safe-area-inset-right) + 2px);bottom:auto;top:140px;align-items:flex-end;gap:3px;max-width:none}
-  .tq-meters{width:88px}
-  .tq-meter{height:10px}
-  .tq-meter.alt{height:8px}
-  .tq-label{font-size:8px}
-  .tq-row{display:grid;grid-template-columns:repeat(2,42px);gap:3px;justify-content:end;max-width:none}
-  .tq-btn{width:42px;height:38px;padding:1px;border-radius:8px}
-  .tq-btn .tq-k{display:none}
-  .tq-btn .tq-n{font-size:9.5px;line-height:1.1}
-  .tq-btn .tq-c{font-size:8px}
-  .tq-btn .tq-t{top:0;right:3px;font-size:8.5px}
-  .tq-btn.dom{width:42px;border-width:2px}
-  .tq-btn.dom.d0,.tq-basic,.tq-hint{display:none}
-  .tq-rings{display:none;grid-template-columns:repeat(3,28px);gap:2px}
-  .tq-rings.on{display:grid}
-  .tq-ring{min-width:28px;min-height:24px;font-size:10px;padding:0}
-}
+/* 手機配置（html[data-platform="mobile"]，見 core/platform.js）：
+   技能鈕縮成右側邊緣的兩欄，避開左下搖桿、右下瞄準搖桿、DASH 與 SUPER。
+   點技能鈕 = 選定（不會施放），所以按鈕可以放大到好點、不怕誤觸；「普攻」鈕永遠顯示，點它回到普通攻擊。 */
+html[data-platform="mobile"] #tqBar{left:auto;right:calc(env(safe-area-inset-right) + 4px);bottom:auto;top:calc(max(env(safe-area-inset-top),0px) + 160px * var(--u,1));align-items:flex-end;gap:4px;max-width:none}
+html[data-platform="mobile"] .tq-meters{width:calc(92px * var(--u,1))}
+html[data-platform="mobile"] .tq-meter{height:11px}
+html[data-platform="mobile"] .tq-meter.alt{height:8px}
+html[data-platform="mobile"] .tq-label{font-size:8.5px}
+html[data-platform="mobile"] .tq-row{display:grid;grid-template-columns:repeat(2,max(40px,calc(46px * var(--u,1))));gap:4px;justify-content:end;max-width:none}
+html[data-platform="mobile"] .tq-btn{width:auto;height:max(38px,calc(42px * var(--u,1)));padding:1px;border-radius:9px}
+html[data-platform="mobile"] .tq-btn .tq-k{display:none}
+html[data-platform="mobile"] .tq-btn .tq-n{font-size:10px;line-height:1.1}
+html[data-platform="mobile"] .tq-btn .tq-c{font-size:8.5px}
+html[data-platform="mobile"] .tq-btn .tq-t{top:1px;right:3px;font-size:9px}
+html[data-platform="mobile"] .tq-btn.dom{width:auto;border-width:2px}
+html[data-platform="mobile"] .tq-btn.dom.d0,html[data-platform="mobile"] .tq-hint{display:none}
+html[data-platform="mobile"] .tq-basic{width:auto;grid-column:1 / -1}
+html[data-platform="mobile"] #tqBar.armed .tq-btn:not(.sel):not(.dom){opacity:.62}
+html[data-platform="mobile"] .tq-btn.sel{box-shadow:0 0 0 2px #fff,0 0 12px var(--tq);background:#12332ce6}
+html[data-platform="mobile"] .tq-rings{display:none;grid-template-columns:repeat(3,30px);gap:2px}
+html[data-platform="mobile"] .tq-rings.on{display:grid}
+html[data-platform="mobile"] .tq-ring{min-width:30px;min-height:26px;font-size:10px;padding:0}
 
 /* ---------- 手機／小螢幕：訓練面板縮小 ---------- */
 @media (pointer:coarse), (max-width:720px), (max-height:520px){
@@ -166,3 +169,15 @@
   #tr .tr-b{gap:3px;max-height:min(18vh,96px)}
   #trt{font-size:10px;padding:2px 8px}
 }
+
+/* ---------- 操作簡圖（首頁、圖鑑「操作」分頁；見 ui/control-diagrams.js） ---------- */
+.x-ctl{display:grid;gap:6px;justify-items:center;width:min(100%,400px);margin:14px auto 0;padding:10px 12px 12px;border:1px solid #ffffff1c;border-radius:12px;background:#070d12d9;text-align:center}
+.x-ctl-h{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+.x-ctl-h b{font-size:.95rem;color:var(--t,#e6fff7)}
+.x-ctl-t{display:flex;border:1px solid #ffffff2a;border-radius:8px;overflow:hidden}
+.x-ctl-b{min-width:48px;min-height:32px;padding:4px 12px;border:0;background:transparent;color:#c9dbe6;font:inherit;font-size:.82rem;cursor:pointer}
+.x-ctl-b[aria-pressed="true"]{background:#8fe3cf;color:#04140f;font-weight:700}
+.x-ctl-f{width:100%}
+.x-ctl-f svg{display:block;width:100%;height:auto;max-height:230px}
+.x-ctl-c{color:#b6c7d4;font-size:.78rem;line-height:1.5;text-align:left}
+@media (max-height:520px){.x-hero .x-ctl{display:none}} /* 手機橫向：首頁空間不夠，操作簡圖改看圖鑑「操作」分頁與教學 */

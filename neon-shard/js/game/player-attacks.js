@@ -13,15 +13,12 @@ import { laserFire, slashHit, zfl } from "./ultimates.js";
 import { ALLWEAPON, WP } from "./weapons.js";
 import { burst, ray, turLand } from "./world-helpers.js";
 import { damageDealtMultiplier, isBlocked } from "./status-effects.js";
-import { castDomain, castSelected, skillSelected } from "./techniques.js";
+import { castDomain, skillSelected } from "./techniques.js";
 
 // 開火：檢查彈藥與冷卻，依武器產生子彈（含自動瞄準與散佈）
 export function shoot(f, qk) {
-  // 選定的是技能：只有手機「放開瞄準」（f === true）那一刻才發動；按住連射的呼叫一律不開火
-  if (skillSelected()) {
-    if (f === true && fsm.state === "play") castSelected();
-    return;
-  }
+  // 選定的是技能：普通攻擊不開火。電腦由滑鼠左鍵、手機由放開瞄準搖桿（input-mobile.js）發動技能
+  if (skillSelected()) return;
   const w = WP[G.pl.w];
   if (fsm.state !== "play" || G.pl.sc > 0 || w.am < (w.laser ? 0.85 : 1) || isBlocked(G.pl, "attack")) return; // 熔斷中不能攻擊
   w.am -= w.laser ? 0.85 : 1;

@@ -24,9 +24,9 @@ const mount = (deps) => { const host = new FakeElement("div"); fakeDocument.body
 const tabs = (host) => host.findAll((e) => e.attrs.role === "tab");
 const panel = (host, id) => host.find((e) => e.id === `ns-panel-${id}`);
 
-test("頁面有 5 個分頁，預設顯示「個人檔案」，aria 狀態正確", () => {
+test("頁面有 6 個分頁，預設顯示「個人檔案」，aria 狀態正確", () => {
   const { deps } = makeDeps(); const { host, page } = mount(deps);
-  assert.deepEqual(tabs(host).map((t) => t.textContent), ["個人檔案", "設定", "角色外觀", "雲端同步", "線上聯機"]);
+  assert.deepEqual(tabs(host).map((t) => t.textContent), ["個人檔案", "設定", "畫面效能", "角色外觀", "雲端同步", "線上聯機"]);
   assert.equal(page.activeId, "overview");
   assert.equal(tabs(host)[0].attrs["aria-selected"], "true");
   assert.equal(tabs(host)[1].attrs["aria-selected"], "false");
@@ -42,6 +42,8 @@ test("切換分頁：只顯示目標面板，並支援方向鍵", () => {
   assert.equal(panel(host, "overview").classList.contains("ns-profile-hidden"), true);
   assert.equal(panel(host, "settings").classList.contains("ns-profile-hidden"), false);
   const nav = host.find((e) => e.attrs.role === "tablist");
+  nav.dispatch("keydown", { key: "ArrowRight" });
+  assert.equal(page.activeId, "performance");
   nav.dispatch("keydown", { key: "ArrowRight" });
   assert.equal(page.activeId, "appearance");
   nav.dispatch("keydown", { key: "End" });
@@ -75,11 +77,11 @@ test("個人檔案：顯示進度，按鈕透過橋接切換大廳分頁", () =>
 test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重看戰鬥教學與商店導覽都呼叫橋接", () => {
   const { deps, calls, settings } = makeDeps(); const { host, page } = mount(deps);
   page.show("settings");
-  const radios = host.findAll((e) => e.type === "radio");
+  const radios = panel(host, "settings").findAll((e) => e.type === "radio" && e.name === "ns-auto-aim");
   assert.deepEqual(radios.map((r) => r.checked), [false, true, false], "依 getAutoAim 勾選");
   radios[2].checked = true; radios[2].dispatch("change");
   assert.deepEqual(calls.autoAim, [2]);
-  const [aura, skin] = host.findAll((e) => e.type === "checkbox");
+  const [, aura, skin] = panel(host, "settings").findAll((e) => e.type === "checkbox"); // 第一個是「手機：技能施放後自動切回普攻」
   assert.equal(aura.checked, true);
   aura.checked = false; aura.dispatch("change");
   assert.equal(settings.get("showAura"), false);
@@ -132,4 +134,24 @@ test("外觀：滑鼠繪製會產生筆畫，套用後寫入皮膚資料；筆�
   host.findAll((e) => e.textContent === "套用外觀")[0].click();
   assert.equal(skinStore.strokes.length, 200, "最多 200 筆");
   skinStore.clear(); page.destroy(); void fakeContext;
+});
+
+test("畫面效能：選項直接寫入設定，設定還原後畫面同步", () => {
+  const { deps, settings } = makeDeps(); const { host, page } = mount(deps);
+  page.show("performance");
+  const p = panel(host, "performance");
+  const radio = (name, i) => p.findAll((e) => e.type === "radio" && e.name === `ns-${name}`)[i];
+  const q = radio("quality", 1); q.checked = true; q.dispatch("change");
+  assert.equal(settings.get("quality"), "low");
+  const f = radio("fpsCap", 1); f.checked = true; f.dispatch("change");
+  assert.equal(settings.get("fpsCap"), 30);
+  const sc = radio("renderScale", 2); sc.checked = true; sc.dispatch("change");
+  assert.equal(settings.get("renderScale"), 0.5);
+  const [interp] = p.findAll((e) => e.type === "checkbox");
+  interp.checked = false; interp.dispatch("change");
+  assert.equal(settings.get("interpolation"), false);
+  settings.reset();
+  assert.equal(interp.checked, true, "還原後同步");
+  assert.equal(radio("quality", 0).checked, true);
+  page.destroy();
 });

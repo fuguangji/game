@@ -19,6 +19,12 @@ export class SettingsSection extends ProfileSection {
         this.#radios.push(input);
         return h("label", { class: "ns-option" }, input, h("span", {}, ["關閉", "輔助", "強力"][mode] ?? `模式 ${mode}`), h("small", {}, label));
       }));
+    const modeInputs = [["auto", "自動"], ["desktop", "電腦"], ["mobile", "手機"]].map(([value, label]) => {
+      const input = h("input", { type: "radio", name: "ns-control-mode", checked: settings.get("controlMode") === value, onchange: () => settings.set("controlMode", value) });
+      settings.addEventListener("change", () => { input.checked = settings.get("controlMode") === value; }, { signal: this.#abort.signal });
+      return h("label", { class: "ns-option" }, input, h("span", {}, label));
+    });
+    const modeGroup = h("div", { class: "ns-option-list", role: "radiogroup", "aria-label": "操作配置" }, ...modeInputs);
     const toggle = (name, title, help) => {
       const input = h("input", { type: "checkbox", checked: settings.get(name), onchange: () => settings.set(name, input.checked) });
       settings.addEventListener("change", () => { input.checked = settings.get(name); }, { signal: this.#abort.signal });
@@ -28,6 +34,10 @@ export class SettingsSection extends ProfileSection {
       h("h3", {}, "遊戲操作"),
       h("p", { class: "ns-feature-help" }, "自動瞄準會在準星附近自動修正射擊方向；也可以在戰鬥中按 R 切換。"),
       aimGroup,
+      h("h4", { class: "ns-sub" }, "操作配置"),
+      h("p", { class: "ns-feature-help" }, "自動：依裝置判斷（觸控螢幕筆電會跟著你最近用的輸入切換）。也可以固定成電腦或手機配置；教學與首頁說明會跟著換。"),
+      modeGroup,
+      toggle("skillReturnBasic", "手機：技能施放後自動切回普通攻擊", "手機選定技能、瞄準並放開施放後，自動回到普通攻擊；關閉則保持選定"),
       h("h3", {}, "顯示"),
       toggle("showAura", "職業光環", "在角色周圍顯示職業代表色的粒子"),
       toggle("showSkin", "自訂外觀", "在角色身上顯示你繪製的圖樣（只在本機顯示）"),

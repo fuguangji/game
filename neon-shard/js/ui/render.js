@@ -15,10 +15,13 @@ import { drawChg, drawLZ } from "../game/ultimates.js";
 import { WP, applyLO } from "../game/weapons.js";
 import { icon } from "../icons.js";
 import { drawAim } from "./aim.js";
+import { drawSkillAim, skillStick } from "./skill-aim.js";
+import { skillSelected } from "../game/techniques.js";
 import { drawBars, drawLast, drawSlots } from "./hud.js";
 import { XS, xResult } from "./menu.js";
 import { bossCatalog, telegraphDurationOf, telegraphRadiusOf, usesLineTelegraph } from "../config/index.js";
 import { settings } from "../core/settings-store.js";
+import { profile } from "../core/render-profile.js";
 import { drawRoleAura, skinRenderer } from "../profile/appearance.js";
 import { accountService } from "../account/index.js";
 import { drawStatusAuras } from "../game/status-effects.js";
@@ -33,8 +36,8 @@ export function render() {
   cx.fillRect(0, 0, G.W, G.H);
   const VW = G.W / G.S,
     VH = G.H / G.S,
-    ox = (Math.random() - 0.5) * G.shake * 0.6,
-    oy = (Math.random() - 0.5) * G.shake * 0.6;
+    ox = (Math.random() - 0.5) * G.shake * 0.6 * profile.shake,
+    oy = (Math.random() - 0.5) * G.shake * 0.6 * profile.shake;
   cx.setTransform(
     G.DPR * G.S,
     0,
@@ -750,7 +753,8 @@ export function render() {
     }
   cx.restore();
 
-  if (
+  if (G.touchOn && skillSelected()) drawSkillAim(); // 手機選定技能：畫技能落點預覽，不畫武器彈道
+  else if (
     fsm.state === "play" &&
     ((ta.act && Math.hypot(ta.x - ta.sx, ta.y - ta.sy) > G.CZ) ||
       (mouse.has && !G.touchOn))
@@ -863,7 +867,7 @@ export function render() {
     cx.fill();
     cx.stroke();
     // 職業光環與自訂外觀：只影響視覺，可在「個人檔案 → 設定」關閉
-    if (settings.get("showAura")) drawRoleAura(cx, p.r, /^#[0-9a-f]{6}$/i.test(G.CHR?.c) ? G.CHR.c : col, G.time);
+    if (settings.get("showAura") && profile.aura) drawRoleAura(cx, p.r, /^#[0-9a-f]{6}$/i.test(G.CHR?.c) ? G.CHR.c : col, G.time);
     if (settings.get("showSkin")) skinRenderer.draw(cx, p.r, G.S * G.DPR);
     if (p.sh > 0) {
       cx.strokeStyle = "#4d9bff";
@@ -1318,10 +1322,22 @@ export function hud() {
       cx.arc(tm.sx + dx * k, tm.sy + dy * k, kr, 0, TAU);
       cx.fill();
     }
+    const sk = skillStick(); // 選定技能時，瞄準搖桿換成技能代表色，並提示放開會發生什麼
     cx.strokeStyle = a ? "rgba(255,61,154,.6)" : "rgba(255,61,154,.2)";
+    if (sk) { cx.strokeStyle = sk.color; cx.globalAlpha = a ? 0.8 : 0.45; }
     cx.beginPath();
     cx.arc(a ? ta.sx : G.W - 92 * u, a ? ta.sy : G.H - 92 * u, R, 0, TAU);
     cx.stroke();
+    cx.globalAlpha = 1;
+    if (sk) {
+      cx.save();
+      cx.font = `bold ${11 * u}px system-ui,"Noto Sans TC",sans-serif`;
+      cx.textAlign = "center";
+      cx.textBaseline = "bottom";
+      cx.fillStyle = sk.color;
+      cx.fillText(sk.label, a ? ta.sx : G.W - 92 * u, (a ? ta.sy : G.H - 92 * u) - R - 6 * u); // 放在搖桿上方，避開下方的 DASH 鈕
+      cx.restore();
+    }
     if (a) {
       cx.save();
       cx.setLineDash([4, 4]);
@@ -1339,9 +1355,11 @@ export function hud() {
         Math.hypot(ta.x - ta.sx, ta.y - ta.sy) > G.CZ
           ? "rgba(255,61,154,.5)"
           : "rgba(180,190,210,.45)";
+      if (sk && sk.live) { cx.globalAlpha = 0.55; cx.fillStyle = sk.color; }
       cx.beginPath();
       cx.arc(ta.sx + dx * k, ta.sy + dy * k, kr, 0, TAU);
       cx.fill();
+      cx.globalAlpha = 1;
     }
   }
   drawLast();

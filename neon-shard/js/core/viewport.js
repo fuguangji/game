@@ -1,15 +1,17 @@
 /** core/viewport — 畫布、座標常數與視窗縮放 */
 import { G } from "./game-state.js";
+import { profile } from "./render-profile.js";
 
 export let $, cv, cx; // 初始化在 init()
 export let N, T, MW, TAU; // 初始化在 init()
 // 依視窗大小重設畫布、縮放與像素比
 export function resize() {
-  G.DPR = Math.min(devicePixelRatio || 1, 2);
+  // 畫布像素 = 視窗大小 × 裝置像素比（最多 2）× 渲染解析度比例（設定與畫質檔位）；CSS 大小不變，所以只影響清晰度與效能
+  G.DPR = Math.min(devicePixelRatio || 1, 2) * profile.scale;
   G.W = innerWidth;
   G.H = innerHeight;
-  cv.width = G.W * G.DPR;
-  cv.height = G.H * G.DPR;
+  cv.width = Math.max(1, Math.round(G.W * G.DPR));
+  cv.height = Math.max(1, Math.round(G.H * G.DPR));
   G.S = Math.max(0.6, Math.min(1.6, Math.min(G.W, G.H) / 600));
   G.HU = Math.max(0.75, Math.min(1.7, Math.min(G.W, G.H) / 465));
   G.CZ = 24 * G.HU;

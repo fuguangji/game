@@ -177,18 +177,18 @@ test("出戰上限：最多 2 把，只能裝擁有的武器，至少留一把",
   } finally { X.SV.own = own; G.LO = lo; X.applyLO(); }
 });
 
-test("選定格子：滾輪切換、選定技能時普通攻擊輸入改為發動技能（手機放開才發動）", () => {
+test("選定格子：滾輪切換、選定技能時普通攻擊輸入不開火（技能只由 castSelected 發動）", () => {
   const p = scene("青羽鎩");
   assert.equal(X.selectedSlot(), 0, "預設是普通攻擊");
   X.shoot(); assert.ok(p.sc > 0, "選普通攻擊時照常開火");
   p.sc = 0; X.WP[0].am = X.WP[0].ms;
   assert.equal(X.cycleSlot(1), true);
   assert.equal(X.selectedSlot(), 1); assert.equal(X.skillSelected(), true);
-  X.shoot(); X.shoot(false, true);
-  assert.equal(p.sc, 0, "選技能時，按住連射的呼叫不開火也不發動技能");
-  assert.equal(p.cdw["琉璃焰"] ?? 0, 0);
-  X.shoot(true);
-  assert.ok(p.cdw["琉璃焰"] > 0, "放開（shoot(true)）才發動選定的技能");
+  X.shoot(); X.shoot(false, true); X.shoot(true);
+  assert.equal(p.sc, 0, "選技能時，任何形式的 shoot() 都不開火");
+  assert.equal(p.cdw["琉璃焰"] ?? 0, 0, "也不會悄悄發動技能（以前 shoot(true) 會）");
+  assert.equal(X.castSelected(), true);
+  assert.ok(p.cdw["琉璃焰"] > 0, "castSelected 才發動選定的技能");
   assert.equal(p.sc, 0, "發動技能不會同時揮砍");
   for (let i = 0; i < X.slotCount(); i++) X.cycleSlot(1);
   assert.equal(X.selectedSlot(), 1, "繞一圈回到原位");
@@ -196,6 +196,37 @@ test("選定格子：滾輪切換、選定技能時普通攻擊輸入改為發�
   assert.equal(X.selectedSlot(), X.slotCount() - 1, "往回切會繞到最後一個技能");
   X.selectSlot(0); X.applyStatus(p, "seal", { duration: 3 });
   assert.equal(X.castSelected(), false, "選的是普通攻擊時 castSelected 什麼都不做");
+});
+
+test("手機技能：點技能鈕只選定不施放；瞄準搖桿放開才施放；拖回中心放開＝取消", () => {
+  const p = scene("青羽鎩");
+  const { ta } = X;
+  const mobile = { sx: 400, sy: 300 };
+  Object.assign(ta, { id: 7, act: true, a: 0.5, out: 1, fired: 0, ...mobile, x: mobile.sx, y: mobile.sy });
+  // 1. 點技能鈕：選定，但沒有施放（這是修掉的誤觸 bug）
+  assert.equal(X.tapSkill(0), true);
+  assert.equal(X.selectedSlot(), 1, "點一下 = 選定第 1 個技能");
+  assert.equal(p.cdw["琉璃焰"] ?? 0, 0, "點技能鈕不會施放");
+  assert.equal(p.en, 100, "也不會扣能量");
+  // 2. 再點一次 = 取消選定，回到普通攻擊
+  X.tapSkill(0);
+  assert.equal(X.selectedSlot(), 0, "再點一次取消選定");
+  X.tapSkill(0);
+  // 3. 搖桿停在死區內放開 = 取消
+  X.releaseAim(true);
+  assert.equal(p.cdw["琉璃焰"] ?? 0, 0, "拖回中心放開不施放");
+  assert.equal(X.selectedSlot(), 1, "取消後仍保持選定，可以重新瞄準");
+  // 4. 推出死區再放開 = 施放，並自動切回普通攻擊
+  ta.x = ta.sx + 70 * G.HU; ta.y = ta.sy;
+  X.releaseAim(true);
+  assert.ok(p.cdw["琉璃焰"] > 0, "推出死區放開才施放");
+  assert.equal(X.selectedSlot(), 0, "施放成功後自動切回普通攻擊");
+  // 5. touchcancel（isEnd = false）不施放
+  X.tapSkill(0); p.cdw = {};
+  X.releaseAim(false);
+  assert.equal(p.cdw["琉璃焰"] ?? 0, 0, "觸控被系統中斷（touchcancel）不施放");
+  Object.assign(ta, { id: null, act: false });
+  X.selectSlot(0);
 });
 
 test("選定格子：每把武器各自記住，換武器不會帶著", () => {
