@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a1017">
+<meta name="description" content="HANEXO — 一款以工業、資源、能源、物流與軍事系統互相連結為核心的策略模擬企劃。">
+<title>HANEXO — Systems in Motion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0a1017;--bg2:#0d1721;--panel:#111e2a;--line:rgba(176,201,220,.16);--line2:rgba(176,201,220,.3);--text:#e4edf4;--muted:#9aabb9;--dim:#647786;--ice:#b9d7e8;--signal:#b8d6b9;--amber:#d6c49a;--max:1160px}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:86px}body{margin:0;min-width:320px;background:radial-gradient(ellipse at 80% 12%,rgba(73,119,149,.13),transparent 32rem),radial-gradient(ellipse at 5% 72%,rgba(63,96,109,.09),transparent 28rem),var(--bg);color:var(--text);font-family:"Manrope","Noto Sans TC",sans-serif;line-height:1.7}body:before{position:fixed;inset:0;z-index:-1;content:"";pointer-events:none;opacity:.18;background-image:linear-gradient(rgba(163,194,215,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(163,194,215,.09) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to bottom,#000,transparent 85%)}a{color:inherit;text-decoration:none}button,a{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible{outline:2px solid var(--ice);outline-offset:4px}::selection{background:var(--ice);color:var(--bg)}.wrap{width:min(var(--max),calc(100% - 48px));margin-inline:auto}.mono{font-family:"DM Mono",monospace;letter-spacing:.13em}.skip{position:absolute;left:10px;top:10px;z-index:20;transform:translateY(-150%);padding:8px 12px;background:var(--text);color:var(--bg)}.skip:focus{transform:none}
+header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--line);background:rgba(10,16,23,.82);backdrop-filter:blur(16px)}.nav{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--line2);font-size:13px;font-weight:800;letter-spacing:-.1em;background:linear-gradient(145deg,rgba(185,215,232,.12),transparent)}.brand-name{font-size:14px;font-weight:800;letter-spacing:.19em}.brand-sub{display:block;color:var(--dim);font:9px "DM Mono",monospace;letter-spacing:.16em}.navlinks{display:flex;align-items:center;gap:24px;color:var(--muted);font-size:12px}.navlinks a:hover{color:var(--text)}.navlinks .back{padding:8px 12px;border:1px solid var(--line2);color:var(--text)}.menu{display:none;border:1px solid var(--line2);padding:8px 10px;background:none;color:var(--text)}
+.hero{position:relative;min-height:690px;display:grid;grid-template-columns:1fr .8fr;align-items:center;gap:36px;padding-top:76px;padding-bottom:94px;isolation:isolate}.hero-copy{position:relative;z-index:1}.eyebrow{display:flex;align-items:center;gap:10px;color:var(--ice);font:10px "DM Mono",monospace;letter-spacing:.19em}.eyebrow:before{content:"";width:28px;height:1px;background:var(--ice)}h1{margin:24px 0 20px;font-size:clamp(3.7rem,9vw,7.6rem);line-height:.96;letter-spacing:-.075em;font-weight:800}h1 .sub{display:block;margin-top:20px;color:#a6bdcc;font-size:clamp(1rem,2vw,1.35rem);line-height:1.5;letter-spacing:.04em;font-weight:500}.intro{max-width:540px;color:#a7b6c3;font-size:15px;line-height:2}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:45px;padding:0 17px;border:1px solid var(--line2);font-size:12px;transition:background .2s,border-color .2s,transform .2s}.btn:hover{transform:translateY(-2px);border-color:#a9c8dc}.btn.primary{background:var(--ice);border-color:var(--ice);color:#101b24;font-weight:700}.btn.primary:hover{background:#e1f0f8}.btn.secondary{background:rgba(18,31,43,.52)}.hero-foot{margin-top:48px;color:var(--dim);font:9px "DM Mono",monospace;letter-spacing:.16em}
+.system-art{position:relative;min-height:410px;display:grid;place-items:center;isolation:isolate}.system-art:before,.system-art:after{position:absolute;content:"";border:1px solid rgba(177,210,229,.22);border-radius:50%;transform:rotate(-25deg) scaleY(.48)}.system-art:before{width:min(40vw,440px);height:min(40vw,440px);box-shadow:0 0 0 28px rgba(177,210,229,.025),0 0 0 70px rgba(177,210,229,.02)}.system-art:after{width:min(30vw,320px);height:min(30vw,320px);transform:rotate(28deg) scaleY(.55);border-color:rgba(177,210,229,.34)}.core{position:relative;width:122px;height:122px;display:grid;place-items:center;border:1px solid rgba(190,221,238,.54);background:radial-gradient(circle,rgba(181,217,237,.16),rgba(19,38,52,.75) 62%,rgba(10,16,23,.8));box-shadow:0 0 70px rgba(125,177,207,.12),inset 0 0 28px rgba(175,218,239,.07);transform:rotate(45deg)}.core span{transform:rotate(-45deg);font-size:32px;font-weight:800;letter-spacing:-.12em}.node{position:absolute;width:12px;height:12px;border:1px solid #bdd8e8;background:#0a1017;box-shadow:0 0 20px rgba(174,217,241,.35)}.n1{top:17%;left:29%}.n2{top:26%;right:9%}.n3{right:15%;bottom:19%}.n4{left:17%;bottom:22%}.n5{top:49%;right:1%;width:7px;height:7px}.n6{left:4%;top:45%;width:7px;height:7px}.art-label{position:absolute;right:0;bottom:4%;color:var(--dim);font:9px "DM Mono",monospace;letter-spacing:.14em;writing-mode:vertical-rl}.art-coordinate{position:absolute;top:8%;left:2%;color:#637b8d;font:9px "DM Mono",monospace;letter-spacing:.12em}
+.section{padding:76px 0;border-top:1px solid var(--line)}.section-head{display:flex;align-items:end;justify-content:space-between;gap:26px;margin-bottom:30px}.kicker{color:var(--ice);font:10px "DM Mono",monospace;letter-spacing:.2em}.section h2{margin:9px 0 0;font-size:clamp(1.8rem,4vw,3rem);line-height:1.2;letter-spacing:-.045em}.section-head p{max-width:430px;margin:0;color:var(--muted);font-size:13px}.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.principle{min-height:210px;padding:24px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(18,34,47,.82),rgba(11,21,31,.68))}.principle .num{color:#6f8da2;font:10px "DM Mono",monospace}.principle h3{margin:26px 0 9px;font-size:18px;font-weight:600}.principle p{margin:0;color:var(--muted);font-size:12px;line-height:1.9}.systems{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}.system{display:grid;grid-template-columns:48px 1fr;gap:15px;padding:23px;background:var(--bg2)}.system-icon{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--line2);color:var(--ice);font:15px "DM Mono",monospace}.system h3{margin:0 0 5px;font-size:14px}.system p{margin:0;color:var(--muted);font-size:12px;line-height:1.85}
+.flow-panel{position:relative;overflow:hidden;padding:clamp(24px,5vw,48px);border:1px solid var(--line2);background:radial-gradient(ellipse at 85% 5%,rgba(96,147,175,.13),transparent 45%),rgba(13,23,33,.78)}.flow-top{display:flex;justify-content:space-between;gap:18px;align-items:start}.flow-top p{max-width:520px;color:var(--muted);font-size:13px}.flow-status{white-space:nowrap;padding:5px 9px;border:1px solid rgba(214,196,154,.28);color:var(--amber);font:9px "DM Mono",monospace;letter-spacing:.1em}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:30px}.flow-step{position:relative;min-height:112px;padding:14px 12px;border:1px solid var(--line);background:rgba(10,16,23,.5)}.flow-step:not(:last-child):after{position:absolute;content:"→";right:-10px;top:43%;z-index:1;color:#86a8bd;font:12px "DM Mono",monospace}.flow-step span{display:block;color:#6f8da2;font:9px "DM Mono",monospace}.flow-step strong{display:block;margin-top:14px;font-size:12px;font-weight:600}.flow-step small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.phase{padding:20px;border-top:2px solid #617d91;background:rgba(15,28,40,.58)}.phase.current{border-color:var(--ice)}.phase .label{color:var(--dim);font:9px "DM Mono",monospace;letter-spacing:.14em}.phase h3{margin:12px 0 8px;font-size:15px}.phase p{margin:0;color:var(--muted);font-size:12px;line-height:1.85}
+footer{border-top:1px solid var(--line)}.footer{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:26px 0 32px}.foot-mark{font:10px "DM Mono",monospace;letter-spacing:.18em}.foot-note{margin-top:5px;color:var(--dim);font-size:10px}.foot-links{display:flex;flex-wrap:wrap;gap:18px;color:var(--muted);font-size:11px}.foot-links a:hover{color:var(--text)}
+@media(max-width:800px){.wrap{width:calc(100% - 34px)}.hero{grid-template-columns:1fr;min-height:auto;padding-top:75px;padding-bottom:66px;gap:10px}.hero-copy{max-width:650px}.system-art{position:absolute;right:-100px;top:35px;width:360px;min-height:360px;opacity:.42;z-index:-1;transform:scale(.9)}.system-art:before{width:300px;height:300px}.system-art:after{width:220px;height:220px}.core{width:88px;height:88px}.core span{font-size:25px}.hero-copy{z-index:1}.section{padding:56px 0}.section-head{display:block}.section-head p{margin-top:12px}.principles{grid-template-columns:1fr}.principle{min-height:0}.principle h3{margin-top:18px}.systems{grid-template-columns:1fr}.flow{grid-template-columns:1fr;gap:8px}.flow-step{min-height:0;display:grid;grid-template-columns:30px 1fr;align-items:center;gap:10px}.flow-step strong{margin:0}.flow-step small{grid-column:2;margin:0}.flow-step:not(:last-child):after{content:"↓";right:15px;top:auto;bottom:-13px}.roadmap{grid-template-columns:1fr}.flow-top{display:block}.flow-status{display:inline-flex;margin-top:10px}.footer{align-items:start;flex-direction:column}.navlinks{display:none;position:absolute;top:100%;left:0;right:0;padding:15px 18px 20px;background:rgba(10,16,23,.98);border-bottom:1px solid var(--line);flex-direction:column;align-items:stretch;gap:0}.navlinks.open{display:flex}.navlinks a{padding:10px 0}.navlinks .back{margin-top:8px;text-align:center}.menu{display:block}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳至主要內容</a>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="./" aria-label="HANEXO 首頁"><span class="brand-mark">H/X</span><span><span class="brand-name">HANEXO</span><span class="brand-sub">SYSTEMS IN MOTION</span></span></a>
+    <button class="menu" id="menu" type="button" aria-expanded="false" aria-controls="navlinks">選單 ☰</button>
+    <nav class="navlinks" id="navlinks" aria-label="主要導覽"><a href="#concept">核心理念</a><a href="#systems">系統架構</a><a href="#roadmap">開發方向</a><a class="back" href="../">← 遊戲專案總覽</a></nav>
+  </div>
+</header>
+<main id="main">
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <div class="eyebrow">INDUSTRIAL STRATEGY / PROJECT 001</div>
+      <h1>HANEXO<span class="sub">Systems in motion. Every unit matters.</span></h1>
+      <p class="intro">一個由工業、能源、物流與軍事系統交織而成的策略模擬企劃。從一個單位開始，讓每條產線、每份資源與每個決策彼此連結，逐步構築能夠運作的整體。</p>
+      <div class="actions"><a class="btn primary" href="#concept">探索設計理念 <span aria-hidden="true">↘</span></a><a class="btn secondary" href="#systems">查看系統構想 <span aria-hidden="true">→</span></a></div>
+      <div class="hero-foot">MODULAR SYSTEMS / RESOURCE NETWORKS / STRATEGIC DECISIONS</div>
+    </div>
+    <div class="system-art" aria-hidden="true"><span class="art-coordinate">NODE 07 — NETWORK ONLINE</span><i class="node n1"></i><i class="node n2"></i><i class="node n3"></i><i class="node n4"></i><i class="node n5"></i><i class="node n6"></i><div class="core"><span>H/X</span></div><span class="art-label">SYSTEM MAP / CONCEPTUAL</span></div>
+  </section>
+
+  <section class="section" id="concept">
+    <div class="wrap">
+      <div class="section-head"><div><div class="kicker">01 / DESIGN PHILOSOPHY</div><h2>不是堆疊單位，<br>而是讓系統彼此運作。</h2></div><p>HANEXO 的重點不只在單一建築或單位有多強，而在它們如何透過生產、能源、補給與指揮形成完整網路。</p></div>
+      <div class="principles">
+        <article class="principle"><div class="num">PRINCIPLE / 01</div><h3>每個單位都有位置</h3><p>系統由許多可理解、可組合的單位構成。缺少其中一環，整體可能就無法順利運作。</p></article>
+        <article class="principle"><div class="num">PRINCIPLE / 02</div><h3>連結帶來能力</h3><p>生產不等於完成。資源必須能運輸，能源必須能供應，指令也必須抵達真正執行它的單位。</p></article>
+        <article class="principle"><div class="num">PRINCIPLE / 03</div><h3>策略來自取捨</h3><p>擴張、維持、研究與防衛都會消耗有限資源。如何分配與安排優先順序，是策略的一部分。</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="systems">
+    <div class="wrap">
+      <div class="section-head"><div><div class="kicker">02 / SYSTEM ARCHITECTURE</div><h2>一張互相依賴的網。</h2></div><p>以下是目前的核心設計方向，而非已完成或已實裝的功能清單。</p></div>
+      <div class="systems">
+        <article class="system"><div class="system-icon">01</div><div><h3>生產與工業</h3><p>採集原料、加工資源、建立產線，讓各個單位有能力持續運作。</p></div></article>
+        <article class="system"><div class="system-icon">02</div><div><h3>能源網路</h3><p>能源生產與需求需要互相匹配；供應不足會限制整體系統的運作。</p></div></article>
+        <article class="system"><div class="system-icon">03</div><div><h3>物流與補給</h3><p>資源需要抵達正確的位置。產能、運輸距離與路線安排都可能影響效率。</p></div></article>
+        <article class="system"><div class="system-icon">04</div><div><h3>指揮與單位</h3><p>把命令、行動單位與支援設施連接起來，讓戰術選擇建立在整體部署之上。</p></div></article>
+        <article class="system"><div class="system-icon">05</div><div><h3>防衛與戰略</h3><p>防禦、部署與資源調度共同影響安全。軍事能力不是脫離工業系統的獨立數值。</p></div></article>
+        <article class="system"><div class="system-icon">06</div><div><h3>多人協作</h3><p>企劃方向包含單人與多人玩法的探索；連線方式、房間管理與權威模型仍需逐步驗證。</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="flow-panel">
+        <div class="flow-top"><div><div class="kicker">03 / SYSTEM LOOP</div><h2>從原料，到行動。</h2><p>這個概念流程展示 HANEXO 希望建立的系統關係：各環節互相依賴，而不是彼此孤立。</p></div><span class="flow-status">CONCEPT / NOT FINAL</span></div>
+        <div class="flow" aria-label="概念系統流程">
+          <div class="flow-step"><span>01</span><div><strong>資源取得</strong><small>原料與儲備</small></div></div>
+          <div class="flow-step"><span>02</span><div><strong>加工生產</strong><small>設施與產線</small></div></div>
+          <div class="flow-step"><span>03</span><div><strong>能源／物流</strong><small>供應與運輸</small></div></div>
+          <div class="flow-step"><span>04</span><div><strong>部署單位</strong><small>建設與調度</small></div></div>
+          <div class="flow-step"><span>05</span><div><strong>戰略決策</strong><small>防衛與擴張</small></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="roadmap">
+    <div class="wrap">
+      <div class="section-head"><div><div class="kicker">04 / DEVELOPMENT DIRECTION</div><h2>先讓核心系統成立。</h2></div><p>開發路線以可驗證的小型原型為起點；具體順序會隨測試結果調整。</p></div>
+      <div class="roadmap">
+        <article class="phase current"><div class="label">PHASE 01 / FOUNDATION</div><h3>核心模擬與畫面</h3><p>釐清單位、資源與模擬邏輯，建立輕量的 2D 俯視角原型，讓遊戲規則可以獨立測試。</p></article>
+        <article class="phase"><div class="label">PHASE 02 / CONNECTIONS</div><h3>系統互相連結</h3><p>逐步加入生產、能源、物流與指揮之間的關係，測試規則能否形成有意義的策略選擇。</p></article>
+        <article class="phase"><div class="label">PHASE 03 / MULTIPLAYER</div><h3>連線與同步探索</h3><p>在單機核心穩定後，再驗證多人房間、狀態同步與主機中斷等問題。</p></article>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><div><div class="kicker">05 / PROJECT STATUS</div><h2>世界仍在構築中。</h2></div><p>這是一個持續整理與驗證中的企劃頁面，並非已發布遊戲的下載或啟動入口。</p></div>
+      <div class="flow-panel"><div class="flow-top"><div><h2 style="margin:0;font-size:1.35rem">HANEXO / CONCEPT ARCHIVE</h2><p style="margin-bottom:0">目前聚焦於系統設計、技術可行性與原型方向。隨著實作推進，這個頁面也會更新成更具體的作品介紹。</p></div><span class="flow-status">IN DEVELOPMENT</span></div><div class="actions"><a class="btn primary" href="../">返回遊戲專案總覽 <span aria-hidden="true">↗</span></a><a class="btn secondary" href="https://github.com/fuguangji/game" target="_blank" rel="noopener noreferrer">專案 GitHub <span aria-hidden="true">↗</span></a></div></div>
+    </div>
+  </section>
+</main>
+<footer><div class="wrap footer"><div><div class="foot-mark">HANEXO — SYSTEMS IN MOTION</div><div class="foot-note">Every unit matters. Every connection changes the whole.</div></div><nav class="foot-links" aria-label="頁尾導覽"><a href="../">遊戲專案總覽</a><a href="../../">個人網站</a><a href="https://github.com/fuguangji/game" target="_blank" rel="noopener noreferrer">GitHub</a></nav></div></footer>
+<script>
+(() => {
+  const menu = document.getElementById('menu');
+  const nav = document.getElementById('navlinks');
+  menu.addEventListener('click', () => {
+    const expanded = menu.getAttribute('aria-expanded') !== 'true';
+    menu.setAttribute('aria-expanded', String(expanded));
+    nav.classList.toggle('open', expanded);
+  });
+  nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+    menu.setAttribute('aria-expanded', 'false');
+    nav.classList.remove('open');
+  }));
+})();
+</script>
+</body>
+</html>
