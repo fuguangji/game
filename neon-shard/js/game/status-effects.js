@@ -48,11 +48,6 @@ export const STATUS = Object.freeze({
       }
     },
   },
-  /* ───── 術式系統（見 techniques.js）使用的狀態 ───── */
-  seal: {
-    label: "術式熔斷", color: "#ff9a3d", icon: "pull", defaultDuration: 4,
-    blocks: ["skill"], immuneTo: "sealImmune",
-  },
   fast: {
     label: "加速", color: "#ffb84d", icon: "fast", defaultDuration: 2.2, maxStacks: 2,
     speedMul: (n) => 2,
@@ -69,6 +64,11 @@ export const STATUS = Object.freeze({
     },
     /** 受傷倍率：灼燒時受到的傷害會更痛 */
     damageTakenMul: (n) => 1 + 0.1 * n,
+  },
+  /* ───── 術式系統（見 techniques.js）使用的狀態 ───── */
+  seal: {
+    label: "術式熔斷", color: "#ff9a3d", icon: "pull", defaultDuration: 4,
+    blocks: ["skill"], immuneTo: "sealImmune",
   },
   soulseal: {
     label: "靈魂熔斷", color: "#c070ff", icon: "slow", defaultDuration: 4,
