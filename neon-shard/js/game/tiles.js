@@ -127,7 +127,7 @@ registerTile({
   name: "冰面", color: "#a0e0ff", solid: false,
   density: (stage) => 0.02,
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "fast", 0.1);
+    applyStatus(p, "fast", {duration:0.1});
   },
   draw(cx, x, y, size) {
     cx.save();
@@ -143,7 +143,7 @@ registerTile({
   name: "岩漿地板", color: "#ff3300", solid: false,
   density: (stage) => stage >= 5 ? 0.02 : 0,
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "burn", 10);
+    applyStatus(p, "burn", {duration:10});
   },
   draw(cx, x, y, size) {
     cx.save();
@@ -159,7 +159,7 @@ registerTile({
   name: "毒氣地板", color: "#00ff00", solid: false,
   density: (stage) => stage >= 10 ? 0.02 : 0,
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "poison", 0.5);
+    applyStatus(p, "poison", {duration:0.5});
   },
   draw(cx, x, y, size) {
     cx.save();
