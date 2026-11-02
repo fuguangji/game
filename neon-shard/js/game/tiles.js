@@ -124,8 +124,15 @@ registerTile({
   }
 });
 registerTile({
+  name: "炸藥桶", color: "#ffaa00", solid: true, hp: 2,
+  density: () => 0.05,
+  onBreak(x, y, { zones }) {
+    zones.push({ k: "bomb", x, y, r: 90, t: 0.3, max: 0.3, col: "#ff9f2a", dmg: 30 });
+  },
+});
+registerTile({
   name: "冰面", color: "#a0e0ff", solid: false,
-  density: (stage) => 0.02,
+  density: (stage) => 0,
   onStand(p, dt, { applyStatus }) {
     applyStatus(p, "fast", {duration:0.1});
   },
