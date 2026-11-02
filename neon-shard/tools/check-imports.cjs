@@ -1,6 +1,6 @@
-// 檢查：每個 import { x } from "./相對路徑.js" 的 x 都真的由對方模組匯出。用法：node --expose-internals tools/check-imports.cjs js
-// 驗證：每個 import { x } from "./相對路徑.js" 的 x 都真的由對方模組匯出
-const acorn = require("internal/deps/acorn/acorn/dist/acorn");
+// 檢查：每個 import { x } from "./相對路徑.js" 的 x 都真的由對方模組匯出。
+// 用法：node tools/check-imports.cjs js
+const acorn = require("acorn");
 const fs = require("fs"), path = require("path");
 function walkDir(d) { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? (e.name === "test" ? [] : walkDir(path.join(d, e.name))) : e.name.endsWith(".js") ? [path.join(d, e.name)] : []); }
 const exportsOf = new Map();
