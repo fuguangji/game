@@ -25,6 +25,7 @@
 | `js/account/account-service.js` | 157 |  |
 | `js/account/account-view.js` | 169 |  |
 | `js/account/api-client.js` | 98 |  |
+| `js/account/firebase-auth.js` | 110 | Firebase Authentication（REST）：註冊、登入、更新 token；密碼只交給 Google，不經過後端 |
 | `js/account/cloud-crypto.js` | 345 |  |
 | `js/account/config.js` | 17 |  |
 | `js/account/index.js` | 15 | 帳號系統組裝：把設定、Session、API、加密與服務接在一起（整個遊戲共用一份） |
@@ -41,6 +42,7 @@
 | `js/core/game-state.js` | 91 |  |
 | `js/core/input.js` | 299 | 鍵盤、滑鼠、觸控輸入 |
 | `js/core/save-store.js` | 86 |  |
+| `js/core/sim-governor.js` | 150 | 自動調頻：依負載調整模擬頻率與粒子預算，最後手段才通知降畫質 |
 | `js/core/settings-store.js` | 53 |  |
 | `js/core/state-machine.js` | 144 |  |
 | `js/core/viewport.js` | 35 | 畫布、座標常數與視窗縮放 |
@@ -242,7 +244,7 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 ## 主迴圈、平台與輸入（效能與手機／電腦分離）
 
 ### 模擬與繪製分離（`core/game-loop.js`、`core/interpolation.js`）
-- **模擬**以固定步長前進（設定「模擬頻率」30／60／120 Hz，預設 60），`update(dt)` 每次收到的 dt 永遠相同；
+- **模擬**以固定步長前進，頻率由 `core/sim-governor.js` 依負載**自動調整**（60 → 45 → 30 Hz，上限 60，沒有手動設定），`update(dt)` 每次收到的 dt 永遠相同；
   掉幀時用「補跑幾步」追上（一次最多 6 步，再落後就放棄追趕，寧可慢動作也不卡死）。以前 dt 隨螢幕幀率變動並被夾在 0.033，
   低幀率時等於慢動作、子彈穿牆。
 - **繪製**每個 `requestAnimationFrame` 一次，可設幀率上限。戰鬥中帶一個 `alpha`（距離下次模擬多遠）給**動態補償**：
@@ -252,8 +254,8 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 - 打擊停頓（`G.TSt/TSv`）縮放的是模擬時間，不影響繪製頻率。
 
 ### 畫質與渲染設定（`core/render-profile.js`，設定頁「畫面效能」）
-畫質（自動／低／中／高）＝ 一組檔位（發光倍率、粒子倍率、解析度比例、震動、光環）。自動模式依「幀時間移動平均」降檔／升檔
-（降得快、升得慢，剛降過 30 秒內不升，避免來回震盪）。發光（`shadowBlur`）是 Canvas 2D 最貴的效果：直接把 `ctx.shadowBlur`
+畫質（自動／低／中／高）＝ 一組檔位（發光倍率、粒子倍率、解析度比例、震動、光環）。**自動模式維持「高」畫質**：卡頓時由 `SimGovernor`
+先調模擬頻率與粒子預算（`setParticleBudget`，乘進粒子密度與上限）；只有這兩種程式面手段都用到底、仍然吃力，才呼叫 `degradeAutoTier()` 降一檔。發光（`shadowBlur`）是 Canvas 2D 最貴的效果：直接把 `ctx.shadowBlur`
 改成「寫入時乘上倍率」，倍率 0 時瀏覽器完全不算陰影，不必改六十幾處繪圖程式。解析度比例乘進 `G.DPR`（CSS 大小不變）。
 
 ### 平台（`core/platform.js`）與輸入（`core/input*.js`）
@@ -278,3 +280,15 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 - 首屏由 HTML 直接給（大廳骨架、`<h1>`、favicon、meta），不必等 JavaScript；骨架與真實大廳結構一致，避免版面位移（CLS）。
 - 啟動工作切成三段，段間 `await yieldToMain()`；`platform` 屬性由 `<head>` 內嵌小腳本在第一次繪製前設好。
 - 無障礙：移除 `user-scalable=no`、補 `aria-label`、`<main>`、`<h1>`、對比度修正、選單開著時隱藏戰鬥按鈕。
+
+## 後端整合（neon-shard-api）
+
+- **登入**：瀏覽器直接用 Firebase Auth REST 註冊／登入（`account/firebase-auth.js`），取得 ID token；之後所有後端請求帶 `Authorization: Bearer <ID token>`。
+  後端的 `/api/auth/signup|login|refresh` 一律回 410，所以前端不再呼叫它們；token 更新也改走 Firebase（`ApiClient` 的 `refresher`）。
+- **第一次登入**：先呼叫 `GET /api/identity/me`（後端在這時建立 Firestore 使用者與暱稱保留），註冊時再 `PUT /api/profile` 設定暱稱，最後 `GET /api/profile/me`。
+  加密金鑰的 `userId` 現在是 Firebase UID；舊版（Supabase UUID）建立的雲端存檔與金鑰無法沿用，需要重新註冊。
+- **雲端存檔**：流程不變（金鑰註冊 `PUT /api/keys`、存檔 `POST/PUT /api/player-data`、ECDSA 簽章、`expectedRevision`），前後端簽章格式有跨專案測試（`neon-shard-api/test/browser-crypto.test.js`）。
+- **線上聯機**：`profile/realtime-client.js` 連 `wss://<API>/api/realtime`，用 `AccountService.getFreshAccessToken()` 取得有效 token。舊的 Firebase Realtime Database／WebRTC 房間程式與規則檔已移除。
+- **對戰**：`game/online-match.js`（控制器）、`game/online-state.js`（旗標）、`ui/online-hud.js`（資訊條與結算）。連線屬於控制器、不屬於頁面，所以頁面重繪不會斷線。戰鬥核心只在四處接入：`simulation.update`（tick、跳過波次與商店、子彈對幽靈）、`battle.hurt`（競爭模式忽略本地傷害、對戰不發獎勵）、`progress.pause`（不凍結）、`render`（畫幽靈與對方子彈）。
+- **喚醒**：打開「雲端同步」分頁時 `warmUp()` 先打 `/api/health` 喚醒休眠中的 Render（5 分鐘內只打一次）。
+- 已移除的重複／未使用檔案：`js/cloud-account.js`、`js/cloud-crypto.js`、`js/cloud-config.js`、`js/online/online.js`、`js/account/account-features.js`、`js/profile/firebase-room-client.js`、`js/profile/firebase-config.js`、`firebase.database.rules.json`。
