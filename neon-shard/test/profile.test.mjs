@@ -96,6 +96,7 @@ test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重�
 
 test("線上聯機：使用 Firebase 匿名身分，不依賴雲端帳號登入", () => {
   const { deps } = makeDeps(); const { host, page } = mount(deps);
+  page.show("online");
   const online = panel(host, "online");
   const body = online.find((e) => e.className === "ns-online");
   assert.ok(body, "線上聯機面板存在");
