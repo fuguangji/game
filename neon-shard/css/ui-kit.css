@@ -133,14 +133,14 @@
 .tq-ring.blast{border-color:#ee6a7c}
 .tq-ring.blast.on{background:#ee6a7c;color:#06100d}
 /* 手機配置（html[data-platform="mobile"]，見 core/platform.js）：
-   技能鈕縮成右側邊緣的兩欄，避開左下搖桿、右下瞄準搖桿、DASH 與 SUPER。
+   技能鈕縮成左側邊緣的兩欄（原本在右側），位在左上暫停鈕與狀態列下方；點技能鈕只是選定，不會干擾右手瞄準與 DASH、SUPER。
    點技能鈕 = 選定（不會施放），所以按鈕可以放大到好點、不怕誤觸；「普攻」鈕永遠顯示，點它回到普通攻擊。 */
-html[data-platform="mobile"] #tqBar{left:auto;right:calc(env(safe-area-inset-right) + 4px);bottom:auto;top:calc(max(env(safe-area-inset-top),0px) + 160px * var(--u,1));align-items:flex-end;gap:4px;max-width:none}
+html[data-platform="mobile"] #tqBar{left:calc(env(safe-area-inset-left) + 4px);right:auto;bottom:auto;top:calc(max(env(safe-area-inset-top),0px) + 160px * var(--u,1));align-items:flex-start;gap:4px;max-width:none}
 html[data-platform="mobile"] .tq-meters{width:calc(92px * var(--u,1))}
 html[data-platform="mobile"] .tq-meter{height:11px}
 html[data-platform="mobile"] .tq-meter.alt{height:8px}
 html[data-platform="mobile"] .tq-label{font-size:8.5px}
-html[data-platform="mobile"] .tq-row{display:grid;grid-template-columns:repeat(2,max(40px,calc(46px * var(--u,1))));gap:4px;justify-content:end;max-width:none}
+html[data-platform="mobile"] .tq-row{display:grid;grid-template-columns:repeat(2,max(40px,calc(46px * var(--u,1))));gap:4px;justify-content:start;max-width:none}
 html[data-platform="mobile"] .tq-btn{width:auto;height:max(38px,calc(42px * var(--u,1)));padding:1px;border-radius:9px}
 html[data-platform="mobile"] .tq-btn .tq-k{display:none}
 html[data-platform="mobile"] .tq-btn .tq-n{font-size:10px;line-height:1.1}
@@ -181,3 +181,15 @@ html[data-platform="mobile"] .tq-ring{min-width:30px;min-height:26px;font-size:1
 .x-ctl-f svg{display:block;width:100%;height:auto;max-height:230px}
 .x-ctl-c{color:#b6c7d4;font-size:.78rem;line-height:1.5;text-align:left}
 @media (max-height:520px){.x-hero .x-ctl{display:none}} /* 手機橫向：首頁空間不夠，操作簡圖改看圖鑑「操作」分頁與教學 */
+
+/* ---------- 線上對戰：資訊條與結算面板（ui/online-hud.js） ---------- */
+.ol-strip{position:fixed;left:50%;top:calc(max(env(safe-area-inset-top),0px) + 4px);transform:translateX(-50%);z-index:8;max-width:min(92vw,560px);padding:3px 10px;border:1px solid #8fe3cf55;border-radius:999px;background:#06100dcc;color:var(--t,#e6fff7);font-size:11.5px;line-height:1.5;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.ol-strip[hidden],.ol-end[hidden]{display:none}
+.ol-end{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:16px;background:#02060acc}
+.ol-card{width:min(92vw,380px);max-height:88vh;overflow:auto;padding:16px 18px;border:1px solid #8fe3cf66;border-radius:14px;background:#07110eef;color:var(--t,#e6fff7);text-align:center}
+.ol-card h2{margin:0 0 8px;font-size:1.25rem;color:#8fe3cf}
+.ol-note{margin:6px 0;font-size:.85rem;color:var(--mu,#9fb7ad)}
+.ol-scores{margin:10px 0;padding:0;list-style:none;display:grid;gap:4px;text-align:left}
+.ol-scores li{display:flex;justify-content:space-between;gap:10px;padding:5px 9px;border-radius:8px;background:#ffffff0d;font-size:.9rem}
+.ol-scores li.me{background:#8fe3cf26;box-shadow:0 0 0 1px #8fe3cf88}
+.ol-btn{min-height:42px;padding:0 22px;margin-top:6px;border:1px solid #8fe3cf;border-radius:10px;background:#8fe3cf;color:#04140f;font:inherit;font-weight:700;cursor:pointer}

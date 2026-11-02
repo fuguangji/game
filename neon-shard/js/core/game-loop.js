@@ -1,7 +1,7 @@
 /**
  * core/game-loop — 固定步長主迴圈（模擬與繪製分離）
  *
- *   模擬（step）：以固定頻率（simRate，預設 60 Hz）前進。每一步的 dt 永遠相同，所以物理與冷卻不受螢幕更新率影響，
+ *   模擬（step）：以固定頻率（simRate，由 SimGovernor 自動調整，上限 60 Hz）前進。每一步的 dt 永遠相同，所以物理與冷卻不受螢幕更新率影響，
  *                 掉幀時用「補跑幾步」追上，而不是像以前一樣把 dt 放大（子彈穿牆）或直接變慢動作。
  *   繪製（draw）：每個 requestAnimationFrame 一次，可獨立設定幀率上限，並帶 alpha（0~1）給動態補償插值。
  *
@@ -37,7 +37,8 @@ export class GameLoop {
    * @param {(dt:number) => void} deps.beforeStep 每次模擬前（記錄插值用的上一個狀態）
    * @param {(dt:number) => void} deps.step 模擬一步
    * @param {(alpha:number, stepDt:number) => void} deps.draw 繪製
-   * @param {(frameMs:number, drawMs:number, targetMs:number) => void} [deps.onFrame] 每個繪製幀的效能回報
+   * @param {(frameMs:number, drawMs:number, targetMs:number, stepMs:number, simulating:boolean) => void} [deps.onFrame] 每個繪製幀的效能回報（stepMs = 這一幀所有補跑步數的模擬耗時）
+   * @param {(sleeping:boolean) => void} [deps.onSleepChange] 進入／離開休眠時通知（休眠時才需要「喚醒用」的輸入監聽，醒著時可以拆掉）
    * @param {() => number} [deps.now]
    * @param {(fn:(t:number)=>void) => number} [deps.schedule]
    */
@@ -46,6 +47,7 @@ export class GameLoop {
       now: () => performance.now(),
       schedule: (fn) => requestAnimationFrame(fn),
       onFrame: () => {},
+      onSleepChange: () => {},
       ...deps,
     };
   }
@@ -67,6 +69,7 @@ export class GameLoop {
   wake() {
     if (!this.#sleeping || !this.#running) return;
     this.#sleeping = false;
+    this.#deps.onSleepChange(false);
     this.#last = this.#deps.now();
     this.#raf = this.#deps.schedule((t) => this.#frame(t));
   }
@@ -123,11 +126,16 @@ export class GameLoop {
       const t1 = d.now();
       d.draw(simulating ? this.#acc / stepDt : 1, stepDt);
       drawMs = d.now() - t1;
-      d.onFrame(frameMs, drawMs, cap > 0 ? 1000 / cap : 1000 / 60);
+      d.onFrame(frameMs, drawMs, cap > 0 ? 1000 / cap : 1000 / 60, stepMs, simulating);
+    } else if (simulating && steps > 0) {
+      d.onFrame(frameMs, 0, cap > 0 ? 1000 / cap : 1000 / 60, stepMs, simulating); // 沒畫的幀也要回報模擬耗時，否則被幀率上限跳過的幀會讓負載被低估
     }
     this.#tally(now, draw, steps, drawMs, stepMs);
     if (manual || !this.#running) return;
-    if (!simulating && d.idleFps() <= 0 && !this.#dirty) this.#sleeping = true; // 閒置且畫面已是最新：休眠，等 wake()
+    if (!simulating && d.idleFps() <= 0 && !this.#dirty) { // 閒置且畫面已是最新：休眠，等 wake()
+      this.#sleeping = true;
+      d.onSleepChange(true);
+    }
     else this.#raf = d.schedule((t) => this.#frame(t));
   }
 

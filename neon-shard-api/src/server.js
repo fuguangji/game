@@ -39,6 +39,10 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",").map((value) => value.trim()).filter(Boolean);
 
+if (!allowedOrigins.length) {
+  console.warn("[config] ALLOWED_ORIGINS 是空的：瀏覽器的跨來源請求與 WebSocket 都會被拒絕。請設定為前端網站的網址（例如 https://<帳號>.github.io）。");
+}
+
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

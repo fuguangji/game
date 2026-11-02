@@ -128,13 +128,25 @@ export class TutorialController {
     });
     bus.on(GameEvents.TICK, (dt) => this.#tick(dt));
     bus.on(GameEvents.HUD_DRAWN, () => this.#drawPanel());
+  }
+
+  /** 教學快捷鍵（N 下一步、B 上一步、X 離開、Enter 進入戰鬥）：只在教學進行中才監聽，結束就拆掉 */
+  #keyAbort = null;
+  #bindKeys() {
+    if (this.#keyAbort) return;
+    this.#keyAbort = new AbortController();
     addEventListener("keydown", (e) => {
       if (!this.#active || e.repeat) return;
       if (e.code === "KeyN") this.advance();
       else if (e.code === "KeyB") this.back();
       else if (e.code === "KeyX") this.exit();
       else if (e.code === "Enter" && this.#done) this.toBattle();
-    });
+    }, { signal: this.#keyAbort.signal });
+  }
+
+  #unbindKeys() {
+    this.#keyAbort?.abort();
+    this.#keyAbort = null;
   }
 
   start() {
@@ -143,6 +155,7 @@ export class TutorialController {
     setup();
     G.AA = 1;
     this.#active = true;
+    this.#bindKeys();
     this.#done = false;
     this.#last = { x: G.pl.x, y: G.pl.y, aim: G.pl.aim, w: G.pl.w };
     G.wave = 1;
@@ -189,6 +202,7 @@ export class TutorialController {
   exit() {
     this.#markDone();
     this.#active = false;
+    this.#unbindKeys();
     G.en.length = 0; G.bl.length = 0; G.pk.length = 0;
     this.#syncUi();
     fsm.transition("menu");
@@ -198,6 +212,7 @@ export class TutorialController {
   toBattle() {
     this.#markDone();
     this.#active = false;
+    this.#unbindKeys();
     this.#syncUi();
     start();
   }
@@ -274,6 +289,7 @@ export class TutorialController {
     if (!this.#active || !this.#done) return;
     this.#markDone();
     this.#active = false;
+    this.#unbindKeys();
     this.#syncUi();
     fsm.transition("menu");
     showOv(0);

@@ -10,6 +10,7 @@ import { bossCatalog } from "../config/index.js";
 import { endTrain } from "./training.js";
 import { xPause } from "../ui/menu.js";
 import { showOv } from "../ui/render.js";
+import { onlineState } from "./online-state.js";
 
 export const SV = {
   coins: 0,
@@ -107,6 +108,7 @@ export function quit() {
 }
 // 暫停：清除輸入並顯示暫停選單
 export function pause() {
+  if (onlineState.active) { if (!document.hidden) onlineState.onPauseRequest?.(); return; } // 線上對戰：別人還在打，不能凍結
   if (fsm.state !== "play") return;
   fsm.transition("pause");
   xPause();

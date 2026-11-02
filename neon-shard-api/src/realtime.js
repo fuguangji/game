@@ -5,6 +5,7 @@ import { TokenBucket } from "./rate-limiter.js";
 const MAX_CONNECTIONS = 500;
 const AUTH_TIMEOUT_MS = 8000;
 const HEARTBEAT_MS = 30_000;
+const MATCH_TICK_MS = 500;
 const MAX_VIOLATIONS = 100; // 超過頻率限制的訊息累積這麼多就斷線
 
 const safeSend = (socket, data) => {
@@ -37,12 +38,15 @@ export function attachRealtime(server, { firebaseAuth, allowedOrigins = [], mana
     }
   }, HEARTBEAT_MS);
   heartbeat.unref?.();
-  wss.on("close", () => clearInterval(heartbeat));
+  // 對戰計時（競爭模式時間到、弱敵人重生）
+  const matchTick = setInterval(() => manager.tick(), MATCH_TICK_MS);
+  matchTick.unref?.();
+  wss.on("close", () => { clearInterval(heartbeat); clearInterval(matchTick); });
 
   wss.on("connection", (socket) => {
     socket.isAlive = true;
     socket.on("pong", () => { socket.isAlive = true; });
-    const bucket = new TokenBucket({ capacity: 40, refillPerSecond: 30 });
+    const bucket = new TokenBucket({ capacity: 80, refillPerSecond: 60 }) // 對戰中：移動 10 次/秒 + 彈道 + 傷害回報;
     let violations = 0;
     let player = null;
     let authState = "none"; // none -> checking -> done
@@ -80,13 +84,19 @@ export function attachRealtime(server, { firebaseAuth, allowedOrigins = [], mana
         return;
       }
 
-      if (msg.type === "join") {
-        const result = manager.join(player, { code: msg.code, mode: msg.mode });
-        if (!result.ok) safeSend(socket, { type: "error", message: result.message });
-      } else if (msg.type === "move") {
-        manager.move(player, Number(msg.x), Number(msg.y));
-      } else if (msg.type === "attack") {
-        manager.attack(player);
+      const fail = (result) => { if (!result.ok) safeSend(socket, { type: "error", message: result.message }); };
+      switch (msg.type) {
+        case "join": fail(manager.join(player, { code: msg.code, mode: msg.mode })); break;
+        case "start": fail(manager.start(player)); break;
+        case "reset": manager.reset(player); break;
+        case "leave": manager.leave(player); break;
+        case "move": manager.move(player, Number(msg.x), Number(msg.y), msg.hp === undefined ? undefined : Number(msg.hp)); break;
+        case "shot": manager.shots(player, msg.shots); break;
+        case "hit": manager.hit(player, msg.target, Number(msg.dmg)); break;
+        case "bossDamage": manager.bossDamage(player, Number(msg.amount)); break;
+        case "died": manager.died(player); break;
+        case "attack": manager.attack(player); break; // 舊版：只在大廳可用
+        default: break;
       }
     });
 

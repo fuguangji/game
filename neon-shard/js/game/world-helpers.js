@@ -92,22 +92,54 @@ export function empty(minD, ref, maxD) {
   return maxD ? empty(minD, ref) : null;
 }
 
+/** 原地保留符合條件的元素（陣列本身不變、不產生新陣列；取代每步都配置新陣列的 filter） */
+export function compactInPlace(arr, keep) {
+  let w = 0;
+  for (let r = 0; r < arr.length; r++) {
+    const v = arr[r];
+    if (keep(v)) arr[w++] = v;
+  }
+  arr.length = w;
+  return arr;
+}
+
+/* ───────────── 粒子（物件池）─────────────
+ * 戰鬥中每秒會產生與回收數百個粒子；每個都 new 一個物件會讓垃圾回收在戰鬥中途卡一下。
+ * 這裡把「死掉的粒子」收回池子，下次 burst() 直接重複使用。
+ * 注意：從池子拿出來的物件必須把所有欄位重設（包含插值用的 _ix/_iy，否則第一幀會從舊位置拖出一條線）。
+ */
+const PARTICLE_POOL = [];
+const PARTICLE_POOL_MAX = 1024;
+/** 粒子總數上限（完整預算時）；實際上限會隨粒子預算縮小 */
+export const PARTICLE_CAP = 700;
+
+/** 目前允許的粒子總數上限（跟著畫質檔與自動粒子預算縮放，最少留 40%） */
+export function particleCap() {
+  return Math.round(PARTICLE_CAP * Math.max(0.4, Math.min(1, profile.particles)));
+}
+
+/** 回收一個粒子（只在確定沒有別處還持有它時呼叫） */
+export function releaseParticle(p) {
+  if (PARTICLE_POOL.length < PARTICLE_POOL_MAX) PARTICLE_POOL.push(p);
+}
+
+function acquireParticle(x, y, vx, vy, life, max, col, sz) {
+  const p = PARTICLE_POOL.pop();
+  if (!p) return { x, y, vx, vy, life, max, col, sz, age: 0, k: undefined, f: undefined, rot: 0, vr: 0, seed: 0, _ix: undefined, _iy: undefined };
+  p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = life; p.max = max; p.col = col; p.sz = sz;
+  p.age = 0; p.k = undefined; p.f = undefined; p.rot = 0; p.vr = 0; p.seed = 0; p._ix = undefined; p._iy = undefined;
+  return p;
+}
+
 // 功能：在指定位置建立粒子爆發特效。
 export function burst(x, y, col, n, sp, sz, life) {
-  const count = n * profile.particles; // 粒子密度（畫質設定）
-  for (let i = 0; i < count && G.pt.length < 700; i++) {
+  const count = n * profile.particles; // 粒子密度（畫質設定 × 自動粒子預算）
+  const cap = particleCap();
+  const pt = G.pt;
+  for (let i = 0; i < count && pt.length < cap; i++) {
     const a = Math.random() * TAU,
       s = sp * (0.3 + Math.random() * 0.7);
-    G.pt.push({
-      x,
-      y,
-      vx: Math.cos(a) * s,
-      vy: Math.sin(a) * s,
-      life: life * (0.6 + Math.random() * 0.4),
-      max: life,
-      col,
-      sz: sz * (0.6 + Math.random() * 0.8),
-    });
+    pt.push(acquireParticle(x, y, Math.cos(a) * s, Math.sin(a) * s, life * (0.6 + Math.random() * 0.4), life, col, sz * (0.6 + Math.random() * 0.8)));
   }
 }
 
@@ -133,7 +165,7 @@ export function hitCell(i, j, n = 1) {
   if (nv === 0) {
     bus.emit(GameEvents.WALL_BROKEN);
     breakTile(i, j, x, y, { zones: G.zones }); // 特殊方塊的 onBreak（見 tiles.js）
-    for (let k = 0; k < 9; k++) {
+    for (let k = 0; k < 9 && G.pt.length < PARTICLE_CAP; k++) { // 碎片也受上限約束
       const a = Math.random() * TAU,
         s = 80 + Math.random() * 180;
       G.pt.push({

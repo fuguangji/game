@@ -5,16 +5,21 @@ import { ProfileSection } from "./profile-section.js";
 export class CloudSection extends ProfileSection {
   #el;
   #view;
+  #deps;
 
   /** @param {import('../profile-page.js').ProfileDeps} deps */
   constructor(deps) {
     super({ id: "cloud", title: "雲端同步" });
+    this.#deps = deps;
     const host = h("div");
     this.#el = h("section", { class: "ns-feature-card" }, h("h3", {}, "雲端同步"), host);
     this.#view = deps.AccountView.mount(host, deps.accountService, { getSave: deps.bridge.getSave, applySave: deps.bridge.applySave });
   }
 
   get element() { return this.#el; }
+
+  /** 打開這個分頁時順便喚醒休眠中的免費主機（有節流，一次最多每 5 分鐘一次） */
+  onShow() { this.#deps.accountService.warmUp?.(); }
 
   destroy() { this.#view.destroy(); }
 }

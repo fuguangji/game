@@ -7,6 +7,9 @@ import { MW, N, T } from "../core/viewport.js";
 import { EL_COL } from "../enemy-config.js";
 import { PN } from "../game-config.js";
 import { burst, cell, empty, hitCell, hurt, mv } from "./battle.js";
+import { compactInPlace, releaseParticle } from "./world-helpers.js";
+import { onlineMatch } from "./online-match.js";
+import { onlineState } from "./online-state.js";
 import { aiExtra, detonate, dm, dodge, frz, isB } from "./boss.js";
 
 import { updEW, updEn } from "./enemy-ai.js";
@@ -42,6 +45,7 @@ bindEnemyFxApi({
 
 // 整體模擬一步（dt 秒）
 export function update(dt) {
+  if (onlineState.active) onlineMatch.tick(dt); // 線上對戰：幽靈、彈道、傷害回報（不論目前是戰鬥或結算狀態都要跑）
   if (G.pendEn.length) {
     for (const m of G.pendEn) G.en.push(m);
     G.pendEn.length = 0;
@@ -109,7 +113,7 @@ export function update(dt) {
       }
     }
     for (const f of G.fxs) f.t -= dt;
-    G.fxs = G.fxs.filter((f) => f.t > 0);
+    compactInPlace(G.fxs, fxAlive);
     G.fT -= dt;
     if (G.fT <= 0) {
       G.fT = 0.25;
@@ -185,9 +189,11 @@ export function update(dt) {
           b = G.en[j],
           dx = b.x - a.x,
           dy = b.y - a.y,
-          d = Math.hypot(dx, dy),
           m = a.r + b.r;
         const ms = isB(a) || isB(b) ? m : m * 1.35;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= ms * ms || d2 === 0) continue; // 先用平方距離快速排除（大多數敵人對根本沒碰到），不必算開根號
+        const d = Math.sqrt(d2);
         if (d < ms && d > 0) {
           const k = ((ms - d) / 2 / d) * (d < m ? 1 : 0.1);
           mv(a, -dx * k, -dy * k);
@@ -349,9 +355,13 @@ export function update(dt) {
       }
       if (b.life <= 0) continue;
       if (b.own) {
+        const bulletR = b.bm ? BMR(b) : b.r; // 子彈半徑不隨敵人改變，移到迴圈外
         for (const e of G.en) {
-          if (e.hp <= 0 || ((b.pierce || b.pe) && b.hit.includes(e))) continue;
-          if (Math.hypot(e.x - b.x, e.y - b.y) < e.r + (b.bm ? BMR(b) : b.r)) {
+          if (e.hp <= 0) continue;
+          const hx = e.x - b.x, hy = e.y - b.y, hr = e.r + bulletR;
+          if (hx * hx + hy * hy >= hr * hr) continue; // 平方距離先排除，沒碰到就不必檢查「已命中名單」
+          if ((b.pierce || b.pe) && b.hit.includes(e)) continue;
+          {
             const dd = dm(e, b.dmg, Math.atan2(b.y - e.y, b.x - e.x));
             e.hp -= dd;
             e.hf = dd > 0 ? 1 : 0;
@@ -427,6 +437,7 @@ export function update(dt) {
             }
           }
         }
+        if (onlineState.pvp && b.life > 0) onlineMatch.bulletVsGhosts(b, bulletR); // 競爭模式：打對手與伺服器的弱敵人
       } else if (
         G.pl.dashT <= 0 &&
         Math.hypot(G.pl.x - b.x, G.pl.y - b.y) < G.pl.r + b.r
@@ -498,9 +509,9 @@ export function update(dt) {
           });
         }
       }
-    G.bl = G.bl.filter((b) => b.life > 0);
+    compactInPlace(G.bl, bulletAlive);
     updLZ(dt);
-    G.en = G.en.filter((e) => e.hp > 0);
+    compactInPlace(G.en, enemyAlive);
     updZ(dt);
     updEW(dt);
     G.pkT -= dt;
@@ -517,7 +528,7 @@ export function update(dt) {
           });
       }
     }
-    if (!G.train && !tutorial.active && G.en.length === 0) {
+    if (!G.train && !tutorial.active && !onlineState.active && G.en.length === 0) { // 線上對戰沒有波次與商店
       G.waveT -= dt;
       if (G.waveT <= 0) {
         G.waveT = 1.8;
@@ -535,19 +546,22 @@ export function update(dt) {
     if (G.H / G.S >= MW) G.camy = (MW - G.H / G.S) / 2;
   }
   if (fsm.state === "over") {
-    G.bl = G.bl.filter((b) => b.life > 0);
+    compactInPlace(G.bl, bulletAlive);
     G.overT -= dt;
     if (G.overT <= 0 && !G.shown) {
       G.shown = 1;
       showOv(1);
     }
   }
-  for (let i = G.pt.length - 1; i >= 0; i--) {
-    const p = G.pt[i];
+  // 粒子更新：一次掃描、原地壓縮（原本每個死掉的粒子都 splice，整段後面的元素要往前搬一次）；死掉的收回物件池
+  const pts = G.pt;
+  let w = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
     p.life -= dt;
     p.age = (p.age || 0) + dt;
     if (p.life <= 0) {
-      G.pt.splice(i, 1);
+      releaseParticle(p);
       continue;
     }
     p.x += p.vx * dt;
@@ -556,8 +570,14 @@ export function update(dt) {
     if (p.k === "ice") p.vy = Math.min(p.vy + 2 * dt, -12);
     else p.vy *= 0.96;
     if (p.f) p.rot += p.vr * dt;
+    pts[w++] = p;
   }
+  pts.length = w;
 }
+
+const fxAlive = (f) => f.t > 0;
+const bulletAlive = (b) => b.life > 0;
+const enemyAlive = (e) => e.hp > 0;
 
 /** 本模組「載入時才執行」的程式（填入資料表、註冊事件…）。由 main.js 依原本順序呼叫，避免模組互相引用時的載入順序問題。 */
 export function init() {

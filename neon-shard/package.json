@@ -4,10 +4,10 @@
     "build": "node tools/build.mjs",
     "dev": "echo 開啟 index.dev.html（原始 ES 模組，不用建置）",
     "test": "node --import ./test/stubs.mjs --test test/*.test.mjs",
-    "check": "node tools/check-imports.cjs js && node tools/check-undefined.cjs js"
+    "check": "node --expose-internals tools/check-imports.cjs js && node --expose-internals tools/check-undefined.cjs js",
+    "check:dist": "node tools/check-dist.mjs"
   },
   "devDependencies": {
-    "acorn": "^8.15.0",
     "esbuild": "^0.27.0"
   }
 }

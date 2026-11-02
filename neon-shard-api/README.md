@@ -7,17 +7,19 @@ Render hosts the server-side API. Firebase is the identity and account-data prov
 - **Firebase Authentication** handles email/password registration, sign-in, sign-out, and ID-token refresh in the browser.
 - **Firebase Admin SDK** verifies ID tokens on Render. The API derives the trusted account UID from the verified token and never trusts a UID supplied by the client.
 - **Cloud Firestore** stores account profiles, display-name reservations, encryption-key metadata, and encrypted cloud saves. Save data is scoped by UID under `users/{uid}`.
-- **Realtime Database** remains dedicated to the existing WebRTC room/signaling flow.
+- **Realtime（WebSocket）** 線上聯機由本服務的 `/api/realtime` 提供（見 README-ONLINE.md）。舊的 Firebase Realtime Database／WebRTC 房間流程已移除，不需要建立 Realtime Database。
 - Firestore browser rules deny direct client access to account and save documents. Render's Admin SDK is the only data-access path for those collections.
 
 ## Owner configuration
 
-1. Fill the public Firebase Web App values in `account/firebase-config.js`. This file intentionally contains placeholders until the project owner fills them in.
-2. In Firebase Console, enable **Email/Password** in Authentication.
-3. Create a Cloud Firestore database and publish the repository's `firestore.rules`.
-4. In Render, set `FIREBASE_SERVICE_ACCOUNT_JSON` to the complete service-account JSON value. This is a server secret; never commit it.
-5. Set `ALLOWED_ORIGINS` to the exact deployed website origin(s).
-6. Redeploy the Render service and check `/api/health` and `/api/ready`.
+完整的「要填哪些常數」清單在前端專案的 `neon-shard/README.md`（「部署前要填的常數」）。後端這邊只需要：
+
+1. Firebase Console → Authentication → 啟用 **Email/Password**。
+2. 建立 Cloud Firestore 資料庫，並發佈本資料夾的 `firestore.rules`（全部拒絕瀏覽器直接存取；只有本服務的 Admin SDK 能讀寫）。
+3. 在 Render 設定 `FIREBASE_SERVICE_ACCOUNT_JSON`（整份服務帳戶 JSON，一行；這是伺服器密鑰，不可提交）。
+4. 在 Render 設定 `ALLOWED_ORIGINS` 為前端實際網址（完全一致）。
+5. 重新部署後檢查 `/api/health` 與 `/api/ready`。
+6. 前端 `neon-shard/js/account/config.js` 填入 Render 網址與 Firebase Web API Key。
 
 Until the Firebase service account is configured, the API process can still start and health checks can respond, but identity/profile/save endpoints correctly return `503 FIREBASE_ADMIN_NOT_CONFIGURED`.
 
@@ -26,7 +28,7 @@ Until the Firebase service account is configured, the API process can still star
 - `GET /api/health` — process health.
 - `GET /api/ready` — Firebase Admin and Firestore readiness.
 - `GET /api/identity/me` — verifies a Firebase ID token and initializes/returns its Firestore profile.
-- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` — intentionally return `410 USE_FIREBASE_AUTH`; passwords must go directly to Firebase Authentication from `/account/`.
+- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` — intentionally return `410 USE_FIREBASE_AUTH`; passwords go directly from the game's browser client to Firebase Authentication (REST, `neon-shard/js/account/firebase-auth.js`) and never reach this API.
 - `POST /api/auth/logout` — authenticated no-content response; the browser signs out through Firebase Auth.
 - `GET /api/profile/me` — current UID, display name, and key-setup status.
 - `PUT /api/profile` — update the authenticated user's display name.

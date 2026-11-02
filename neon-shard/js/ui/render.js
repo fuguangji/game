@@ -16,6 +16,7 @@ import { WP, applyLO } from "../game/weapons.js";
 import { icon } from "../icons.js";
 import { drawAim } from "./aim.js";
 import { drawSkillAim, skillStick } from "./skill-aim.js";
+import { onlineMatch } from "../game/online-match.js";
 import { skillSelected } from "../game/techniques.js";
 import { drawBars, drawLast, drawSlots } from "./hud.js";
 import { XS, xResult } from "./menu.js";
@@ -927,6 +928,7 @@ export function render() {
      
   }
   drawLZ();
+  onlineMatch.drawWorld(cx); // 線上對戰：隊友／對手、弱敵人、對方子彈（沒在對戰時立刻返回）
   for (const b of G.bl) {
     cx.save();
     if (b.fl) {
@@ -1106,10 +1108,15 @@ export function render() {
   }
   cx.save();
   cx.globalCompositeOperation = "lighter";
+  // 粒子繪製的省法（畫面完全相同）：畫面外的粒子不畫；顏色沒變就不重設 fillStyle（每次設定都要解析顏色字串）
+  const vx0 = G.camx - 60, vy0 = G.camy - 60, vx1 = G.camx + G.W / G.S + 60, vy1 = G.camy + G.H / G.S + 60;
+  let lastCol = null;
   for (const p of G.pt) {
+    if (p.x < vx0 || p.x > vx1 || p.y < vy0 || p.y > vy1) continue;
     cx.globalAlpha = Math.max(0, p.life / p.max);
-    cx.fillStyle = cx.strokeStyle = p.col;
+    if (p.col !== lastCol) { cx.fillStyle = p.col; lastCol = p.col; }
     if (p.k === "ice") {
+      cx.strokeStyle = p.col;
       cx.save();
       cx.translate(p.x, p.y);
       cx.rotate(p.rot);

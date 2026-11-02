@@ -19,10 +19,9 @@ export const SETTING_SPEC = Object.freeze({
   skillReturnBasic: Object.freeze({ def: true }), // 手機：技能施放後自動切回普通攻擊
 
   /* 畫面與效能 */
-  quality: Object.freeze({ def: "auto", oneOf: ["auto", "low", "medium", "high"] }), // 畫質（自動 = 依幀時間動態調整）
+  quality: Object.freeze({ def: "auto", oneOf: ["auto", "low", "medium", "high"] }), // 畫質（自動 = 維持高畫質，卡頓時由程式面自動調模擬頻率與粒子預算）
   renderScale: Object.freeze({ def: 1, min: 0.5, max: 1 }), // 渲染解析度比例（1 = 原生）
   fpsCap: Object.freeze({ def: 0, oneOf: [0, 30, 60, 90, 120] }), // 繪製幀率上限（0 = 跟隨螢幕）
-  simRate: Object.freeze({ def: 60, oneOf: [30, 60, 120] }), // 模擬頻率（每秒更新次數，與繪製幀率無關）
   interpolation: Object.freeze({ def: true }), // 動態補償：在兩次模擬之間做位置插值
   glowEffects: Object.freeze({ def: true }), // 發光特效（陰影模糊，最吃效能）
   particleDensity: Object.freeze({ def: "auto", oneOf: ["auto", "low", "normal", "high"] }), // 粒子密度

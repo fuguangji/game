@@ -10,7 +10,7 @@ let el = null;
 let lastUpdate = 0;
 
 /** 每個繪製幀呼叫一次；沒開啟時只讀一個設定就返回 */
-export function updatePerfOverlay(stats, now) {
+export function updatePerfOverlay(stats, now, governor = null) {
   if (!settings.get("showFps")) {
     if (el) { el.remove(); el = null; }
     return;
@@ -23,5 +23,5 @@ export function updatePerfOverlay(stats, now) {
   }
   if (now - lastUpdate < 500) return;
   lastUpdate = now;
-  el.textContent = `${stats.fps} FPS · 模擬 ${stats.sps} Hz\n繪製 ${stats.drawMs.toFixed(1)} ms · 模擬 ${stats.stepMs.toFixed(2)} ms\n畫質 ${profile.tierId} · 解析度 ×${profile.scale.toFixed(2)}`;
+  el.textContent = `${stats.fps} FPS · 模擬 ${stats.sps} 步/秒\n繪製 ${stats.drawMs.toFixed(1)} ms · 模擬 ${stats.stepMs.toFixed(2)} ms\n畫質 ${profile.tierId} · 解析度 ×${profile.scale.toFixed(2)}${governor ? `\n自動調頻 ${governor.rate} Hz · 粒子 ${Math.round(governor.particleBudget * 100)}%` : ""}`;
 }

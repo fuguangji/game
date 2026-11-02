@@ -10,8 +10,11 @@ import { startTutorial } from "../game/tutorial.js";
 import { startShopGuide } from "./shop-guide.js";
 import { ALLWEAPON, applyLO } from "../game/weapons.js";
 import { ProfilePage } from "../profile/profile-page.js";
+import { RealtimeClient, toRealtimeUrl } from "../profile/realtime-client.js";
+import { onlineMatch } from "../game/online-match.js";
 import { AAH, setAA } from "./hud.js";
 import { xGo } from "./menu.js";
+import { showOv } from "./render.js";
 
 /** 把雲端存檔安全地套用到本機：以預設值為底，只接受型別相符的欄位，並刷新畫面與出戰配置 */
 export function applyRemoteSave(remoteSave) {
@@ -26,6 +29,14 @@ export function applyRemoteSave(remoteSave) {
 }
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/** 線上對戰的設定（由 main.js 在所有模組載入完成後呼叫一次；放在載入時執行會碰到循環匯入）：用登入帳號的 token 連後端，結算後回到「個人檔案」分頁 */
+export function configureOnline() {
+  onlineMatch.configure({
+    createClient: () => new RealtimeClient({ url: toRealtimeUrl(API_BASE), getToken: () => accountService.getFreshAccessToken() }),
+    backToMenu: () => { showOv(0); xGo("a"); },
+  });
+}
 
 /** 個人檔案頁面需要的遊戲資料與動作（頁面本身不直接碰遊戲內部） */
 const profileBridge = {
@@ -47,6 +58,7 @@ const profileBridge = {
   replayTutorial: () => startTutorial(),
   replayShopGuide: () => startShopGuide(),
   goTo: (tab) => xGo(tab),
+  get online() { return onlineMatch; }, // 線上對戰控制器（連線、開始、結算都在這裡；頁面只是它的檢視）
   getPlayerPosition: () => (G.pl ? { x: Math.max(0, Math.min(1, G.pl.x / MW)), y: Math.max(0, Math.min(1, G.pl.y / MW)) } : null),
 };
 

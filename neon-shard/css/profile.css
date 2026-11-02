@@ -29,3 +29,6 @@
   .ns-appearance-body{grid-template-columns:minmax(0,360px) minmax(0,1fr)}
 }
 @media(max-width:420px){.ns-tab{padding:8px 12px}.ns-avatar{width:88px;height:88px}}
+
+.ns-online-roster{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.ns-online-roster li{padding:3px 10px;border:1px solid #8fe3cf44;border-radius:999px;font-size:.85rem}

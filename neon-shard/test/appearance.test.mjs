@@ -102,18 +102,19 @@ test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重�
 
 test("SettingsStore：列舉與數值範圍驗證（畫質、幀率、解析度、操作配置）", () => {
   const st = memStorage(); const store = new SettingsStore(new SaveStore(st));
-  store.set("quality", "low"); store.set("fpsCap", 30); store.set("renderScale", 0.75); store.set("controlMode", "mobile"); store.set("simRate", 120);
+  store.set("quality", "low"); store.set("fpsCap", 30); store.set("renderScale", 0.75); store.set("controlMode", "mobile");
+  assert.throws(() => store.set("simRate", 120), RangeError, "模擬頻率已改為自動調整，不再是設定項");
   assert.equal(store.get("quality"), "low");
   assert.throws(() => store.set("quality", "ultra"), RangeError, "不在列舉裡");
   assert.throws(() => store.set("fpsCap", 45), RangeError, "幀率只接受固定檔位");
   assert.throws(() => store.set("renderScale", 0.1), RangeError, "解析度比例有下限");
   assert.throws(() => store.set("renderScale", NaN), RangeError, "NaN 不是合法數值");
   assert.throws(() => store.set("controlMode", "tablet"), RangeError);
-  assert.throws(() => store.set("simRate", "60"), TypeError, "型別不符");
+  assert.throws(() => store.set("fpsCap", "30"), TypeError, "型別不符");
   const bad = memStorage(); bad.setItem(KEYS.settings, JSON.stringify({ quality: "ultra", fpsCap: 999, renderScale: 5, simRate: 120 }));
   const loaded = new SettingsStore(new SaveStore(bad));
   assert.equal(loaded.get("quality"), "auto", "存檔裡不合法的列舉退回預設");
   assert.equal(loaded.get("fpsCap"), 0);
   assert.equal(loaded.get("renderScale"), 1, "超出範圍退回預設");
-  assert.equal(loaded.get("simRate"), 120, "合法的值保留");
+  assert.equal(loaded.all().simRate, undefined, "舊存檔裡的 simRate 被忽略");
 });

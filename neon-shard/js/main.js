@@ -6,7 +6,11 @@ import { resize } from "./core/viewport.js";
 import { GameLoop } from "./core/game-loop.js";
 import { apply as applyInterp, restore as restoreInterp, snapshot } from "./core/interpolation.js";
 import { platform } from "./core/platform.js";
-import { initRenderProfile, onScaleChange, reportFrame } from "./core/render-profile.js";
+import { degradeAutoTier, initRenderProfile, onScaleChange, setParticleBudget } from "./core/render-profile.js";
+import { onlineMatch } from "./game/online-match.js";
+import { configureOnline } from "./ui/account.js";
+import { mountOnlineHud } from "./ui/online-hud.js";
+import { SimGovernor } from "./core/sim-governor.js";
 import { settings } from "./core/settings-store.js";
 import { updatePerfOverlay } from "./ui/perf-overlay.js";
 import { cx } from "./core/viewport.js";
@@ -86,11 +90,29 @@ G.last = performance.now();
 
 /**
  * 主迴圈：模擬與繪製分離（見 core/game-loop.js）。
- *   - 模擬：固定步長（設定「模擬頻率」，預設 60 Hz），在戰鬥／補給／結算時才前進。
+ *   - 模擬：固定步長，頻率由 SimGovernor 依負載自動調整（上限 60 Hz），沒有手動設定。
  *   - 繪製：每個 requestAnimationFrame 一次，可限制幀率；戰鬥中以「動態補償」在兩次模擬之間插值。
+ *   - 卡頓時：先降模擬頻率、減粒子預算（程式面）；都用到底還是慢，才最後手段降一檔畫質。
  */
+export const governor = new SimGovernor({
+  onChange(g) {
+    setParticleBudget(g.particleBudget);
+    if (g.needsLastResort) { degradeAutoTier(); g.acknowledgeLastResort(); }
+  },
+});
+
+/* 休眠時才需要「喚醒用」的輸入監聽；醒著時整組拆掉（醒著的時候每次按鍵、觸控都不用多跑一個回呼） */
+let wakeAbort = null;
+const armWake = () => {
+  if (wakeAbort) return;
+  wakeAbort = new AbortController();
+  const opts = { passive: true, capture: true, signal: wakeAbort.signal };
+  for (const t of ["pointerdown", "keydown", "visibilitychange"]) addEventListener(t, () => loop.wake(), opts);
+};
+const disarmWake = () => { wakeAbort?.abort(); wakeAbort = null; };
+
 export const loop = new GameLoop({
-  simRate: () => settings.get("simRate"),
+  simRate: () => governor.rate,
   fpsCap: () => settings.get("fpsCap"),
   simulating: () => fsm.state !== "menu" && fsm.state !== "pause",
   idleFps: () => 0, // 選單、暫停：畫面是靜止的（或被不透明介面蓋住），只在進入時畫最後一幀，之後休眠
@@ -114,15 +136,23 @@ export const loop = new GameLoop({
       restoreInterp(); // 不論繪製有沒有出錯，都要把真實座標換回去
     }
   },
-  onFrame(frameMs, drawMs, targetMs) {
-    reportFrame(frameMs, drawMs, targetMs);
-    updatePerfOverlay(loop.stats, performance.now());
+  onFrame(frameMs, drawMs, targetMs, stepMs, simulating) {
+    governor.report(frameMs, drawMs, stepMs, targetMs, simulating);
+    if (drawMs > 0) updatePerfOverlay(loop.stats, performance.now(), governor);
   },
+  onSleepChange(sleeping) { if (sleeping) armWake(); else disarmWake(); },
 });
 loop.start();
-// 選單時主迴圈會休眠（不排 requestAnimationFrame）；視窗縮放、狀態切換、任何輸入都會喚醒它
-addEventListener("resize", () => loop.invalidate());
+// 選單時主迴圈會休眠（不排 requestAnimationFrame）；狀態切換會喚醒它（視窗縮放由 viewport.js 統一處理）
 for (const s of Object.values(GameStates)) fsm.onEnter(s, () => loop.wake());
-for (const t of ["pointerdown", "keydown", "visibilitychange"]) addEventListener(t, () => loop.wake(), { passive: true, capture: true });
+// 視窗縮放：只有這一個監聽（原本 viewport 與這裡各一個）；同一幀內連續觸發只處理一次
+let resizeQueued = false;
+addEventListener("resize", () => {
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => { resizeQueued = false; resize(); loop.invalidate(); });
+});
 
 tutorial.init();
+configureOnline();
+mountOnlineHud(onlineMatch); // 線上對戰的資訊條、結算面板與暫停鍵處理

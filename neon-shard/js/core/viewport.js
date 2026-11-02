@@ -32,6 +32,6 @@ TAU = Math.PI * 2;
 G.HU = 1;
 G.safeT = 0;
 
-addEventListener("resize", resize);
+// 視窗縮放的監聽統一放在 main.js（合併同一幀內的多次觸發，並喚醒休眠中的主迴圈）
 }
 

@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// 瀏覽器端完全不能直接讀寫 Firestore。
+// 帳號資料、暱稱保留、金鑰資訊與加密存檔都只能經由 Render 上的 neon-shard-api（Firebase Admin SDK）存取；
+// Admin SDK 會繞過這份規則，所以這裡全部拒絕即可。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

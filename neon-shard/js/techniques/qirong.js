@@ -43,18 +43,18 @@ registerTechnique({
   domains: [
     {
       name: "爐心熔毀", color: "#ff6a3a", energyFrac: 0.8, hpFrac: 0.99,
-      desc: "100 秒：場內敵人靈魂熔斷（Boss 熔斷）並承受極高的術式反噬（每秒約 20% 最大生命，Boss 約 10%）。代價：99% 最大生命（血量必須高於 99% 才能施放）與 80% 能量",
+      desc: "6 秒：場內敵人靈魂熔斷（Boss 熔斷）並承受極高的術式反噬（每秒約 20% 最大生命，Boss 約 4%）。代價：99% 最大生命（血量必須高於 99% 才能施放）與 80% 能量",
       cast({ p }) {
         let acc = 0;
         domain({
-          x: p.x, y: p.y, r: 420, t: 100, color: "#ff6a3a", noRegen: true,
+          x: p.x, y: p.y, r: 420, t: 6, color: "#ff6a3a", noRegen: true,
           update(dt, f) {
             acc += dt;
             const tick = acc >= 0.5;
             if (tick) acc -= 0.5;
             for (const e of enemiesIn(f.x, f.y, f.r)) {
               soulSeal(e, 1);
-              if (tick) hitEnemy(e, e.mhp * (isBossType(e.t) ? 0.05 : 0.1), { from: f, ult: 0.02 });
+              if (tick) hitEnemy(e, e.mhp * (isBossType(e.t) ? 0.02 : 0.1), { from: f, ult: 0.02 });
             }
           },
         });

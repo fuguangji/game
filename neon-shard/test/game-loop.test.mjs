@@ -120,3 +120,24 @@ test("休眠：閒置且畫面最新時不再排 requestAnimationFrame；wake() 
   loop.invalidate(); assert.equal(queue.length, 1, "invalidate() 會醒來並補畫");
   st.sim = true; pump(2); assert.equal(queue.length, 1, "回到戰鬥持續排程");
 });
+
+test("休眠通知：只在休眠／醒來時各通知一次（用來掛上、拆掉「喚醒用」輸入監聽）", () => {
+  const clock = { t: 0 }, st = { sim: true }, queue = [], events = [];
+  const loop = new GameLoop({ simRate: () => 60, fpsCap: () => 0, simulating: () => st.sim, idleFps: () => 0, beforeStep() {}, step() {}, draw() {}, now: () => clock.t, schedule: (fn) => queue.push(fn), onSleepChange: (s) => events.push(s) });
+  const pump = (n) => { for (let i = 0; i < n && queue.length; i++) { clock.t += 16.7; queue.shift()(clock.t); } };
+  loop.start(); pump(5);
+  assert.deepEqual(events, [], "戰鬥中沒有通知");
+  st.sim = false; pump(3);
+  assert.deepEqual(events, [true], "進入休眠通知一次");
+  loop.wake(); loop.wake();
+  assert.deepEqual(events, [true, false], "醒來通知一次（重複 wake 不重複通知）");
+});
+
+test("回報模擬耗時：被幀率上限跳過繪製的幀也會回報給調頻控制器", () => {
+  const clock = { t: 0 }, queue = [], frames = [];
+  const loop = new GameLoop({ simRate: () => 60, fpsCap: () => 30, simulating: () => true, idleFps: () => 0, beforeStep() {}, step() { clock.t += 3; }, draw() {}, now: () => clock.t, schedule: (fn) => queue.push(fn), onFrame: (frameMs, drawMs, target, stepMs, sim) => frames.push({ drawMs, stepMs, sim }) });
+  const pump = (n) => { for (let i = 0; i < n && queue.length; i++) { clock.t += 16.7; queue.shift()(clock.t); } };
+  loop.start(); pump(10);
+  assert.ok(frames.length >= 9, `每個有模擬的幀都回報：${frames.length}`);
+  assert.ok(frames.some((f) => f.drawMs === 0 && f.stepMs > 0), "跳過繪製的幀 drawMs = 0 但 stepMs 有值");
+});

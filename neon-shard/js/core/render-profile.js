@@ -6,10 +6,9 @@
  *   - 發光（ctx.shadowBlur）是 Canvas 2D 最貴的效果之一：這裡把 shadowBlur 的寫入統一乘上 glow 倍率，
  *     不必改動六十幾處繪圖程式；倍率為 0 時瀏覽器完全不會計算陰影。
  *   - 解析度比例乘進 G.DPR，畫布像素變少但 CSS 大小不變。
- *   - 粒子密度由 burst() 乘上 profile.particles。
+ *   - 粒子密度由 burst() 乘上 profile.particles（含自動粒子預算）。
  */
 import { G } from "./game-state.js";
-import { platform } from "./platform.js";
 import { settings } from "./settings-store.js";
 
 /** 畫質檔位（由低到高） */
@@ -44,7 +43,7 @@ export function refreshProfile() {
   profile.tier = ti;
   profile.tierId = t.id;
   profile.glow = settings.get("glowEffects") ? t.glow : 0;
-  profile.particles = density === "auto" ? t.particles : PARTICLE_DENSITY[density];
+  profile.particles = (density === "auto" ? t.particles : PARTICLE_DENSITY[density]) * particleBudget;
   profile.shake = settings.get("screenShake") ? t.shake : 0;
   profile.scale = Math.max(0.4, Math.min(1, settings.get("renderScale") * t.scale));
   profile.aura = t.aura;
@@ -71,50 +70,39 @@ export function installGlowControl(ctx) {
   return true;
 }
 
-/* ───────────── 自動畫質 ───────────── */
-const gov = { bestFrame: 1000, slow: 0, fast: 0, cooldown: 0, frameAvg: 16.7, costAvg: 4, blockedUp: 0 };
-
-/**
- * 每個繪製幀回報一次：frameMs = 與上一幀的間隔，costMs = 這一幀繪製花的時間。
- * 只在 quality = auto 時動作。「持續偏慢」才降、「持續有餘裕」才升，且升降之間有冷卻，避免來回震盪。
+/* ───────────── 自動調整 ─────────────
+ * 自動畫質「不再」為了效能降低畫質：卡頓時由 SimGovernor（core/sim-governor.js）調整模擬頻率與粒子預算，
+ * 畫面品質（發光、解析度、光環）維持在「高」。只有當程式面的手段都用到底、仍然很吃力時，才一次降一檔
+ * （degradeAutoTier，由主程式在收到 governor 的「最後手段」通知時呼叫）。
  */
-export function reportFrame(frameMs, costMs, targetMs) {
-  if (frameMs > 250) return; // 切分頁、暫停之類的長空檔，不是效能問題
-  const k = 1 - Math.exp(-frameMs / 600); // 以時間（約 0.6 秒）為單位的移動平均，慢的時候也能很快收斂
-  gov.frameAvg += (frameMs - gov.frameAvg) * k;
-  gov.costAvg += (costMs - gov.costAvg) * k;
-  gov.bestFrame = Math.min(gov.bestFrame * 1.0005, Math.max(4, frameMs));
-  if (settings.get("quality") !== "auto") return;
-  const dt = frameMs / 1000;
-  gov.cooldown = Math.max(0, gov.cooldown - dt);
-  gov.blockedUp = Math.max(0, gov.blockedUp - dt);
-  // 預算 = 目標幀時間，但高更新率螢幕（144 Hz 等）要用它的實際幀時間；一直很慢的裝置 bestFrame 也很大，所以取較小者，才抓得到「一直都慢」
-  const budget = Math.min(targetMs, Math.max(gov.bestFrame, 6.9));
-  const struggling = gov.frameAvg > budget * 1.3 || gov.costAvg > budget * 0.85;
-  const comfy = gov.frameAvg < budget * 1.12 && gov.costAvg < budget * 0.4;
-  gov.slow = struggling ? gov.slow + dt : Math.max(0, gov.slow - dt * 2);
-  gov.fast = comfy ? gov.fast + dt : 0;
-  if (gov.slow > 1.5 && gov.cooldown === 0 && autoTier > 0) {
-    const severe = gov.frameAvg > budget * 3; // 慘到 3 倍以上：不必等，連降
-    autoTier--; gov.slow = 0; gov.cooldown = severe ? 1 : 4; gov.blockedUp = 30; // 剛因為太慢降下來：30 秒內不要再升
-    refreshProfile();
-  } else if (gov.fast > 10 && gov.cooldown === 0 && gov.blockedUp === 0 && autoTier < TIERS.length - 1) {
-    autoTier++; gov.fast = 0; gov.cooldown = 10;
-    refreshProfile();
-  }
+
+/** 粒子預算（0~1），由 SimGovernor 設定；乘進 profile.particles */
+let particleBudget = 1;
+
+export function setParticleBudget(b) {
+  const next = Math.max(0.2, Math.min(1, b));
+  if (next === particleBudget) return;
+  particleBudget = next;
+  refreshProfile();
 }
 
-/** 自動檔位的起點：手機從「中」開始，電腦從「高」開始 */
+/** 最後手段：自動畫質下降一檔（手動指定畫質時不動作）。回傳是否真的降了 */
+export function degradeAutoTier() {
+  if (settings.get("quality") !== "auto" || autoTier <= 0) return false;
+  autoTier--;
+  refreshProfile();
+  return true;
+}
+
+/** 自動檔位的起點：手機、電腦都從「高」開始（畫質優先；吃力時先由 SimGovernor 處理） */
 export function initRenderProfile(ctx) {
-  autoTier = platform.isMobile ? 1 : 2;
+  autoTier = TIERS.length - 1;
   refreshProfile();
   if (ctx) installGlowControl(ctx);
   settings.addEventListener("change", (e) => {
-    const n = e.detail.name;
-    if (n === "quality" && settings.get("quality") === "auto") autoTier = platform.isMobile ? 1 : 2;
+    if (e.detail.name === "quality" || e.detail.name === null) autoTier = TIERS.length - 1;
     refreshProfile();
   });
-  platform.onChange(() => { if (settings.get("quality") === "auto") { autoTier = platform.isMobile ? 1 : 2; refreshProfile(); } });
 }
 
 /** 測試用：讀目前自動檔位 */

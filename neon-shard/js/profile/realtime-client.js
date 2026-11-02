@@ -15,7 +15,13 @@ export const RealtimeStates = Object.freeze({
 
 const ROOM_CODE = /^[A-Za-z0-9]{4,8}$/;
 const MODES = new Set(["arena", "boss"]);
-const KNOWN = new Set(["authenticated", "error", "room", "combat", "move"]);
+const KNOWN = new Set(["authenticated", "error", "room", "combat", "move", "started", "shot", "eliminated", "end"]);
+
+/** 玩法：協定名稱 → 顯示名稱。arena = 競爭（玩家對戰），boss = 合作（共享 Boss 血量） */
+export const ONLINE_MODES = Object.freeze({
+  arena: Object.freeze({ id: "arena", label: "競爭模式", short: "對戰", help: "玩家互相對戰，也能打場上的弱敵人得分；血量由伺服器決定，淘汰到剩最後一人（或時間到）分勝負。", minPlayers: 2 }),
+  boss: Object.freeze({ id: "boss", label: "合作模式", short: "合作", help: "大家一起打同一隻 Boss，共用一條血量；各人的畫面各自模擬 Boss，血量與倒下的人由伺服器同步。", minPlayers: 1 }),
+});
 
 /** https://x → wss://x/api/realtime（http → ws，只用於本機開發） */
 export function toRealtimeUrl(apiBase) {
@@ -32,6 +38,7 @@ export class RealtimeClient extends EventTarget {
   #state = RealtimeStates.IDLE;
   #pendingJoin = null;
   #lastMoveAt = 0;
+  #playerId = null;
 
   /**
    * @param {{url:string, getToken:() => Promise<string|null>, WebSocketImpl?:typeof WebSocket, minMoveIntervalMs?:number, now?:() => number}} o
@@ -47,6 +54,8 @@ export class RealtimeClient extends EventTarget {
 
   get state() { return this.#state; }
   get inRoom() { return this.#state === RealtimeStates.IN_ROOM; }
+  /** 伺服器確認身分後的玩家 id（Firebase UID） */
+  get playerId() { return this.#playerId; }
 
   #setState(state, detail = {}) {
     this.#state = state;
@@ -79,6 +88,7 @@ export class RealtimeClient extends EventTarget {
     try { msg = JSON.parse(String(raw)); } catch { return; }
     if (!msg || typeof msg.type !== "string" || !KNOWN.has(msg.type)) return;
     if (msg.type === "authenticated") {
+      this.#playerId = typeof msg.playerId === "string" ? msg.playerId : null;
       this.#setState(RealtimeStates.JOINING);
       ws.send(JSON.stringify({ type: "join", ...this.#pendingJoin }));
     } else if (msg.type === "error") {
@@ -98,22 +108,44 @@ export class RealtimeClient extends EventTarget {
   }
 
   /** 位置同步（座標為 0~1 的畫面比例）；太頻繁的呼叫會被忽略 */
-  move(x, y) {
+  move(x, y, hp) {
     if (!this.inRoom || !Number.isFinite(x) || !Number.isFinite(y)) return false;
     const t = this.#now();
     if (t - this.#lastMoveAt < this.#minMoveMs) return false;
     this.#lastMoveAt = t;
-    return this.#send({ type: "move", x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) });
+    const msg = { type: "move", x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+    if (Number.isFinite(hp)) msg.hp = Math.max(0, Math.min(1, hp)); // 合作模式：自己的血量比例（只用於隊友血條）
+    return this.#send(msg);
   }
 
+  /** 舊版攻擊（只在大廳可用） */
   attack() {
     return this.inRoom && this.#send({ type: "attack" });
   }
+
+  /** 房主開始對戰 */
+  start() { return this.inRoom && this.#send({ type: "start" }); }
+
+  /** 房主在結算後回到大廳 */
+  reset() { return this.inRoom && this.#send({ type: "reset" }); }
+
+  /** 彈道（只給其他人看的視覺效果；座標與速度皆為 0~1 比例） */
+  shots(list) { return this.inRoom && list.length > 0 && this.#send({ type: "shot", shots: list.slice(0, 6) }); }
+
+  /** 競爭模式：回報打中了某位玩家或弱敵人 */
+  hit(target, dmg) { return this.inRoom && Number.isFinite(dmg) && dmg > 0 && this.#send({ type: "hit", target: String(target), dmg }); }
+
+  /** 合作模式：回報對 Boss 造成的傷害（Boss 最大血量的千分比） */
+  bossDamage(amount) { return this.inRoom && Number.isFinite(amount) && amount > 0 && this.#send({ type: "bossDamage", amount }); }
+
+  /** 合作模式：自己倒下了 */
+  died() { return this.inRoom && this.#send({ type: "died" }); }
 
   close() {
     const ws = this.#socket;
     this.#socket = null; // 先清掉，舊連線之後的事件都會被忽略
     this.#pendingJoin = null;
+    this.#playerId = null;
     if (ws) { try { ws.close(1000, "client closing"); } catch { /* ignore */ } }
     if (this.#state !== RealtimeStates.IDLE && this.#state !== RealtimeStates.CLOSED) this.#setState(RealtimeStates.CLOSED, { code: 1000 });
   }

@@ -6,27 +6,37 @@ import { ray } from "./battle.js";
 
 let D4, D8, fdW, wideC; // 初始化在 init()
 // 廣度優先搜尋，產生「到玩家的步數」路徑場（w=1 時要求寬通道）
+// 佇列用事先配置好的 Int32Array（原本每次都 new 一個會長大的陣列，並且每格都解構 [dx, dy]）；結果與原版完全相同
+let bfsQueue = null;
 export function bfs(F, w) {
   F.fill(-1);
-  const s0 = Math.floor(G.pl.x / T) + Math.floor(G.pl.y / T) * N,
-    q = [s0];
+  if (!bfsQueue || bfsQueue.length < N * N) bfsQueue = new Int32Array(N * N);
+  const q = bfsQueue,
+    grid = G.grid,
+    s0 = Math.floor(G.pl.x / T) + Math.floor(G.pl.y / T) * N;
+  let head = 0,
+    tail = 0;
+  q[tail++] = s0;
   F[s0] = 0;
-  for (let h = 0; h < q.length; h++) {
-    const c = q[h],
+  while (head < tail) {
+    const c = q[head++],
       i = c % N,
-      j = (c / N) | 0;
-    for (const [dx, dy] of D4) {
-      const x = i + dx,
-        y = j + dy;
+      j = (c / N) | 0,
+      next = F[c] + 1;
+    for (let k = 0; k < 4; k++) {
+      const x = i + BFS_DX[k],
+        y = j + BFS_DY[k];
       if (x < 0 || y < 0 || x >= N || y >= N) continue;
       const n = x + y * N;
-      if (F[n] >= 0 || G.grid[n] !== 0) continue;
+      if (F[n] >= 0 || grid[n] !== 0) continue;
       if (w && !wideC(x, y)) continue;
-      F[n] = F[c] + 1;
-      q.push(n);
+      F[n] = next;
+      q[tail++] = n;
     }
   }
 }
+const BFS_DX = [1, -1, 0, 0],
+  BFS_DY = [0, 0, 1, -1];
 /** 路徑場計算服務（Worker 非同步，失敗時退回主執行緒） */
 let flowService; // 初始化在 init()
 // 更新路徑場
@@ -41,22 +51,22 @@ export function flow() {
     },
   );
 }
+// 視線：從敵人 e 到 (x, y) 之間沒有牆（敵人身體寬度的左中右三條射線都要通）。提到函式外，避免每次呼叫 nav 都建立一個新的函式物件
+function vis(e, x, y) {
+  const L = Math.hypot(x - e.x, y - e.y);
+  if (L < 4) return true;
+  const b = Math.atan2(y - e.y, x - e.x),
+    px = -Math.sin(b) * e.r * 0.8,
+    py = Math.cos(b) * e.r * 0.8;
+  return (
+    ray(e.x, e.y, b, L) >= L - 4 &&
+    ray(e.x + px, e.y + py, b, L) >= L - 4 &&
+    ray(e.x - px, e.y - py, b, L) >= L - 4
+  );
+}
 // 敵人尋路：有視線直接追，否則沿路徑場下降方向走
 export function nav(e, a, d) {
-  // 功能：處理「vis」相關的遊戲邏輯；具體輸入、狀態變更與副作用以函式內容為準。
-  const vis = (x, y) => {
-    const L = Math.hypot(x - e.x, y - e.y);
-    if (L < 4) return true;
-    const b = Math.atan2(y - e.y, x - e.x),
-      px = -Math.sin(b) * e.r * 0.8,
-      py = Math.cos(b) * e.r * 0.8;
-    return (
-      ray(e.x, e.y, b, L) >= L - 4 &&
-      ray(e.x + px, e.y + py, b, L) >= L - 4 &&
-      ray(e.x - px, e.y - py, b, L) >= L - 4
-    );
-  };
-  if (vis(G.pl.x, G.pl.y)) return a;
+  if (vis(e, G.pl.x, G.pl.y)) return a;
   let F = e.r >= 15 ? fdW : G.fd,
     ci = Math.floor(e.x / T),
     cj = Math.floor(e.y / T);
@@ -95,7 +105,7 @@ export function nav(e, a, d) {
       fx = wx;
       fy = wy;
     }
-    if (vis(wx, wy)) {
+    if (vis(e, wx, wy)) {
       tx = wx;
       ty = wy;
     } else if (tx !== null) break;

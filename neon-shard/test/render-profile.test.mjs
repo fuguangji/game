@@ -9,8 +9,8 @@ const rp = await import(path.join(root, "core/render-profile.js"));
 const { settings } = await import(path.join(root, "core/settings-store.js"));
 const { burst } = await import(path.join(root, "game/world-helpers.js"));
 const { G } = await import(path.join(root, "core/game-state.js"));
+const world = await import(path.join(root, "game/world-helpers.js"));
 
-const feed = (sec, frameMs, costMs, target = 1000 / 60) => { for (let t = 0; t < sec * 1000; t += frameMs) rp.reportFrame(frameMs, costMs, target); };
 
 test("畫質檔位：手動選擇決定發光、粒子、解析度、震動", () => {
   settings.reset();
@@ -31,27 +31,47 @@ test("粒子密度：burst() 依畫質縮放粒子數量", () => {
   G.pt.length = 0; settings.reset();
 });
 
-test("自動畫質：持續偏慢會降檔（嚴重時連降），之後不會馬上升回去", () => {
+test("自動畫質：預設維持高畫質（發光、解析度、光環不因效能自動降低）", () => {
   settings.reset(); rp._setAutoTierForTest(2);
-  feed(2, 40, 30); // 25 fps、每幀繪製 30ms
-  assert.ok(rp.autoTierIndex() < 2, "偏慢 → 降檔");
-  feed(8, 150, 120); // 慘：約 7 fps
-  assert.equal(rp.autoTierIndex(), 0, "嚴重偏慢 → 連降到最低");
-  feed(15, 16.7, 2); // 變順了，但 30 秒內不升
-  assert.equal(rp.autoTierIndex(), 0, "剛降過檔，30 秒內不升回去（避免來回震盪）");
-  feed(40, 16.7, 2);
-  assert.ok(rp.autoTierIndex() > 0, "持續順暢夠久 → 升檔");
+  assert.deepEqual([rp.profile.tierId, rp.profile.glow, rp.profile.scale, rp.profile.aura], ["high", 1, 1, true]);
 });
 
-test("自動畫質：手動指定畫質時不會被自動調整", () => {
+test("粒子預算：只縮小粒子數量與上限，發光與解析度不變", () => {
+  settings.reset(); rp._setAutoTierForTest(2);
+  rp.setParticleBudget(0.5);
+  assert.equal(rp.profile.particles, 0.5);
+  assert.deepEqual([rp.profile.glow, rp.profile.scale, rp.profile.aura], [1, 1, true]);
+  G.pt.length = 0; burst(0, 0, "#fff", 40, 100, 2, 0.5);
+  assert.equal(G.pt.length, 20, "預算 50% → 粒子數量減半");
+  G.pt.length = 0;
+  rp.setParticleBudget(1);
+  assert.equal(rp.profile.particles, 1);
+});
+
+test("最後手段：自動畫質才會降檔，手動指定畫質不動", () => {
+  settings.reset(); rp._setAutoTierForTest(2);
+  assert.equal(rp.degradeAutoTier(), true);
+  assert.equal(rp.profile.tierId, "medium");
+  rp.degradeAutoTier(); assert.equal(rp.degradeAutoTier(), false, "已在最低檔");
   settings.set("quality", "high");
-  feed(10, 150, 120);
+  assert.equal(rp.degradeAutoTier(), false);
   assert.equal(rp.profile.tierId, "high");
   settings.reset();
+  assert.equal(rp.autoTierIndex(), 2, "重設設定後自動檔位回到高");
 });
 
-test("切分頁造成的長空檔（> 250ms）不算效能問題", () => {
+test("粒子物件池：死掉的粒子被重複使用，且欄位（含插值座標）全部重設", () => {
   settings.reset(); rp._setAutoTierForTest(2);
-  for (let i = 0; i < 50; i++) rp.reportFrame(3000, 5, 16.7);
-  assert.equal(rp.autoTierIndex(), 2);
+  const { releaseParticle, compactInPlace } = world;
+  G.pt.length = 0;
+  const dirty = { x: 9, y: 9, vx: 9, vy: 9, life: 9, max: 9, col: "#000", sz: 9, age: 5, k: "ice", f: 1, rot: 3, vr: 2, seed: 7, _ix: 123, _iy: 456 };
+  releaseParticle(dirty);
+  burst(1, 2, "#abc", 1, 100, 2, 0.5);
+  assert.equal(G.pt.length, 1);
+  assert.equal(G.pt[0], dirty, "從池子取出同一個物件");
+  assert.deepEqual([dirty.x, dirty.y, dirty.age, dirty.k, dirty.f, dirty._ix, dirty._iy], [1, 2, 0, undefined, undefined, undefined, undefined]);
+  const arr = [1, 2, 3, 4, 5, 6];
+  const same = compactInPlace(arr, (v) => v % 2 === 0);
+  assert.equal(same, arr); assert.deepEqual(arr, [2, 4, 6]);
+  G.pt.length = 0;
 });

@@ -8,18 +8,20 @@ const GUEST = "訪客";
 
 export class AccountService extends EventTarget {
   #api;
+  #auth;
   #sessions;
   #crypto;
   #keys = null;
   #profile = null;
 
   /**
-   * @param {{api: import('./api-client.js').ApiClient, sessions: import('./session-store.js').SessionStore,
+   * @param {{api: import('./api-client.js').ApiClient, auth: import('./firebase-auth.js').FirebaseAuthClient, sessions: import('./session-store.js').SessionStore,
    *          crypto: {createAccountKeys:Function, unlockAccountKeys:Function, encryptSave:Function, decryptSave:Function, signSaveRequest:Function}}} o
    */
-  constructor({ api, sessions, crypto }) {
+  constructor({ api, auth, sessions, crypto }) {
     super();
     this.#api = api;
+    this.#auth = auth;
     this.#sessions = sessions;
     this.#crypto = crypto;
     api.onSessionExpired = () => this.#reset("登入已過期，請重新登入。");
@@ -70,28 +72,64 @@ export class AccountService extends EventTarget {
     }
   }
 
-  /** @returns {Promise<{needsEmailConfirmation: boolean}>} */
+  /** 喚醒休眠中的免費主機（Render 閒置後第一個請求要 30～60 秒）。不需要登入；失敗也不要緊 */
+  #lastWarm = 0;
+  warmUp() {
+    if (Date.now() - this.#lastWarm < 300_000) return;
+    this.#lastWarm = Date.now();
+    this.#api.request("/api/health", { auth: false }).catch(() => {});
+  }
+
+  /**
+   * 取得一個「至少還有 60 秒有效」的 ID token（給 WebSocket 等不走 ApiClient 的連線使用）。
+   * 快過期就先更新；更新失敗代表登入已過期，回傳 null。
+   */
+  async getFreshAccessToken() {
+    const s = this.#sessions.current;
+    if (!s) return null;
+    if (!s.expiresAt || s.expiresAt - Date.now() < 60_000) {
+      if (!(await this.#api.refresh())) return null;
+    }
+    return this.#sessions.current?.accessToken ?? null;
+  }
+
+  /** 登入後讓後端建立（或讀取）這個帳號的資料，再取得個人檔案 */
+  async #bootstrapProfile(displayName) {
+    await this.#api.request("/api/identity/me"); // 後端第一次看到這個 UID 時才會建立 Firestore 資料與暱稱
+    if (displayName) await this.#api.request("/api/profile", { method: "PUT", body: { displayName } });
+    return this.#loadProfile();
+  }
+
+  /** @returns {Promise<{needsEmailConfirmation: boolean}>} Firebase 版不需要信箱確認，固定回傳 false（保留欄位讓畫面不用改） */
   async signUp({ email, password, displayName }) {
-    const result = await this.#api.request("/api/auth/signup", { method: "POST", auth: false, body: { email, password, displayName } });
-    if (!result.session) return { needsEmailConfirmation: true };
-    this.#sessions.set({ ...result.session, userId: result.user.id });
-    await this.#unlockOrCreateKeys(result.user.id, password);
-    await this.#loadProfile();
+    const session = await this.#auth.signUp(email, password);
+    this.#sessions.set(session);
+    try {
+      await this.#bootstrapProfile(displayName);
+      await this.#unlockOrCreateKeys(session.userId, password);
+    } catch (error) {
+      // 暱稱被占用等失敗：Firebase 帳號已建立，保留登入狀態讓玩家可以直接改暱稱；金鑰尚未設定則下次登入會補上
+      this.#emit();
+      throw error;
+    }
     this.#emit();
     return { needsEmailConfirmation: false };
   }
 
   async logIn({ email, password }) {
-    const result = await this.#api.request("/api/auth/login", { method: "POST", auth: false, body: { email, password } });
-    this.#sessions.set({ ...result.session, userId: result.user.id });
-    await this.#unlockOrCreateKeys(result.user.id, password);
-    await this.#loadProfile();
+    const session = await this.#auth.signIn(email, password);
+    this.#sessions.set(session);
+    await this.#bootstrapProfile(null);
+    await this.#unlockOrCreateKeys(session.userId, password);
     this.#emit();
   }
 
   /** 已有 session 但金鑰未解鎖（例如重新整理頁面後）時，用密碼解鎖 */
   async unlock(password) {
-    const profile = await this.#loadProfile();
+    const profile = await this.#loadProfile().catch(async (error) => {
+      if (error?.code !== "PROFILE_NOT_FOUND") throw error;
+      return this.#bootstrapProfile(null); // 帳號剛在 Firebase 建立、後端還沒有資料
+    });
     const record = await this.#api.request("/api/keys");
     if (!record.registered) throw new ApiError("帳號尚未完成金鑰設定；請登出後重新登入。", { code: "KEYS_NOT_REGISTERED" });
     this.#keys = await this.#crypto.unlockAccountKeys(profile.userId, password, record);

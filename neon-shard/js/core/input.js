@@ -13,6 +13,7 @@ import { G } from "./game-state.js";
 import { fsm } from "./state-machine.js";
 import { $ } from "./viewport.js";
 import { platform } from "./platform.js";
+import { settings } from "./settings-store.js";
 import { togglePause } from "../game/progress.js";
 import { start } from "../ui/render.js";
 import { disableDesktop, enableDesktop } from "./input-desktop.js";
@@ -58,15 +59,30 @@ export function init() {
     ) start();
   });
 
-  // 自動模式：誰最近被用到，就切到誰（觸控後 1 秒內的滑鼠事件是瀏覽器模擬的，不算）
+  // 自動偵測只在「控制模式 = 自動」時需要，而且只聽「另一種」輸入：
+  //   目前是電腦 → 只聽手指觸控（觸控螢幕筆電）；目前是手機 → 只聽真正的滑鼠移動（外接滑鼠的平板）。
+  // 控制模式固定為電腦或手機後，這組監聽整個拆掉。
+  let detectAbort = null;
   let lastTouchAt = 0;
-  addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "touch") { lastTouchAt = performance.now(); platform.noteInput("touch"); }
-  }, { passive: true, capture: true });
-  addEventListener("pointermove", (e) => {
-    if (e.pointerType === "mouse" && performance.now() - lastTouchAt > 1000) platform.noteInput("mouse");
-  }, { passive: true, capture: true });
+  const syncDetect = () => {
+    detectAbort?.abort();
+    detectAbort = null;
+    if (settings.get("controlMode") !== "auto") return;
+    detectAbort = new AbortController();
+    const opts = { passive: true, capture: true, signal: detectAbort.signal };
+    if (platform.mode === "mobile") {
+      // 觸控後 1 秒內的滑鼠事件是瀏覽器模擬的，不算；偵測到真滑鼠後就會切成電腦並重新掛載
+      addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") lastTouchAt = performance.now(); }, opts);
+      addEventListener("pointermove", (e) => {
+        if (e.pointerType === "mouse" && performance.now() - lastTouchAt > 1000) platform.noteInput("mouse");
+      }, opts);
+    } else {
+      addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") platform.noteInput("touch"); }, opts);
+    }
+  };
+  settings.addEventListener("change", (e) => { if (e.detail.name === "controlMode" || e.detail.name === null) syncDetect(); });
 
-  platform.onChange(useInputFor);
+  platform.onChange((mode) => { useInputFor(mode); syncDetect(); });
   useInputFor(platform.mode);
+  syncDetect();
 }

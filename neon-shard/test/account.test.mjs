@@ -49,9 +49,9 @@ test("escapeHtml：暱稱中的 HTML 會被跳脫", () => {
 test("ApiClient：401 會自動 refresh 並用新 token 重試一次", async () => {
   const sessions = makeSessions(live);
   const calls = [];
-  const api = new ApiClient({ baseUrl: "https://x.test", sessions, fetchImpl: async (url, init) => {
+  const refresher = async () => ({ accessToken: TOKEN("n"), refreshToken: TOKEN("m"), userId: "u1" });
+  const api = new ApiClient({ baseUrl: "https://x.test", sessions, refresher, fetchImpl: async (url, init) => {
     calls.push([url, init.headers.Authorization]);
-    if (url.endsWith("/api/auth/refresh")) return json(200, { user: { id: "u1" }, session: { accessToken: TOKEN("n"), refreshToken: TOKEN("m") } });
     return calls.filter((c) => c[0].endsWith("/api/profile/me")).length === 1 ? json(401, { error: { code: "UNAUTHORIZED", message: "expired" } }) : json(200, { displayName: "Pilot" });
   } });
   assert.deepEqual(await api.request("/api/profile/me"), { displayName: "Pilot" });
@@ -62,7 +62,7 @@ test("ApiClient：401 會自動 refresh 並用新 token 重試一次", async () 
 test("ApiClient：refresh 失敗 → 清除 session、通知上層、丟出 SESSION_EXPIRED", async () => {
   const sessions = makeSessions(live);
   let expired = 0;
-  const api = new ApiClient({ baseUrl: "https://x.test", sessions, fetchImpl: async () => json(401, { error: { code: "X", message: "no" } }) });
+  const api = new ApiClient({ baseUrl: "https://x.test", sessions, refresher: async () => { throw new ApiError("expired", { status: 401 }); }, fetchImpl: async () => json(401, { error: { code: "X", message: "no" } }) });
   api.onSessionExpired = () => expired++;
   await assert.rejects(api.request("/api/keys"), (e) => e instanceof ApiError && e.code === "SESSION_EXPIRED");
   assert.equal(sessions.current, null);
@@ -72,8 +72,8 @@ test("ApiClient：refresh 失敗 → 清除 session、通知上層、丟出 SESS
 test("ApiClient：同時多個 401 只會送出一次 refresh", async () => {
   const sessions = makeSessions(live);
   let refreshes = 0;
-  const api = new ApiClient({ baseUrl: "https://x.test", sessions, fetchImpl: async (url, init) => {
-    if (url.endsWith("/refresh")) { refreshes++; await new Promise((r) => setTimeout(r, 10)); return json(200, { user: { id: "u1" }, session: { accessToken: TOKEN("n"), refreshToken: TOKEN("m") } }); }
+  const refresher = async () => { refreshes++; await new Promise((r) => setTimeout(r, 10)); return { accessToken: TOKEN("n"), refreshToken: TOKEN("m"), userId: "u1" }; };
+  const api = new ApiClient({ baseUrl: "https://x.test", sessions, refresher, fetchImpl: async (url, init) => {
     return init.headers.Authorization === `Bearer ${TOKEN("n")}` ? json(200, { ok: 1 }) : json(401, {});
   } });
   await Promise.all([api.request("/a"), api.request("/b"), api.request("/c")]);
@@ -101,12 +101,14 @@ test("ApiClient：解析伺服器錯誤碼，204 回傳 null", async () => {
 function makeService({ remote = null, failLogout = false } = {}) {
   const sessions = makeSessions();
   const log = [];
+  const names = [];
   let stored = remote;
   const api = {
     onSessionExpired: null,
     request: async (path, { method = "GET", body } = {}) => {
       log.push(`${method} ${path}`);
-      if (path === "/api/auth/login") return { user: { id: "u1" }, session: { accessToken: TOKEN("a"), refreshToken: TOKEN("r") } };
+      if (path === "/api/identity/me") return { uid: "u1", displayName: "Pilot" };
+      if (path === "/api/profile" && method === "PUT") { names.push(body.displayName); return { displayName: body.displayName }; }
       if (path === "/api/keys" && method === "GET") return { registered: true };
       if (path === "/api/profile/me") return { userId: "u1", displayName: "Pilot" };
       if (path === "/api/auth/logout") { if (failLogout) throw new ApiError("down", { code: "NETWORK" }); return null; }
@@ -120,7 +122,9 @@ function makeService({ remote = null, failLogout = false } = {}) {
     encryptSave: async (uid, keys, save) => ({ keyId: "k1", blob: JSON.stringify(save) }),
     decryptSave: async (uid, keys, env) => JSON.parse(env.blob), signSaveRequest: async () => "sig",
   };
-  return { svc: new AccountService({ api, sessions, crypto }), sessions, log, api };
+  const session = () => ({ accessToken: TOKEN("a"), refreshToken: TOKEN("r"), userId: "u1", expiresAt: Date.now() + 3_600_000 });
+  const auth = { signIn: async () => session(), signUp: async () => session() };
+  return { svc: new AccountService({ api, auth, sessions, crypto }), sessions, log, api, names };
 }
 
 test("AccountService：登入 → 取得暱稱並解鎖；未登入時暱稱為「訪客」", async () => {
@@ -170,6 +174,59 @@ test("AccountService：session 過期時重設狀態並通知畫面（修正過�
   assert.match(notice, /過期/);
   assert.equal(svc.unlocked, false);
   assert.equal(svc.displayName, "訪客");
+});
+
+test("AccountService：註冊 → 後端建立資料 → 設定暱稱 → 建立金鑰；後端暱稱衝突時保留登入", async () => {
+  const { svc, log, names } = makeService();
+  assert.deepEqual(await svc.signUp({ email: "a@b.co", password: "password1", displayName: "Nova" }), { needsEmailConfirmation: false });
+  assert.deepEqual(names, ["Nova"]);
+  assert.ok(log.indexOf("GET /api/identity/me") < log.indexOf("PUT /api/profile"), "先讓後端建立帳號資料，才能改暱稱");
+  assert.equal(svc.signedIn && svc.unlocked, true);
+});
+
+test("AccountService.getFreshAccessToken：快過期先更新，沒登入回傳 null", async () => {
+  const sessions = makeSessions({ ...live, expiresAt: Date.now() + 5_000 });
+  let refreshed = 0;
+  const api = new ApiClient({ baseUrl: "https://x.test", sessions, refresher: async () => { refreshed++; return { accessToken: TOKEN("n"), refreshToken: TOKEN("m"), userId: "u1", expiresAt: Date.now() + 3_600_000 }; }, fetchImpl: async () => json(200, {}) });
+  const svc = new AccountService({ api, auth: {}, sessions, crypto: {} });
+  assert.equal(await svc.getFreshAccessToken(), TOKEN("n"));
+  assert.equal(await svc.getFreshAccessToken(), TOKEN("n"));
+  assert.equal(refreshed, 1, "更新後不會每次都重新更新");
+  sessions.clear();
+  assert.equal(await svc.getFreshAccessToken(), null);
+});
+
+test("AccountService.warmUp：5 分鐘內只送一次，失敗不丟錯", async () => {
+  const { svc, log, api } = makeService();
+  const orig = api.request;
+  api.request = async (path, o) => { if (path === "/api/health") { log.push("GET /api/health"); throw new ApiError("down", { code: "NETWORK" }); } return orig(path, o); };
+  svc.warmUp(); svc.warmUp();
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(log.filter((x) => x === "GET /api/health").length, 1);
+});
+
+test("FirebaseAuthClient：Firebase 錯誤碼翻成白話與狀態；沒填金鑰會直接說明", async () => {
+  const { FirebaseAuthClient } = await import("../js/account/firebase-auth.js");
+  const fail = (message) => new FirebaseAuthClient({ apiKey: "test-key-1234567", fetchImpl: async () => json(400, { error: { message } }) });
+  await assert.rejects(fail("EMAIL_EXISTS").signUp("a@b.co", "pw"), (e) => e.status === 409 && e.code === "EMAIL_EXISTS");
+  await assert.rejects(fail("INVALID_LOGIN_CREDENTIALS").signIn("a@b.co", "pw"), (e) => e.status === 401);
+  await assert.rejects(fail("TOO_MANY_ATTEMPTS_TRY_LATER : x").signIn("a@b.co", "pw"), (e) => e.status === 429);
+  await assert.rejects(new FirebaseAuthClient({ apiKey: "REPLACE_ME" }).signIn("a@b.co", "pw"), (e) => e.code === "FIREBASE_NOT_CONFIGURED");
+});
+
+test("FirebaseAuthClient：登入與更新 token 的請求格式、回傳整理成 session", async () => {
+  const { FirebaseAuthClient } = await import("../js/account/firebase-auth.js");
+  const seen = [];
+  const client = new FirebaseAuthClient({ apiKey: "test-key-1234567", now: () => 1_000, fetchImpl: async (url, init) => {
+    seen.push([url, init.headers["Content-Type"], init.body]);
+    return url.includes("securetoken") ? json(200, { id_token: "I2", refresh_token: "R2", user_id: "uid9", expires_in: "3600" }) : json(200, { idToken: "I1", refreshToken: "R1", localId: "uid9", expiresIn: "3600" });
+  } });
+  assert.deepEqual(await client.signIn("a@b.co", "pw"), { accessToken: "I1", refreshToken: "R1", userId: "uid9", expiresAt: 1_000 + 3_600_000 });
+  assert.match(seen[0][0], /signInWithPassword\?key=test-key-1234567$/);
+  assert.deepEqual(JSON.parse(seen[0][2]), { email: "a@b.co", password: "pw", returnSecureToken: true });
+  assert.equal((await client.refresh("R1")).accessToken, "I2");
+  assert.equal(seen[1][1], "application/x-www-form-urlencoded");
+  assert.equal(seen[1][2], "grant_type=refresh_token&refresh_token=R1");
 });
 
 test("AccountService：未解鎖時上傳／下載會被擋下", async () => {

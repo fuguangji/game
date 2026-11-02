@@ -13,6 +13,7 @@ import { elify } from "./elite.js";
 import { NEWT } from "./pickups.js";
 import { ST, SV, UL, bossIndexAt, save } from "./progress.js";
 import { endTrain } from "./training.js";
+import { onlineState } from "./online-state.js";
 import { FT, LZ, SQ } from "./ultimates.js";
 import { WP } from "./weapons.js";
 import { ENEMY_SPEED_SCALE, bossCatalog, enemyCatalog, requireCreature } from "../config/index.js";
@@ -214,6 +215,7 @@ export function setup() {
 /** quiet = true：持續傷害用，不震動、不閃紅（扣血、護盾、死亡判定照舊） */
 export function hurt(d, { quiet = false } = {}) {
   if (G.pl.dashT > 0 || fsm.state !== "play" || (G.train && G.god)) return;
+  if (onlineState.pvp && !onlineState.applying) return; // 競爭模式：血量以伺服器為準，本地傷害一律忽略
   d *= (G.CHR.dr || 1) * damageTakenMultiplier(G.pl);
   {
     const hurtEvent = { damage: d };
@@ -246,7 +248,7 @@ export function hurt(d, { quiet = false } = {}) {
     G.pl.hp = 0;
     fsm.transition("over");
     G.overT = 1;
-    if (!G.train) {
+    if (!G.train && !onlineState.active) { // 線上對戰不發放獎勵、不影響關卡紀錄
       bankChips();
       SV.coins += G.coins;
       SV.sh += G.shd;

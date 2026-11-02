@@ -13,12 +13,17 @@ function makeDeps(overrides = {}) {
   const calls = { autoAim: [], tutorial: 0, shopGuide: 0, goTo: [], destroyed: 0 };
   const settings = new SettingsStore(new SaveStore(memStorage()));
   const AccountView = { mount: () => ({ destroy: () => calls.destroyed++, onChange() {} }) };
+  const online = Object.assign(new EventTarget(), {
+    state: { status: "idle", phase: "lobby", mode: null, code: "", hostId: null, players: [], message: "" }, myId: "me", isHost: false,
+    connects: [], connect(o) { this.connects.push(o); return Promise.resolve(); }, start() { this.started = true; }, disconnect() { this.state = { ...this.state, status: "idle" }; this.dispatchEvent(new Event("change")); },
+    set(patch) { this.state = { ...this.state, ...patch }; this.dispatchEvent(new Event("change")); },
+  });
   const bridge = {
-    getSave: () => ({}), applySave() {}, getProgress: () => ({ clearedStages: 2, totalStages: 5, bestScore: 1234, ownedWeapons: 3, totalWeapons: 24, ownedCharacters: 1, totalCharacters: 8 }),
+    online, getSave: () => ({}), applySave() {}, getProgress: () => ({ clearedStages: 2, totalStages: 5, bestScore: 1234, ownedWeapons: 3, totalWeapons: 24, ownedCharacters: 1, totalCharacters: 8 }),
     getRoleColor: () => "#22e6ff", getAutoAim: () => 1, setAutoAim: (m) => calls.autoAim.push(m), autoAimLabels: ["手動", "修正附近", "較大範圍"],
     replayTutorial: () => calls.tutorial++, replayShopGuide: () => calls.shopGuide++, goTo: (t) => calls.goTo.push(t), getPlayerPosition: () => ({ x: 0.5, y: 0.5 }),
   };
-  return { deps: { bridge, accountService: account, AccountView, settings, apiBase: "https://api.test", ...overrides }, account, calls, settings };
+  return { deps: { bridge, accountService: account, AccountView, settings, apiBase: "https://api.test", ...overrides }, account, calls, settings, online };
 }
 const mount = (deps) => { const host = new FakeElement("div"); fakeDocument.body.append(host); return { host, page: ProfilePage.mount(host, deps) }; };
 const tabs = (host) => host.findAll((e) => e.attrs.role === "tab");
@@ -94,17 +99,26 @@ test("設定：自動瞄準與顯示偏好會寫回遊戲／設定儲存；重�
   void skin; page.destroy();
 });
 
-test("線上聯機：使用 Firebase 匿名身分，不依賴雲端帳號登入", () => {
-  const { deps } = makeDeps(); const { host, page } = mount(deps);
-  page.show("online");
-  const online = panel(host, "online");
-  const body = online.find((e) => e.className === "ns-online");
+test("線上聯機：需要登入；可選競爭／合作模式，連線後房主才看得到「開始對戰」", () => {
+  const { deps, account, online } = makeDeps(); const { host, page } = mount(deps);
+  const sec = panel(host, "online");
+  const body = sec.find((e) => e.className === "ns-online");
   assert.ok(body, "線上聯機面板存在");
-  assert.notEqual(body.hidden, true, "訪客也能開啟線上聯機面板");
-  const labels = online.findAll((e) => e.tagName === "BUTTON").map((e) => e.textContent);
-  assert.ok(labels.includes("建立房間（我是房主）"));
-  assert.ok(labels.includes("加入房間"));
-  assert.ok(labels.includes("中斷連線"));
+  assert.equal(body.hidden, true, "訪客不能操作聯機面板");
+  account.signedIn = true; account.dispatchEvent(new Event("change"));
+  assert.notEqual(body.hidden, true, "登入後面板開啟");
+  const buttons = () => sec.findAll((e) => e.tagName === "BUTTON");
+  const byText = (t) => buttons().find((e) => e.textContent === t);
+  assert.ok(byText("競爭模式") && byText("合作模式"), "兩種玩法");
+  byText("合作模式").click();
+  byText("連線並加入").click();
+  assert.deepEqual(online.connects[0].mode, "boss", "選合作模式 → 連線用 boss");
+  online.set({ status: "lobby", mode: "boss", code: "NEON01", hostId: "me", players: [{ id: "me", name: "我" }] });
+  online.isHost = true; online.dispatchEvent(new Event("change"));
+  assert.equal(byText("開始對戰").hidden, false, "房主看得到開始");
+  assert.equal(byText("開始對戰").disabled, false, "合作模式 1 人即可開始");
+  online.set({ mode: "arena" });
+  assert.equal(byText("開始對戰").disabled, true, "競爭模式需要至少 2 人");
   page.destroy();
 });
 

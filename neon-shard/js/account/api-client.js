@@ -15,14 +15,17 @@ export class ApiClient {
   #sessions;
   #timeoutMs;
   #fetch;
+  #refresher;
   #refreshing = null;
   /** session 無法更新（已過期）時呼叫，讓上層回到登入畫面 */
   onSessionExpired = () => {};
 
   /**
-   * @param {{baseUrl:string, sessions:import('./session-store.js').SessionStore, timeoutMs?:number, fetchImpl?:typeof fetch}} o
+   * @param {{baseUrl:string, sessions:import('./session-store.js').SessionStore, refresher?:(refreshToken:string)=>Promise<object>, timeoutMs?:number, fetchImpl?:typeof fetch}} o
+   *   refresher：用 refreshToken 換新 session（Firebase Auth）。後端不再提供 /api/auth/refresh（回 410）。
    */
-  constructor({ baseUrl, sessions, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a) }) {
+  constructor({ baseUrl, sessions, refresher = null, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a) }) {
+    this.#refresher = refresher;
     this.#base = String(baseUrl || "").replace(/\/$/, "");
     this.#sessions = sessions;
     this.#timeoutMs = timeoutMs;
@@ -73,14 +76,16 @@ export class ApiClient {
     return result;
   }
 
-  /** 單一飛行：同時多個請求遇到 401 只會送出一次 refresh */
+  /** 單一飛行：同時多個請求遇到 401（或主動更新）只會送出一次 refresh */
+  refresh() { return this.#refresh(); }
+
   #refresh() {
     this.#refreshing ??= (async () => {
       const current = this.#sessions.current;
-      if (!current) return false;
+      if (!current || !this.#refresher) return false;
       try {
-        const result = await this.#send("/api/auth/refresh", { method: "POST", auth: false, body: { refreshToken: current.refreshToken } });
-        this.#sessions.set({ ...result.session, userId: result.user?.id ?? current.userId });
+        const next = await this.#refresher(current.refreshToken);
+        this.#sessions.set({ ...next, userId: next.userId ?? current.userId });
         return true;
       } catch {
         return false;
