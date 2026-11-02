@@ -29,6 +29,23 @@
 import { TAU } from "../core/viewport.js";
 
 export const STATUS = Object.freeze({
+  fast: {
+    label: "加速", color: "#ffb84d", icon: "fast", defaultDuration: 2.2, maxStacks: 2,
+    speedMul: (n) => 2,
+  },
+  burn: {
+    label: "灼燒", color: "#ff4d4d", icon: "fire", defaultDuration: 3, maxStacks: 3,
+    /** 每 0.5 秒扣血，層數越多越痛；用安靜扣血，不會每次都震動閃紅 */
+    onTick(p, s, dt, api) {
+      s.acc += dt;
+      while (s.acc >= 0.5) {
+        s.acc -= 0.5;
+        api.hurt(0.7 * s.n, { quiet: true });
+      }
+    },
+    /** 受傷倍率：灼燒時受到的傷害會更痛 */
+    damageTakenMul: (n) => 1 + 0.1 * n,
+  },
   slow: {
     label: "減速", color: "#4de1ff", icon: "slow", defaultDuration: 2.2, maxStacks: 2,
     speedMul: (n) => (n >= 2 ? 0.3 : 0.5),
@@ -47,23 +64,6 @@ export const STATUS = Object.freeze({
         api.hurt(1.5 * s.n, { quiet: true });
       }
     },
-  },
-  fast: {
-    label: "加速", color: "#ffb84d", icon: "fast", defaultDuration: 2.2, maxStacks: 2,
-    speedMul: (n) => 2,
-  },
-  burn: {
-    label: "灼燒", color: "#ff4d4d", icon: "fire", defaultDuration: 3, maxStacks: 3,
-    /** 每 0.5 秒扣血，層數越多越痛；用安靜扣血，不會每次都震動閃紅 */
-    onTick(p, s, dt, api) {
-      s.acc += dt;
-      while (s.acc >= 0.5) {
-        s.acc -= 0.5;
-        api.hurt(0.7 * s.n, { quiet: true });
-      }
-    },
-    /** 受傷倍率：灼燒時受到的傷害會更痛 */
-    damageTakenMul: (n) => 1 + 0.1 * n,
   },
   /* ───── 術式系統（見 techniques.js）使用的狀態 ───── */
   seal: {
