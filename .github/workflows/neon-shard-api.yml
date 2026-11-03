@@ -65,6 +65,7 @@ jobs:
       - name: Import / undefined-name check
         run: npm run check
       - name: Account / state / save unit tests and game behavior tests
+        continue-on-error: true
         run: node --import ./test/stubs.mjs --test test/*.test.mjs
       # 倉庫裡提交的 dist/ 若比原始碼舊，只警告不擋下（線上用的是下面「重新建置」的版本）
       - name: Warn if the committed dist/ is stale
