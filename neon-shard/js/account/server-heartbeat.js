@@ -7,6 +7,7 @@ export class ServerHeartbeat {
   #url;
   #fetch;
   #intervalMs;
+  #timeoutMs;
   #setInterval;
   #clearInterval;
   #document;
@@ -17,6 +18,7 @@ export class ServerHeartbeat {
   constructor({
     baseUrl,
     intervalMs = 10_000,
+    timeoutMs = 75_000,
     fetchImpl = (...args) => globalThis.fetch(...args),
     setIntervalImpl = (...args) => globalThis.setInterval(...args),
     clearIntervalImpl = (...args) => globalThis.clearInterval(...args),
@@ -26,6 +28,7 @@ export class ServerHeartbeat {
     this.#url = String(baseUrl || "").replace(/\/$/, "");
     this.#fetch = fetchImpl;
     this.#intervalMs = Math.max(1_000, Number(intervalMs) || 10_000);
+    this.#timeoutMs = Math.max(10_000, Number(timeoutMs) || 75_000);
     this.#setInterval = setIntervalImpl;
     this.#clearInterval = clearIntervalImpl;
     this.#document = documentRef;
@@ -52,13 +55,22 @@ export class ServerHeartbeat {
     if (!this.#url) return Promise.resolve(false);
     if (this.#pending) return this.#pending;
     this.#pending = Promise.resolve()
-      .then(() => this.#fetch(`${this.#url}/api/health`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-        credentials: "omit",
-      }))
-      .then((response) => Boolean(response?.ok))
+      .then(async () => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.#timeoutMs);
+        try {
+          const response = await this.#fetch(`${this.#url}/api/health`, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            credentials: "omit",
+            signal: controller.signal,
+          });
+          return Boolean(response?.ok);
+        } finally {
+          clearTimeout(timeout);
+        }
+      })
       .catch(() => false)
       .finally(() => { this.#pending = null; });
     return this.#pending;
