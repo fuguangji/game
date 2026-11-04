@@ -10,7 +10,7 @@
 const DEFAULT_API_BASE = "https://neon-shard-api.onrender.com";
 
 /** Firebase Web API Key（Firebase Console → 專案設定 → 一般 → 你的應用程式 → Web）。這是公開值，不是密鑰。【待填】 */
-const DEFAULT_FIREBASE_API_KEY = "REPLACE_ME";
+const DEFAULT_FIREBASE_API_KEY = "AIzaSyACYQpAwTDGEydbYgSYn9_5jDTQSo47tXg";
 
 export function safeApiBase(candidate, fallback = DEFAULT_API_BASE) {
   try {
