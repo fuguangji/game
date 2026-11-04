@@ -42,6 +42,11 @@ import { init as init_game_tutorial } from "./game/tutorial.js";
 import { init as init_api_extension } from "./api/extension.js";
 import "./techniques/index.js"; // 術式武器的內容
 import { initTechniques } from "./game/techniques.js";
+import { API_BASE } from "./account/config.js";
+import { ServerHeartbeat } from "./account/server-heartbeat.js";
+
+// 網頁載入後立即喚醒 Render，並在頁面存活期間每 10 秒維持連線。
+export const serverHeartbeat = new ServerHeartbeat({ baseUrl: API_BASE }).start();
 
 /**
  * 讓出主執行緒，讓瀏覽器先處理繪製與輸入。啟動工作被切成幾段，每段之間呼叫一次，
