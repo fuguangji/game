@@ -74,10 +74,16 @@ export class AccountService extends EventTarget {
 
   /** 喚醒休眠中的免費主機（Render 閒置後第一個請求要 30～60 秒）。不需要登入；失敗也不要緊 */
   #lastWarm = 0;
-  warmUp() {
-    if (Date.now() - this.#lastWarm < 300_000) return;
+  #warmPromise = null;
+  warmUp({ force = false } = {}) {
+    if (this.#warmPromise) return this.#warmPromise;
+    if (!force && Date.now() - this.#lastWarm < 300_000) return Promise.resolve(false);
     this.#lastWarm = Date.now();
-    this.#api.request("/api/health", { auth: false }).catch(() => {});
+    this.#warmPromise = this.#api.request("/api/health", { auth: false })
+      .then(() => true)
+      .catch(() => false)
+      .finally(() => { this.#warmPromise = null; });
+    return this.#warmPromise;
   }
 
   /**
@@ -102,8 +108,11 @@ export class AccountService extends EventTarget {
 
   /** @returns {Promise<{needsEmailConfirmation: boolean}>} Firebase 版不需要信箱確認，固定回傳 false（保留欄位讓畫面不用改） */
   async signUp({ email, password, displayName }) {
+    // Firebase 直接驗證帳密；同時喚醒 Render，避免登入後才開始等待冷啟動。
+    const wakePromise = this.warmUp({ force: true });
     const session = await this.#auth.signUp(email, password);
     this.#sessions.set(session);
+    await wakePromise;
     try {
       await this.#bootstrapProfile(displayName);
       await this.#unlockOrCreateKeys(session.userId, password);
@@ -117,8 +126,11 @@ export class AccountService extends EventTarget {
   }
 
   async logIn({ email, password }) {
+    // Firebase 直接驗證帳密；Render 喚醒與 Firebase 驗證並行。
+    const wakePromise = this.warmUp({ force: true });
     const session = await this.#auth.signIn(email, password);
     this.#sessions.set(session);
+    await wakePromise;
     await this.#bootstrapProfile(null);
     await this.#unlockOrCreateKeys(session.userId, password);
     this.#emit();
