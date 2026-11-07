@@ -35,6 +35,12 @@ export class AccountService extends EventTarget {
     this.dispatchEvent(new CustomEvent("change", { detail: { notice } }));
   }
 
+  #assertCurrentUser(uid, generation = this.#authGeneration) {
+    if (!uid || this.#user?.uid !== uid || this.#authGeneration !== generation) {
+      throw new ApiError("登入帳號已變更，請重新操作。", { code: "AUTH_CHANGED" });
+    }
+  }
+
   #setUser(user, { restoreProfile = true } = {}) {
     const nextUid = user?.uid ?? null;
     const currentUid = this.#user?.uid ?? null;
@@ -90,32 +96,52 @@ export class AccountService extends EventTarget {
 
   /** Firebase SDK 會自行管理 token refresh；供 WebSocket 使用的 token 也走同一個來源。 */
   async getFreshAccessToken() {
-    if (!this.#user) return null;
-    try { return await this.#auth.getIdentityToken(false); }
-    catch { return null; }
+    const uid = this.#user?.uid;
+    const generation = this.#authGeneration;
+    if (!uid) return null;
+    try {
+      const token = await this.#auth.getIdentityToken(false);
+      return this.#user?.uid === uid && this.#authGeneration === generation ? token : null;
+    } catch { return null; }
   }
 
-  async #loadProfile() {
+  async #loadProfile(uid = this.#user?.uid, generation = this.#authGeneration) {
+    this.#assertCurrentUser(uid, generation);
     const profile = await this.#api.request("/api/profile/me");
+    this.#assertCurrentUser(uid, generation);
     this.#profile = profile;
     return profile;
   }
 
   async #unlockOrCreateKeys(userId, password) {
+    const generation = this.#authGeneration;
+    this.#assertCurrentUser(userId, generation);
     const record = await this.#api.request("/api/keys");
+    this.#assertCurrentUser(userId, generation);
     if (record.registered) {
-      this.#keys = await this.#crypto.unlockAccountKeys(userId, password, record);
+      const keys = await this.#crypto.unlockAccountKeys(userId, password, record);
+      this.#assertCurrentUser(userId, generation);
+      this.#keys = keys;
     } else {
       const created = await this.#crypto.createAccountKeys(userId, password);
+      this.#assertCurrentUser(userId, generation);
       await this.#api.request("/api/keys", { method: "PUT", body: created.registration });
+      this.#assertCurrentUser(userId, generation);
       this.#keys = created.keys;
     }
   }
 
   async #bootstrapProfile(displayName) {
+    const uid = this.#user?.uid;
+    const generation = this.#authGeneration;
+    this.#assertCurrentUser(uid, generation);
     await this.#api.request("/api/identity/me");
-    if (displayName) await this.#api.request("/api/profile", { method: "PUT", body: { displayName } });
-    return this.#loadProfile();
+    this.#assertCurrentUser(uid, generation);
+    if (displayName) {
+      await this.#api.request("/api/profile", { method: "PUT", body: { displayName } });
+      this.#assertCurrentUser(uid, generation);
+    }
+    return this.#loadProfile(uid, generation);
   }
 
   async signUp({ email, password, displayName }) {
@@ -143,13 +169,19 @@ export class AccountService extends EventTarget {
   /** 重新整理後重新輸入密碼，僅解鎖本機記憶體中的加密金鑰。 */
   async unlock(password) {
     if (!this.#user) throw new ApiError("請先登入遊戲帳號。", { code: "NOT_SIGNED_IN" });
-    const profile = await this.#loadProfile().catch(async (error) => {
+    const uid = this.#user.uid;
+    const generation = this.#authGeneration;
+    const profile = await this.#loadProfile(uid, generation).catch(async (error) => {
       if (error?.code !== "PROFILE_NOT_FOUND") throw error;
       return this.#bootstrapProfile(null);
     });
+    this.#assertCurrentUser(uid, generation);
     const record = await this.#api.request("/api/keys");
+    this.#assertCurrentUser(uid, generation);
     if (!record.registered) throw new ApiError("帳號尚未完成金鑰設定；請登出後重新登入。", { code: "KEYS_NOT_REGISTERED" });
-    this.#keys = await this.#crypto.unlockAccountKeys(profile.userId, password, record);
+    const keys = await this.#crypto.unlockAccountKeys(profile.userId, password, record);
+    this.#assertCurrentUser(uid, generation);
+    this.#keys = keys;
     this.#emit();
   }
 
@@ -173,25 +205,33 @@ export class AccountService extends EventTarget {
 
   async uploadSave(save) {
     const userId = this.#requireUnlocked();
+    const generation = this.#authGeneration;
+    const keys = this.#keys;
+    const assertSession = () => this.#assertCurrentUser(userId, generation);
     const summary = {
       format: "neon-shard-save-v1",
       savedAt: new Date().toISOString(),
       summary: { coins: Number(save.coins) || 0, shards: Number(save.sh) || 0, cores: Number(save.co) || 0 },
       payloadType: "encrypted-full-save",
     };
-    const sensitiveEnvelope = await this.#crypto.encryptSave(userId, this.#keys, save);
+    const sensitiveEnvelope = await this.#crypto.encryptSave(userId, keys, save);
+    assertSession();
     let revision = null;
     try {
       revision = (await this.#api.request("/api/player-data")).revision;
+      assertSession();
     } catch (error) {
       if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error;
     }
     const method = revision === null ? "POST" : "PUT";
     const body = { saveData: summary, sensitiveEnvelope, keyId: sensitiveEnvelope.keyId, signedAt: Date.now() };
     if (revision !== null) body.expectedRevision = revision;
-    body.signature = await this.#crypto.signSaveRequest(this.#keys, { userId, method, path: "/api/player-data", body });
+    body.signature = await this.#crypto.signSaveRequest(keys, { userId, method, path: "/api/player-data", body });
+    assertSession();
     try {
-      return (await this.#api.request("/api/player-data", { method, body })).revision;
+      const result = await this.#api.request("/api/player-data", { method, body });
+      assertSession();
+      return result.revision;
     } catch (error) {
       if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
         throw new ApiError("雲端存檔剛被其他裝置更新。請先「下載雲端存檔」確認內容，再決定是否上傳。", { status: 409, code: error.code });
@@ -202,8 +242,13 @@ export class AccountService extends EventTarget {
 
   async downloadSave() {
     const userId = this.#requireUnlocked();
+    const generation = this.#authGeneration;
+    const keys = this.#keys;
+    this.#assertCurrentUser(userId, generation);
     const remote = await this.#api.request("/api/player-data");
-    const save = await this.#crypto.decryptSave(userId, this.#keys, remote.sensitiveEnvelope);
+    this.#assertCurrentUser(userId, generation);
+    const save = await this.#crypto.decryptSave(userId, keys, remote.sensitiveEnvelope);
+    this.#assertCurrentUser(userId, generation);
     if (!save || typeof save !== "object" || Array.isArray(save)) throw new ApiError("解密後的存檔格式不正確，已取消覆蓋。", { code: "BAD_SAVE" });
     return { save, revision: remote.revision };
   }
