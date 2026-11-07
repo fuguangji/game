@@ -19,7 +19,7 @@ async function initializeSharedAuth() {
     import(`${SDK}/firebase-auth.js`),
   ]);
 
-  const { initializeApp, getApps, getApp } = appSdk;
+  const { initializeApp, getApps } = appSdk;
   const { getAuth, setPersistence, browserLocalPersistence } = authSdk;
 
   const existingDefault = getApps().find((item) => item.name === "[DEFAULT]");
