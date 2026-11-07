@@ -92,7 +92,7 @@ export class AccountView {
       for (const fn of this.#listeners) fn();
     }, { signal: this.#abort.signal });
     this.render();
-    this.#service.restore();
+    this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
   }
 
   #setNotice(text, error = false) {
