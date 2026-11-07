@@ -167,6 +167,26 @@ test("AccountService：共用 Auth observer 同步跨分頁登入與登出", asy
   assert.equal(svc.displayName, "訪客");
 });
 
+test("AccountService：跨分頁登出若發生在個人資料請求途中，不會讓舊暱稱復活", async () => {
+  const { svc, auth, user, api } = makeService();
+  await svc.restore();
+  const original = api.request;
+  let release;
+  api.request = async (path, options) => {
+    if (path === "/api/profile/me") await new Promise((resolve) => { release = resolve; });
+    return original(path, options);
+  };
+  auth.emit(user);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(typeof release, "function", "個人資料請求已開始");
+  auth.emit(null);
+  release();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(svc.signedIn, false);
+  assert.equal(svc.displayName, "訪客");
+  assert.equal(svc.profile, null);
+});
+
 test("AccountService：WebSocket token 直接取自共用 Firebase Auth，訪客回傳 null", async () => {
   const { svc } = makeService();
   assert.equal(await svc.getFreshAccessToken(), null);
