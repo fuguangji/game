@@ -4,7 +4,11 @@ const acorn = require("internal/deps/acorn/acorn/dist/acorn");
 const fs = require("fs"), path = require("path");
 function walkDir(d) { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? (e.name === "test" ? [] : walkDir(path.join(d, e.name))) : e.name.endsWith(".js") ? [path.join(d, e.name)] : []); }
 const exportsOf = new Map();
-const files = walkDir(process.argv[2]);
+// NEON SHARD 的共用 Auth 模組位於 repository root，和 account center 使用同一個來源。
+const sharedAccountFiles = ["../account/shared-auth.js", "../account/firebase-config.js"]
+  .map((f) => path.resolve(f))
+  .filter((f) => fs.existsSync(f));
+const files = [...walkDir(process.argv[2]), ...sharedAccountFiles];
 for (const f of files) {
   const ast = acorn.parse(fs.readFileSync(f, "utf8"), { ecmaVersion: 2022, sourceType: "module" });
   const names = new Set();
