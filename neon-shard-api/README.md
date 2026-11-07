@@ -4,7 +4,7 @@ Render hosts the server-side API. Firebase is the identity and account-data prov
 
 ## Architecture
 
-- **Firebase Authentication** handles email/password registration, sign-in, sign-out, and ID-token refresh in the browser.
+- **Firebase Authentication** handles email/password registration, sign-in, sign-out, and ID-token refresh in the browser through the shared `account/shared-auth.js` module used by every GitHub Pages game.
 - **Firebase Admin SDK** verifies ID tokens on Render. The API derives the trusted account UID from the verified token and never trusts a UID supplied by the client.
 - **Cloud Firestore** stores account profiles, display-name reservations, encryption-key metadata, and encrypted cloud saves. Save data is scoped by UID under `users/{uid}`.
 - **Realtime（WebSocket）** 線上聯機由本服務的 `/api/realtime` 提供（見 README-ONLINE.md）。舊的 Firebase Realtime Database／WebRTC 房間流程已移除，不需要建立 Realtime Database。
@@ -19,7 +19,7 @@ Render hosts the server-side API. Firebase is the identity and account-data prov
 3. 在 Render 設定 `FIREBASE_SERVICE_ACCOUNT_JSON`（整份服務帳戶 JSON，一行；這是伺服器密鑰，不可提交）。
 4. 在 Render 設定 `ALLOWED_ORIGINS` 為前端實際網址（完全一致）。
 5. 重新部署後檢查 `/api/health` 與 `/api/ready`。
-6. 前端 `neon-shard/js/account/config.js` 填入 Render 網址與 Firebase Web API Key。
+6. 前端 Render API 網址由 `neon-shard/js/account/config.js` 設定；Firebase Web App 設定集中於 repo root `account/firebase-config.js`。
 
 Until the Firebase service account is configured, the API process can still start and health checks can respond, but identity/profile/save endpoints correctly return `503 FIREBASE_ADMIN_NOT_CONFIGURED`.
 
@@ -28,7 +28,7 @@ Until the Firebase service account is configured, the API process can still star
 - `GET /api/health` — process health.
 - `GET /api/ready` — Firebase Admin and Firestore readiness.
 - `GET /api/identity/me` — verifies a Firebase ID token and initializes/returns its Firestore profile.
-- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` — intentionally return `410 USE_FIREBASE_AUTH`; passwords go directly from the game's browser client to Firebase Authentication (REST, `neon-shard/js/account/firebase-auth.js`) and never reach this API.
+- `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` — intentionally return `410 USE_FIREBASE_AUTH`; passwords go directly from the browser to Firebase Authentication through the shared Firebase SDK module (`account/shared-auth.js`) and never reach this API.
 - `POST /api/auth/logout` — authenticated no-content response; the browser signs out through Firebase Auth.
 - `GET /api/profile/me` — current UID, display name, and key-setup status.
 - `PUT /api/profile` — update the authenticated user's display name.
