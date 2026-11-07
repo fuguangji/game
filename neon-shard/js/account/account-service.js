@@ -223,6 +223,7 @@ export class AccountService extends EventTarget {
     } catch (error) {
       if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error;
     }
+    assertSession();
     const method = revision === null ? "POST" : "PUT";
     const body = { saveData: summary, sensitiveEnvelope, keyId: sensitiveEnvelope.keyId, signedAt: Date.now() };
     if (revision !== null) body.expectedRevision = revision;
