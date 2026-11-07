@@ -35,11 +35,11 @@ export class AccountService extends EventTarget {
     this.dispatchEvent(new CustomEvent("change", { detail: { notice } }));
   }
 
-  #setUser(user) {
+  #setUser(user, { restoreProfile = true } = {}) {
     const nextUid = user?.uid ?? null;
     const currentUid = this.#user?.uid ?? null;
     if (nextUid === currentUid) {
-      this.#user = user;
+      this.#user = user ?? null;
       return false;
     }
     this.#authGeneration++;
@@ -47,7 +47,7 @@ export class AccountService extends EventTarget {
     this.#keys = null;
     this.#profile = null;
     this.#emit();
-    if (this.#user) this.#restoreProfile(this.#user, this.#authGeneration);
+    if (this.#user && restoreProfile) this.#restoreProfile(this.#user, this.#authGeneration);
     return true;
   }
 
@@ -67,7 +67,7 @@ export class AccountService extends EventTarget {
     if (!this.#authReady) {
       this.#authReady = (async () => {
         const user = await this.#auth.waitForAuthState();
-        this.#setUser(user);
+        this.#setUser(user, { restoreProfile: false });
         this.#unsubscribeAuth = await this.#auth.observeAuth((nextUser) => this.#setUser(nextUser));
       })().catch((error) => {
         this.#authReady = null;
@@ -77,7 +77,7 @@ export class AccountService extends EventTarget {
     await this.#authReady;
     if (this.#user && !this.#profile) {
       try { await this.#bootstrapProfile(null); this.#emit(); }
-      catch (error) { if (!(error instanceof ApiError && error.code === "NOT_SIGNED_IN")) console.warn("[account] restore failed", error); }
+      catch (error) { console.warn("[account] restore failed", error); }
     }
   }
 
@@ -120,7 +120,7 @@ export class AccountService extends EventTarget {
 
   async signUp({ email, password, displayName }) {
     const user = await this.#auth.signUp(email, password, displayName);
-    this.#setUser(user);
+    this.#setUser(user, { restoreProfile: false });
     try {
       await this.#bootstrapProfile(displayName);
       await this.#unlockOrCreateKeys(user.uid, password);
@@ -134,7 +134,7 @@ export class AccountService extends EventTarget {
 
   async logIn({ email, password }) {
     const user = await this.#auth.signIn(email, password);
-    this.#setUser(user);
+    this.#setUser(user, { restoreProfile: false });
     await this.#bootstrapProfile(null);
     await this.#unlockOrCreateKeys(user.uid, password);
     this.#emit();
@@ -159,9 +159,8 @@ export class AccountService extends EventTarget {
     } catch (error) {
       console.warn("[account] Render logout request failed", error);
     } finally {
-      await this.#auth.signOut();
-      this.#setUser(null);
-      this.#emit();
+      try { await this.#auth.signOut(); }
+      finally { this.#setUser(null); this.#emit(); }
     }
   }
 
