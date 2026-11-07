@@ -1,6 +1,6 @@
 /**
- * 帳號服務：登入、金鑰解鎖、雲端存檔上傳／下載的商業邏輯（不碰 DOM，方便測試）。
- * 狀態改變時會發出 "change" 事件，畫面只需要訂閱它。
+ * 帳號服務：共用 Firebase Auth 狀態、Render 身分／個人資料、金鑰解鎖與雲端存檔。
+ * 本機遊戲不依賴登入；登入只控制雲端同步與線上聯機。
  */
 import { ApiError } from "./api-client.js";
 
@@ -9,45 +9,96 @@ const GUEST = "訪客";
 export class AccountService extends EventTarget {
   #api;
   #auth;
-  #sessions;
   #crypto;
+  #user = null;
   #keys = null;
   #profile = null;
+  #authReady = null;
+  #unsubscribeAuth = null;
+  #authGeneration = 0;
+  #lastWarm = 0;
 
-  /**
-   * @param {{api: import('./api-client.js').ApiClient, auth: import('./firebase-auth.js').FirebaseAuthClient, sessions: import('./session-store.js').SessionStore,
-   *          crypto: {createAccountKeys:Function, unlockAccountKeys:Function, encryptSave:Function, decryptSave:Function, signSaveRequest:Function}}} o
-   */
-  constructor({ api, auth, sessions, crypto }) {
+  constructor({ api, auth, crypto }) {
     super();
     this.#api = api;
     this.#auth = auth;
-    this.#sessions = sessions;
     this.#crypto = crypto;
-    api.onSessionExpired = () => this.#reset("登入已過期，請重新登入。");
   }
 
-  get signedIn() { return this.#sessions.current !== null; }
+  get signedIn() { return Boolean(this.#user); }
   get unlocked() { return this.#keys !== null; }
   get profile() { return this.#profile; }
-  get displayName() { return this.#profile?.displayName || GUEST; }
-  get userId() { return this.#sessions.current?.userId ?? this.#profile?.userId ?? null; }
+  get displayName() { return this.#profile?.displayName || this.#user?.displayName || GUEST; }
+  get userId() { return this.#user?.uid ?? this.#profile?.userId ?? null; }
 
   #emit(notice = "") {
     this.dispatchEvent(new CustomEvent("change", { detail: { notice } }));
   }
 
-  #reset(notice) {
+  #setUser(user) {
+    const nextUid = user?.uid ?? null;
+    const currentUid = this.#user?.uid ?? null;
+    if (nextUid === currentUid) {
+      this.#user = user;
+      return false;
+    }
+    this.#authGeneration++;
+    this.#user = user ?? null;
     this.#keys = null;
     this.#profile = null;
-    this.#emit(notice);
+    this.#emit();
+    if (this.#user) this.#restoreProfile(this.#user, this.#authGeneration);
+    return true;
+  }
+
+  async #restoreProfile(user, generation) {
+    try {
+      await this.#bootstrapProfile(null);
+      if (generation === this.#authGeneration && this.#user?.uid === user.uid) this.#emit();
+    } catch (error) {
+      if (generation === this.#authGeneration && this.#user?.uid === user.uid) {
+        this.#emit(error?.message || "無法載入雲端個人資料。");
+      }
+    }
+  }
+
+  /** 等待 Firebase 還原同源持久登入狀態，再訂閱跨分頁登入／登出變化。 */
+  async restore() {
+    if (!this.#authReady) {
+      this.#authReady = (async () => {
+        const user = await this.#auth.waitForAuthState();
+        this.#setUser(user);
+        this.#unsubscribeAuth = await this.#auth.observeAuth((nextUser) => this.#setUser(nextUser));
+      })().catch((error) => {
+        this.#authReady = null;
+        throw error;
+      });
+    }
+    await this.#authReady;
+    if (this.#user && !this.#profile) {
+      try { await this.#bootstrapProfile(null); this.#emit(); }
+      catch (error) { if (!(error instanceof ApiError && error.code === "NOT_SIGNED_IN")) console.warn("[account] restore failed", error); }
+    }
+  }
+
+  /** 喚醒休眠中的 Render；不需要登入，失敗不影響本機遊戲。 */
+  warmUp() {
+    if (Date.now() - this.#lastWarm < 300_000) return;
+    this.#lastWarm = Date.now();
+    this.#api.request("/api/health", { auth: false }).catch(() => {});
+  }
+
+  /** Firebase SDK 會自行管理 token refresh；供 WebSocket 使用的 token 也走同一個來源。 */
+  async getFreshAccessToken() {
+    if (!this.#user) return null;
+    try { return await this.#auth.getIdentityToken(false); }
+    catch { return null; }
   }
 
   async #loadProfile() {
-    this.#profile = await this.#api.request("/api/profile/me");
-    const s = this.#sessions.current;
-    if (s && !s.userId) this.#sessions.set({ ...s, userId: this.#profile.userId });
-    return this.#profile;
+    const profile = await this.#api.request("/api/profile/me");
+    this.#profile = profile;
+    return profile;
   }
 
   async #unlockOrCreateKeys(userId, password) {
@@ -61,55 +112,20 @@ export class AccountService extends EventTarget {
     }
   }
 
-  /** 頁面載入後若還有 session，補抓暱稱（不需要密碼；金鑰仍需使用者輸入密碼解鎖） */
-  async restore() {
-    if (!this.signedIn || this.#profile) return;
-    try {
-      await this.#loadProfile();
-      this.#emit();
-    } catch (error) {
-      if (!(error instanceof ApiError && error.code === "SESSION_EXPIRED")) console.warn("[account] restore failed", error);
-    }
-  }
-
-  /** 喚醒休眠中的免費主機（Render 閒置後第一個請求要 30～60 秒）。不需要登入；失敗也不要緊 */
-  #lastWarm = 0;
-  warmUp() {
-    if (Date.now() - this.#lastWarm < 300_000) return;
-    this.#lastWarm = Date.now();
-    this.#api.request("/api/health", { auth: false }).catch(() => {});
-  }
-
-  /**
-   * 取得一個「至少還有 60 秒有效」的 ID token（給 WebSocket 等不走 ApiClient 的連線使用）。
-   * 快過期就先更新；更新失敗代表登入已過期，回傳 null。
-   */
-  async getFreshAccessToken() {
-    const s = this.#sessions.current;
-    if (!s) return null;
-    if (!s.expiresAt || s.expiresAt - Date.now() < 60_000) {
-      if (!(await this.#api.refresh())) return null;
-    }
-    return this.#sessions.current?.accessToken ?? null;
-  }
-
-  /** 登入後讓後端建立（或讀取）這個帳號的資料，再取得個人檔案 */
   async #bootstrapProfile(displayName) {
-    await this.#api.request("/api/identity/me"); // 後端第一次看到這個 UID 時才會建立 Firestore 資料與暱稱
+    await this.#api.request("/api/identity/me");
     if (displayName) await this.#api.request("/api/profile", { method: "PUT", body: { displayName } });
     return this.#loadProfile();
   }
 
-  /** @returns {Promise<{needsEmailConfirmation: boolean}>} Firebase 版不需要信箱確認，固定回傳 false（保留欄位讓畫面不用改） */
   async signUp({ email, password, displayName }) {
-    const session = await this.#auth.signUp(email, password);
-    this.#sessions.set(session);
+    const user = await this.#auth.signUp(email, password, displayName);
+    this.#setUser(user);
     try {
       await this.#bootstrapProfile(displayName);
-      await this.#unlockOrCreateKeys(session.userId, password);
+      await this.#unlockOrCreateKeys(user.uid, password);
     } catch (error) {
-      // 暱稱被占用等失敗：Firebase 帳號已建立，保留登入狀態讓玩家可以直接改暱稱；金鑰尚未設定則下次登入會補上
-      this.#emit();
+      this.#emit(error?.message || "帳號已建立，但雲端初始化尚未完成。");
       throw error;
     }
     this.#emit();
@@ -117,18 +133,19 @@ export class AccountService extends EventTarget {
   }
 
   async logIn({ email, password }) {
-    const session = await this.#auth.signIn(email, password);
-    this.#sessions.set(session);
+    const user = await this.#auth.signIn(email, password);
+    this.#setUser(user);
     await this.#bootstrapProfile(null);
-    await this.#unlockOrCreateKeys(session.userId, password);
+    await this.#unlockOrCreateKeys(user.uid, password);
     this.#emit();
   }
 
-  /** 已有 session 但金鑰未解鎖（例如重新整理頁面後）時，用密碼解鎖 */
+  /** 重新整理後重新輸入密碼，僅解鎖本機記憶體中的加密金鑰。 */
   async unlock(password) {
+    if (!this.#user) throw new ApiError("請先登入遊戲帳號。", { code: "NOT_SIGNED_IN" });
     const profile = await this.#loadProfile().catch(async (error) => {
       if (error?.code !== "PROFILE_NOT_FOUND") throw error;
-      return this.#bootstrapProfile(null); // 帳號剛在 Firebase 建立、後端還沒有資料
+      return this.#bootstrapProfile(null);
     });
     const record = await this.#api.request("/api/keys");
     if (!record.registered) throw new ApiError("帳號尚未完成金鑰設定；請登出後重新登入。", { code: "KEYS_NOT_REGISTERED" });
@@ -138,12 +155,13 @@ export class AccountService extends EventTarget {
 
   async logOut() {
     try {
-      await this.#api.request("/api/auth/logout", { method: "POST" });
+      if (this.#user) await this.#api.request("/api/auth/logout", { method: "POST" });
     } catch (error) {
-      console.warn("[account] logout request failed", error); // 伺服器登出失敗也要清掉本機登入
+      console.warn("[account] Render logout request failed", error);
     } finally {
-      this.#sessions.clear();
-      this.#reset();
+      await this.#auth.signOut();
+      this.#setUser(null);
+      this.#emit();
     }
   }
 
@@ -154,7 +172,6 @@ export class AccountService extends EventTarget {
     return userId;
   }
 
-  /** @returns {Promise<number>} 新的雲端存檔版本 */
   async uploadSave(save) {
     const userId = this.#requireUnlocked();
     const summary = {
@@ -168,7 +185,7 @@ export class AccountService extends EventTarget {
     try {
       revision = (await this.#api.request("/api/player-data")).revision;
     } catch (error) {
-      if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error; // 用錯誤碼判斷，不比對訊息字串
+      if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error;
     }
     const method = revision === null ? "POST" : "PUT";
     const body = { saveData: summary, sensitiveEnvelope, keyId: sensitiveEnvelope.keyId, signedAt: Date.now() };
@@ -184,7 +201,6 @@ export class AccountService extends EventTarget {
     }
   }
 
-  /** @returns {Promise<{save: object, revision: number}>} */
   async downloadSave() {
     const userId = this.#requireUnlocked();
     const remote = await this.#api.request("/api/player-data");
