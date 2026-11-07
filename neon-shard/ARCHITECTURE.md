@@ -28,8 +28,8 @@
 | `account/shared-auth.js` | — | 全站共用 Firebase Auth default app、browser-local persistence、登入狀態與 ID Token |
 | `js/account/cloud-crypto.js` | 345 |  |
 | `js/account/config.js` | 17 |  |
-| `js/account/index.js` | 15 | 帳號系統組裝：把設定、Session、API、加密與服務接在一起（整個遊戲共用一份） |
-| `js/account/session-store.js` | 59 |  |
+| `js/account/index.js` | — | 帳號系統組裝：共用 Auth、Render API 與加密服務 |
+
 | `js/api/extension.js` | 29 | 對外擴充 API（window.NEON_SHARD_API） |
 | `js/config/boss-catalog.js` | 91 |  |
 | `js/config/bullet-catalog.js` | 121 |  |
