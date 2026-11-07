@@ -69,8 +69,7 @@
   }
   const returnTo = safeReturnTo();
   let mode = "login";
-  let currentUser = null;
-  let identityVerified = false;
+  let renderCheckVersion = 0;
   function say(message, error = false) {
     $("status").textContent = message;
     $("status").classList.toggle("error", error);
@@ -103,11 +102,9 @@
         if (!name || [...name].length > 24 || /[<>&"'\x60%_\\\u0000-\u001f\u007f]/u.test(name)) {
           throw new Error("顯示名稱需為 1～24 個字，且不能包含特殊控制符號。");
         }
-        const user = await register(email, password, name);
-        await renderUser(user);
+        await register(email, password, name);
       } else {
-        const user = await signIn(email, password);
-        await renderUser(user);
+        await signIn(email, password);
       }
     } catch (error) {
       const message = error?.code === "auth/email-already-in-use" ? "這個電子郵件已註冊，請改用登入。"
@@ -131,12 +128,11 @@
   });
 
   async function renderUser(user) {
-    currentUser = user;
+    const checkVersion = ++renderCheckVersion;
     $("signedOut").hidden = Boolean(user);
     $("signedIn").hidden = !user;
     if (!user) {
-      identityVerified = false;
-      say(isFirebaseConfigured() ? "" : "Firebase 尚未設定：請依 dev.md 完成 Firebase Web App 與 Email/Password 登入設定。", !isFirebaseConfigured());
+      say(isFirebaseConfigured() ? "" : "Firebase 尚未設定：請檢查 account/firebase-config.js 的 Web App 設定。", !isFirebaseConfigured());
       return;
     }
     $("accountName").textContent = user.displayName || "已登入";
@@ -145,12 +141,12 @@
     say("已登入。正在向遊戲伺服器驗證身分…");
     try {
       const identity = await verifyIdentityWithApi();
-      identityVerified = identity.uid === user.uid;
-      if (!identityVerified) throw new Error("伺服器回傳的 UID 與目前帳號不一致。");
-      say("登入成功，伺服器已驗證你的身分。");
+      if (checkVersion !== renderCheckVersion) return;
+      if (identity.uid !== user.uid) throw new Error("伺服器回傳的 UID 與目前帳號不一致。");
+      say("登入成功，Render 已驗證你的身分。");
     } catch (error) {
-      identityVerified = false;
-      say("Firebase 已登入，但伺服器身分驗證尚未完成：" + (error?.message || "請檢查 Render 設定。"), true);
+      if (checkVersion !== renderCheckVersion) return;
+      say("Firebase 已登入，但 Render 身分驗證尚未完成：" + (error?.message || "請檢查 Render 設定。"), true);
     }
   }
 
