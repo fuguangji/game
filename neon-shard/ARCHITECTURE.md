@@ -153,9 +153,9 @@
 
 | 類別 | 責任 |
 |---|---|
-| `AccountService` | 訂閱共用 Firebase Auth；跨分頁登入／登出同步；管理 Render profile、金鑰與雲端存檔 |
+| `AccountService` | 訂閱共用 Firebase Auth；跨分頁登入／登出同步；管理 Render profile、金鑰與雲端存檔；狀態改變發出 `change` 事件 |
 | `ApiClient` | 逾時、錯誤碼、使用共用 Firebase ID Token；401 時強制更新 Token 並重試一次，不擅自登出共用帳號 |
-| `AccountService` | 共用登入狀態／金鑰解鎖／上傳／下載的邏輯，不碰 DOM；狀態改變發出 `change` 事件 |
+| `AccountView` | 個人檔案「雲端同步」分頁的登入／註冊／登出、金鑰解鎖與存檔操作畫面 |
 | `AccountView` | 畫面：使用 `<form>`、所有文字走 `textContent`、訊息不會被重繪吃掉 |
 
 ### 這次修掉的帳號頁面問題
@@ -165,8 +165,7 @@
 2. **套用雲端存檔不安全**：原本把 `SV` 清空後直接塞入解密內容，缺欄位會讓帳號頁當場崩潰（`SV.clr.filter`），
    也不會刷新出戰配置與角色。現在以預設值為底、型別驗證後合併，並更新 `CHR`、出戰配置與畫面；覆蓋前會要求確認。
 3. **成功訊息永遠看不到**：先顯示訊息又立刻整頁重繪，訊息被清掉。訊息現在由畫面保存。
-4. **登入逾時（401）後畫面卡在已登入**：session 被清掉但畫面沒更新，按鈕會丟出 `Cannot read properties of null`。
-   現在先嘗試 refresh；失敗則回到登入畫面並顯示「登入已過期」。
+4. **登入逾時（401）後畫面卡在已登入**：現在由 Firebase SDK 管理 Token 更新；Render 連續拒絕時顯示 API 錯誤，不擅自登出跨遊戲共用帳號。
 5. Firebase SDK 統一管理 ID Token 與 refresh；前端不再自行保存或更新 refresh token。
 6. **雲端伺服器冷啟動時畫面永久鎖死**：`fetch` 沒有逾時。現在 25 秒逾時並提示「免費主機閒置後需要 30～60 秒喚醒」。
 7. **用訊息字串判斷「沒有存檔」**（`includes("No save exists")`）：改用錯誤碼 `SAVE_NOT_FOUND`；版本衝突（`REVISION_CONFLICT`）也有明確提示。
