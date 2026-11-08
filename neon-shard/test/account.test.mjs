@@ -154,9 +154,12 @@ test("AccountService：登出會呼叫 Render，再登出共用 Firebase；Rende
   assert.equal(svc.displayName, "訪客");
 });
 
-test("AccountService：共用 Auth observer 同步跨分頁登入與登出", async () => {
+test("AccountService：啟動時等待 Firebase 還原，並同步跨分頁登入與登出", async () => {
   const { svc, auth, user } = makeService();
+  assert.equal(svc.authReady, false);
   await svc.restore();
+  assert.equal(svc.authReady, true);
+  assert.equal(svc.signedIn, false);
   auth.emit(user);
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(svc.signedIn, true);
