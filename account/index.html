@@ -1,161 +1,503 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>NovaCircuit｜共用帳號中心</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <style>
-    :root{color-scheme:dark;--accent:#9be7ff;--accent2:#b9a7ff;--bg:#071018;--panel:rgba(12,25,38,.92);--muted:#9aafbf;--line:rgba(155,231,255,.22)}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 5%,#163348 0,transparent 42%),radial-gradient(ellipse at 90% 80%,#25204b 0,transparent 38%),var(--bg);color:#edf7ff;font-family:'Noto Sans TC',sans-serif;display:grid;place-items:center;padding:24px;overflow-x:hidden}
-    body:before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(#9be7ff08 1px,transparent 1px),linear-gradient(90deg,#9be7ff08 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,black,transparent)}
-    main{width:min(100%,480px);position:relative}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px;text-decoration:none;color:#edf7ff}.mark{width:46px;height:46px;border:1px solid var(--accent);border-radius:13px;display:grid;place-items:center;color:var(--accent);font:22px 'Share Tech Mono';box-shadow:0 0 24px #9be7ff18}.brand strong{display:block;letter-spacing:.08em}.brand small{color:var(--muted);font:12px 'Share Tech Mono';letter-spacing:.1em}
-    .panel{border:1px solid var(--line);border-radius:22px;background:var(--panel);backdrop-filter:blur(18px);padding:clamp(22px,6vw,34px);box-shadow:0 25px 80px #0006}
-    .eyebrow{font:12px 'Share Tech Mono';letter-spacing:.18em;color:var(--accent);text-transform:uppercase}.title{font-size:clamp(26px,6vw,34px);line-height:1.25;margin:10px 0}.desc{color:var(--muted);line-height:1.75;font-size:14px;margin:0 0 24px}
-    .switch{display:grid;grid-template-columns:1fr 1fr;padding:4px;background:#050c13;border:1px solid var(--line);border-radius:12px;margin:0 0 22px}.switch button{border:0;background:transparent;color:var(--muted);padding:11px;border-radius:9px;font:inherit;cursor:pointer}.switch button[aria-selected=true]{background:#1b3547;color:var(--accent);font-weight:700}
-    form{display:grid;gap:15px}.field{display:grid;gap:7px}.field label{font-size:13px;color:#c8dce9}.field input{width:100%;background:#050d14;border:1px solid #294355;border-radius:10px;color:#fff;padding:13px 14px;font:inherit;outline:none}.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #9be7ff18}.hint{font-size:12px;color:var(--muted);line-height:1.5}.primary,.secondary{width:100%;border-radius:11px;padding:13px 15px;font:700 15px inherit;cursor:pointer;transition:.2s}.primary{border:1px solid var(--accent);background:var(--accent);color:#071018;margin-top:5px}.primary:hover{filter:brightness(1.08);transform:translateY(-1px)}.secondary{border:1px solid var(--line);background:transparent;color:var(--accent);margin-top:12px}.primary:disabled{opacity:.55;cursor:wait}
-    .status{min-height:24px;margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--accent)}.status.error{color:#ffb5b5}.status:empty{display:none}.account-box{border:1px solid var(--line);background:#08131d;border-radius:13px;padding:16px;overflow-wrap:anywhere}.account-box strong{display:block;margin-bottom:5px}.account-box p{margin:0;color:var(--muted);font-size:13px}.foot{font-size:12px;line-height:1.7;color:var(--muted);margin:20px 2px 0}.foot a{color:var(--accent)}[hidden]{display:none!important}
-    @media(max-width:420px){body{padding:14px}.panel{border-radius:17px}}
-  </style>
-</head>
-<body>
-<main>
-  <a class="brand" id="homeLink" href="../">
-    <span class="mark">N</span><span><strong>光風濟月 · NovaCircuit</strong><small>SHARED ACCOUNT / ONE IDENTITY</small></span>
-  </a>
-  <section class="panel">
-    <div class="eyebrow">Identity center · 01</div>
-    <h1 class="title">一個帳號，通行所有遊戲。</h1>
-    <p class="desc">在這裡登入或建立帳號，回到遊戲後就能沿用同一個登入狀態。你的密碼不會被傳給遊戲頁面；伺服器會驗證 Firebase 簽發的身分 Token。</p>
-    <div id="signedOut">
-      <div class="switch" role="tablist" aria-label="帳號操作">
-        <button type="button" role="tab" id="loginTab" aria-selected="true">登入</button>
-        <button type="button" role="tab" id="registerTab" aria-selected="false">建立帳號</button>
-      </div>
-      <form id="authForm">
-        <div class="field" id="nameField" hidden><label for="displayName">顯示名稱</label><input id="displayName" name="displayName" autocomplete="nickname" maxlength="24"></div>
-        <div class="field"><label for="email">電子郵件</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
-        <div class="field"><label for="password">密碼</label><input id="password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="256" required><span class="hint" id="passwordHint">請輸入你的帳號密碼。</span></div>
-        <button class="primary" id="submitButton" type="submit">登入</button>
-      </form>
-      <button class="secondary" id="resetButton" type="button">忘記密碼</button>
-    </div>
-    <div id="signedIn" hidden>
-      <div class="account-box"><strong id="accountName">已登入</strong><p id="accountEmail"></p><p id="accountUid"></p></div>
-      <button class="primary" id="continueButton" type="button">返回原本的遊戲</button>
-      <button class="secondary" id="signOutButton" type="button">登出所有共用帳號頁面</button>
-    </div>
-    <p class="status" id="status" role="status" aria-live="polite"></p>
-  </section>
-  <p class="foot">登入狀態由 Firebase Authentication 管理，採用同來源瀏覽器持久化；不要把 ID Token 當成永久密碼。雲端存檔與遊戲資料的後端整合仍須完成設定，詳見 <a href="../dev.md">dev.md</a>。</p>
-</main>
-<script type="module">
-  import { observeAuth, signIn, register, signOutShared, resetPassword, verifyIdentityWithApi, isFirebaseConfigured } from "./shared-auth.js";
-
-  const $ = (id) => document.getElementById(id);
-  const accountBase = new URL("../", location.href);
-  const fallbackReturn = new URL("neon-shard/", accountBase).href;
-  function safeReturnTo() {
-    const raw = new URLSearchParams(location.search).get("returnTo");
-    if (!raw) return fallbackReturn;
-    try {
-      const target = new URL(raw, location.href);
-      if (target.origin !== location.origin || !target.pathname.startsWith(accountBase.pathname)
-        || target.pathname.startsWith(new URL("account/", accountBase).pathname)) return fallbackReturn;
-      return target.href;
-    } catch { return fallbackReturn; }
-  }
-  const returnTo = safeReturnTo();
-  let mode = "login";
-  let renderCheckVersion = 0;
-  function say(message, error = false) {
-    $("status").textContent = message;
-    $("status").classList.toggle("error", error);
-  }
-  function setMode(next) {
-    mode = next;
-    const signup = mode === "register";
-    $("loginTab").setAttribute("aria-selected", String(!signup));
-    $("registerTab").setAttribute("aria-selected", String(signup));
-    $("nameField").hidden = !signup;
-    $("displayName").required = signup;
-    $("password").autocomplete = signup ? "new-password" : "current-password";
-    $("passwordHint").textContent = signup ? "至少 8 個字元。請使用你能安全保管的密碼。" : "請輸入你的帳號密碼。";
-    $("submitButton").textContent = signup ? "建立帳號" : "登入";
-    say("");
-  }
-  $("loginTab").addEventListener("click", () => setMode("login"));
-  $("registerTab").addEventListener("click", () => setMode("register"));
-  $("authForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const button = $("submitButton");
-    if (button.disabled) return;
-    button.disabled = true;
-    say(mode === "register" ? "正在建立帳號…" : "正在登入…");
-    try {
-      const email = $("email").value.trim();
-      const password = $("password").value;
-      if (mode === "register") {
-        const name = $("displayName").value.trim();
-        if (!name || [...name].length > 24 || /[<>&"'\x60%_\\\u0000-\u001f\u007f]/u.test(name)) {
-          throw new Error("顯示名稱需為 1～24 個字，且不能包含特殊控制符號。");
-        }
-        await register(email, password, name);
-      } else {
-        await signIn(email, password);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Hanexo｜共用帳號中心</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #9be7ff;
+        --accent2: #b9a7ff;
+        --bg: #071018;
+        --panel: rgba(12, 25, 38, 0.92);
+        --muted: #9aafbf;
+        --line: rgba(155, 231, 255, 0.22);
       }
-    } catch (error) {
-      const message = error?.code === "auth/email-already-in-use" ? "這個電子郵件已註冊，請改用登入。"
-        : error?.code === "auth/invalid-credential" ? "電子郵件或密碼不正確。"
-        : error?.code === "auth/weak-password" ? "密碼至少需要 8 個字元。"
-        : error?.code === "auth/invalid-email" ? "電子郵件格式不正確。"
-        : error?.message || "操作失敗，請稍後再試。";
-      say(message, true);
-    } finally { button.disabled = false; }
-  });
-  $("resetButton").addEventListener("click", async () => {
-    const email = $("email").value.trim();
-    if (!email) return say("請先輸入電子郵件，再按「忘記密碼」。", true);
-    try { await resetPassword(email); say("如果這個信箱已註冊，Firebase 會寄送重設密碼郵件。"); }
-    catch (error) { say(error?.message || "無法寄送重設郵件。", true); }
-  });
-  $("continueButton").addEventListener("click", () => { location.assign(returnTo); });
-  $("signOutButton").addEventListener("click", async () => {
-    try { await signOutShared(); say("已登出。"); }
-    catch (error) { say(error?.message || "登出失敗。", true); }
-  });
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse at 15% 5%, #163348 0, transparent 42%),
+          radial-gradient(ellipse at 90% 80%, #25204b 0, transparent 38%),
+          var(--bg);
+        color: #edf7ff;
+        font-family: "Noto Sans TC", sans-serif;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        overflow-x: hidden;
+      }
+      body:before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(#9be7ff08 1px, transparent 1px),
+          linear-gradient(90deg, #9be7ff08 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: linear-gradient(to bottom, black, transparent);
+      }
+      main {
+        width: min(100%, 480px);
+        position: relative;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        text-decoration: none;
+        color: #edf7ff;
+      }
+      .mark {
+        width: 46px;
+        height: 46px;
+        border: 1px solid var(--accent);
+        border-radius: 13px;
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+        font: 22px "Share Tech Mono";
+        box-shadow: 0 0 24px #9be7ff18;
+      }
+      .brand strong {
+        display: block;
+        letter-spacing: 0.08em;
+      }
+      .brand small {
+        color: var(--muted);
+        font: 12px "Share Tech Mono";
+        letter-spacing: 0.1em;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        padding: clamp(22px, 6vw, 34px);
+        box-shadow: 0 25px 80px #0006;
+      }
+      .eyebrow {
+        font: 12px "Share Tech Mono";
+        letter-spacing: 0.18em;
+        color: var(--accent);
+        text-transform: uppercase;
+      }
+      .title {
+        font-size: clamp(26px, 6vw, 34px);
+        line-height: 1.25;
+        margin: 10px 0;
+      }
+      .desc {
+        color: var(--muted);
+        line-height: 1.75;
+        font-size: 14px;
+        margin: 0 0 24px;
+      }
+      .switch {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        padding: 4px;
+        background: #050c13;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin: 0 0 22px;
+      }
+      .switch button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 5px;
+        border-radius: 9px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .switch button[aria-selected="true"] {
+        background: #1b3547;
+        color: var(--accent);
+        font-weight: 700;
+      }
+      form {
+        display: grid;
+        gap: 15px;
+      }
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+      .field label {
+        font-size: 13px;
+        color: #c8dce9;
+      }
+      .field input {
+        width: 100%;
+        background: #050d14;
+        border: 1px solid #294355;
+        border-radius: 10px;
+        color: #fff;
+        padding: 13px 14px;
+        font: inherit;
+        outline: none;
+      }
+      .field input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px #9be7ff18;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .primary,
+      .secondary {
+        width: 100%;
+        border-radius: 11px;
+        padding: 13px 15px;
+        font: 700 15px inherit;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .primary {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #071018;
+        margin-top: 5px;
+      }
+      .primary:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+      }
+      .secondary {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--accent);
+        margin-top: 12px;
+      }
+      .primary:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .status {
+        min-height: 24px;
+        margin: 14px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--accent);
+      }
+      .status.error {
+        color: #ffb5b5;
+      }
+      .status:empty {
+        display: none;
+      }
+      .account-box {
+        border: 1px solid var(--line);
+        background: #08131d;
+        border-radius: 13px;
+        padding: 16px;
+        overflow-wrap: anywhere;
+      }
+      .account-box strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .account-box p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .foot {
+        font-size: 12px;
+        line-height: 1.7;
+        color: var(--muted);
+        margin: 20px 2px 0;
+      }
+      .foot a {
+        color: var(--accent);
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 420px) {
+        body {
+          padding: 14px;
+        }
+        .panel {
+          border-radius: 17px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" id="homeLink" href="../">
+        <span class="mark"
+          ><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="display: block">
+            <line x1="2" y1="21" x2="22" y2="21" />
+            <!-- 主建物 -->
+            <path d="M 3 21 V 13 L 8 9 V 13 L 13 9 V 13 H 17 V 21"/>
+            <!-- 右側控制室 -->
+            <path d="M 17 15 H 21 V 21" />
+            <!-- 煙囪與排氣管 -->
+            <path d="M 14 9 V 5 H 16 V 11" />
+            <line x1="13.5" y1="5" x2="16.5" y2="5" />
+            <line x1="19.5" y1="15" x2="19.5" y2="12" />
+            <path d="M 19.5 12 Q 19.5 10 17.5 10 H 15" stroke-dasharray="1 1" stroke-width="1"/>
+            <!-- 幾何煙霧 -->
+            <path d="M 15 3 Q 15.5 1.5 17 1.5 Q 18.5 1.5 18 3" stroke-width="0.9" opacity="0.7"/>
+            <!-- 廠房精密細節（氣窗與條紋結構） -->
+            <line x1="5.5" y1="15" x2="5.5" y2="19" opacity="0.5" stroke-width="0.8"/>
+            <rect x="9.5" y="14" width="2" height="2" stroke-width="0.9" />
+            <rect x="9.5" y="17.5" width="2" height="2" stroke-width="0.9" />
+            <line x1="18.5" y1="17" x2="19.5" y2="17" stroke-width="1" />
+          </svg> </span
+        ><span
+          ><strong>光風濟月 · Hanexo｜共用帳號中心</strong
+          ><small>SHARED ACCOUNT / ONE IDENTITY</small></span
+        >
+      </a>
+      <section class="panel">
+        <div class="eyebrow">IDENTITY CENTER · Hanexo</div>
+        <h1 class="title">一個帳號，通行所有遊戲。</h1>
+        <p class="desc">
+          在這裡登入或建立帳號，回到遊戲後並重新整理就能沿用同一個登入狀態。
+        </p>
+        <div id="signedOut">
+          <div class="switch" role="tablist" aria-label="帳號操作">
+            <button type="button" role="tab" id="loginTab" aria-selected="true">
+              登入
+            </button>
+            <button type="button" role="tab" id="registerTab" aria-selected="false">
+              建立帳號
+            </button>
+          </div>
+          <form id="authForm">
+            <div class="field" id="nameField" hidden>
+              <label for="displayName">顯示名稱</label
+              ><input id="displayName" name="displayName" autocomplete="nickname" maxlength="24"
+              />
+            </div>
+            <div class="field">
+              <label for="email">電子郵件</label
+              ><input id="email" name="email" type="email" autocomplete="email"
+                maxlength="254"
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="password">密碼</label
+              ><input id="password" name="password" type="password" autocomplete="current-password"
+                minlength="8"
+                maxlength="256"
+                required
+              /><span class="hint" id="passwordHint">請輸入你的帳號密碼。</span>
+            </div>
+            <button class="primary" id="submitButton" type="submit">
+              登入
+            </button>
+          </form>
+          <button class="secondary" id="resetButton" type="button">
+            忘記密碼
+          </button>
+        </div>
+        <div id="signedIn" hidden>
+          <div class="account-box">
+            <strong id="accountName">已登入</strong>
+            <p id="accountEmail"></p>
+            <p id="accountUid"></p>
+          </div>
+          <button class="primary" id="continueButton" type="button">
+            返回原本的遊戲
+          </button>
+          <button class="secondary" id="signOutButton" type="button">
+            登出所有共用帳號頁面
+          </button>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </section>
+      <p class="foot">
+        本帳號是由<a href="../">光風濟月 GAMES</a>開發的共用帳號系統，使用者可在此登入或建立帳號，並在遊戲中沿用同一個登入狀態。
+        本系統最新更新日期為11/30/2025，如發現任何問題務必回報給我們。
+        本系統使用Firebase託管。<br>
+        如使用本系統，即代表你同意<a href="../privacy.html">隱私權政策</a>與<a href="../terms.html">使用條款</a>。
+      </p>
+    </main>
+    <script type="module">
+      import {
+        observeAuth,
+        signIn,
+        register,
+        signOutShared,
+        resetPassword,
+        verifyIdentityWithApi,
+        isFirebaseConfigured,
+      } from "./shared-auth.js";
 
-  async function renderUser(user) {
-    const checkVersion = ++renderCheckVersion;
-    $("signedOut").hidden = Boolean(user);
-    $("signedIn").hidden = !user;
-    if (!user) {
-      say(isFirebaseConfigured() ? "" : "Firebase 尚未設定：請檢查 account/firebase-config.js 的 Web App 設定。", !isFirebaseConfigured());
-      return;
-    }
-    $("accountName").textContent = user.displayName || "已登入";
-    $("accountEmail").textContent = user.email || "此帳號未提供電子郵件";
-    $("accountUid").textContent = "Firebase UID：" + user.uid;
-    say("已登入。正在向遊戲伺服器驗證身分…");
-    try {
-      const identity = await verifyIdentityWithApi();
-      if (checkVersion !== renderCheckVersion) return;
-      if (identity.uid !== user.uid) throw new Error("伺服器回傳的 UID 與目前帳號不一致。");
-      say("登入成功，Render 已驗證你的身分。");
-    } catch (error) {
-      if (checkVersion !== renderCheckVersion) return;
-      say("Firebase 已登入，但 Render 身分驗證尚未完成：" + (error?.message || "請檢查 Render 設定。"), true);
-    }
-  }
+      const $ = (id) => document.getElementById(id);
+      const accountBase = new URL("../", location.href);
+      const fallbackReturn = new URL("neon-shard/", accountBase).href;
+      function safeReturnTo() {
+        const raw = new URLSearchParams(location.search).get("returnTo");
+        if (!raw) return fallbackReturn;
+        try {
+          const target = new URL(raw, location.href);
+          if (
+            target.origin !== location.origin ||
+            !target.pathname.startsWith(accountBase.pathname) ||
+            target.pathname.startsWith(
+              new URL("account/", accountBase).pathname,
+            )
+          )
+            return fallbackReturn;
+          return target.href;
+        } catch {
+          return fallbackReturn;
+        }
+      }
+      const returnTo = safeReturnTo();
+      let mode = "login";
+      let renderCheckVersion = 0;
+      function say(message, error = false) {
+        $("status").textContent = message;
+        $("status").classList.toggle("error", error);
+      }
+      function setMode(next) {
+        mode = next;
+        const signup = mode === "register";
+        $("loginTab").setAttribute("aria-selected", String(!signup));
+        $("registerTab").setAttribute("aria-selected", String(signup));
+        $("nameField").hidden = !signup;
+        $("displayName").required = signup;
+        $("password").autocomplete = signup
+          ? "new-password"
+          : "current-password";
+        $("passwordHint").textContent = signup
+          ? "至少 8 個字元。請使用你能安全保管的密碼。"
+          : "請輸入你的帳號密碼。";
+        $("submitButton").textContent = signup ? "建立帳號" : "登入";
+        say("");
+      }
+      $("loginTab").addEventListener("click", () => setMode("login"));
+      $("registerTab").addEventListener("click", () => setMode("register"));
+      $("authForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = $("submitButton");
+        if (button.disabled) return;
+        button.disabled = true;
+        say(mode === "register" ? "正在建立帳號…" : "正在登入…");
+        try {
+          const email = $("email").value.trim();
+          const password = $("password").value;
+          if (mode === "register") {
+            const name = $("displayName").value.trim();
+            if (
+              !name ||
+              [...name].length > 24 ||
+              /[<>&"'\x60%_\\\u0000-\u001f\u007f]/u.test(name)
+            ) {
+              throw new Error(
+                "顯示名稱需為 1～24 個字，且不能包含特殊控制符號。",
+              );
+            }
+            await register(email, password, name);
+          } else {
+            await signIn(email, password);
+          }
+        } catch (error) {
+          const message =
+            error?.code === "auth/email-already-in-use"
+              ? "這個電子郵件已註冊，請改用登入。"
+              : error?.code === "auth/invalid-credential"
+                ? "電子郵件或密碼不正確。"
+                : error?.code === "auth/weak-password"
+                  ? "密碼至少需要 8 個字元。"
+                  : error?.code === "auth/invalid-email"
+                    ? "電子郵件格式不正確。"
+                    : error?.message || "操作失敗，請稍後再試。";
+          say(message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      $("resetButton").addEventListener("click", async () => {
+        const email = $("email").value.trim();
+        if (!email) return say("請先輸入電子郵件，再按「忘記密碼」。", true);
+        try {
+          await resetPassword(email);
+          say("如果這個信箱已註冊，Firebase 會寄送重設密碼郵件。");
+        } catch (error) {
+          say(error?.message || "無法寄送重設郵件。", true);
+        }
+      });
+      $("continueButton").addEventListener("click", () => {
+        location.assign(returnTo);
+      });
+      $("signOutButton").addEventListener("click", async () => {
+        try {
+          await signOutShared();
+          say("已登出。");
+        } catch (error) {
+          say(error?.message || "登出失敗。", true);
+        }
+      });
 
-  try {
-    await observeAuth((user) => { renderUser(user).catch((error) => say(error?.message || "讀取帳號狀態失敗。", true)); },
-      (error) => say(error?.message || "無法讀取 Firebase 登入狀態。", true));
-  } catch (error) {
-    say(error?.message || "Firebase 初始化失敗。", true);
-  }
-</script>
-</body>
+      async function renderUser(user) {
+        const checkVersion = ++renderCheckVersion;
+        $("signedOut").hidden = Boolean(user);
+        $("signedIn").hidden = !user;
+        if (!user) {
+          say(
+            isFirebaseConfigured()
+              ? ""
+              : "Firebase 尚未設定：請檢查 account/firebase-config.js 的 Web App 設定。",
+            !isFirebaseConfigured(),
+          );
+          return;
+        }
+        $("accountName").textContent = user.displayName || "已登入";
+        $("accountEmail").textContent = user.email || "此帳號未提供電子郵件";
+        $("accountUid").textContent = "Firebase UID：" + user.uid;
+        say("已登入。正在向遊戲伺服器驗證身分…");
+        try {
+          const identity = await verifyIdentityWithApi();
+          if (checkVersion !== renderCheckVersion) return;
+          if (identity.uid !== user.uid)
+            throw new Error("伺服器回傳的 UID 與目前帳號不一致。");
+          say("登入成功，Render 已驗證你的身分。");
+        } catch (error) {
+          if (checkVersion !== renderCheckVersion) return;
+          say(
+            "Firebase 已登入，但 Render 身分驗證尚未完成：" +
+              (error?.message || "請檢查 Render 設定。"),
+            true,
+          );
+        }
+      }
+
+      try {
+        await observeAuth(
+          (user) => {
+            renderUser(user).catch((error) =>
+              say(error?.message || "讀取帳號狀態失敗。", true),
+            );
+          },
+          (error) =>
+            say(error?.message || "無法讀取 Firebase 登入狀態。", true),
+        );
+      } catch (error) {
+        say(error?.message || "Firebase 初始化失敗。", true);
+      }
+    </script>
+  </body>
 </html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="光風濟月共用帳號中心與相關遊戲服務的隱私權政策。" />
+    <title>隱私權政策｜光風濟月</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #9be7ff;
+        --bg: #071018;
+        --panel: rgba(12, 25, 38, 0.92);
+        --muted: #9aafbf;
+        --line: rgba(155, 231, 255, 0.22);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px 18px;
+        background:
+          radial-gradient(ellipse at 15% 5%, #163348 0, transparent 42%),
+          radial-gradient(ellipse at 90% 80%, #25204b 0, transparent 38%),
+          var(--bg);
+        color: #edf7ff;
+        font-family: "Noto Sans TC", sans-serif;
+        line-height: 1.8;
+      }
+      main { width: min(100%, 820px); margin: 0 auto; }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 22px;
+        color: #edf7ff;
+        text-decoration: none;
+      }
+      .mark {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        border: 1px solid var(--accent);
+        border-radius: 12px;
+        color: var(--accent);
+        font: 20px "Share Tech Mono", monospace;
+      }
+      .brand small { display: block; color: var(--muted); font: 11px "Share Tech Mono", monospace; }
+      article {
+        padding: clamp(22px, 5vw, 42px);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: 0 25px 80px #0006;
+      }
+      .eyebrow { color: var(--accent); font: 12px "Share Tech Mono", monospace; letter-spacing: .14em; }
+      h1 { margin: 8px 0; font-size: clamp(28px, 6vw, 38px); line-height: 1.3; }
+      .updated { margin: 0 0 28px; color: var(--muted); font-size: 13px; }
+      h2 { margin: 28px 0 8px; font-size: 19px; line-height: 1.5; }
+      p, li { color: #c9d8e4; }
+      p { margin: 8px 0 14px; }
+      ul { margin: 8px 0 14px; padding-left: 1.4em; }
+      li + li { margin-top: 6px; }
+      a { color: var(--accent); text-underline-offset: 3px; }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+      nav { display: flex; flex-wrap: wrap; gap: 18px; margin: 20px 2px 0; font-size: 14px; }
+      @media (max-width: 480px) { body { padding: 20px 12px; } article { border-radius: 16px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" href="./" aria-label="光風濟月首頁">
+        <span class="mark" aria-hidden="true">光</span>
+        <span><strong>光風濟月</strong><small>GAMES / ACCOUNT</small></span>
+      </a>
+      <article>
+        <div class="eyebrow">PRIVACY</div>
+        <h1>隱私權政策</h1>
+        <p class="updated">最後更新：2026 年 11 月 8 日</p>
+
+        <p>本政策說明光風濟月共用帳號中心，以及使用該帳號登入之遊戲服務，如何處理與保護你的資料。個別遊戲如有額外資料處理方式，會在該遊戲另行說明。</p>
+
+        <h2>我們處理哪些資料</h2>
+        <ul>
+          <li><strong>帳號資料：</strong>註冊或登入所需的電子郵件、Firebase 使用者識別碼，以及你提供的顯示名稱。</li>
+          <li><strong>遊戲資料：</strong>為提供遊戲功能而處理的玩家個人檔案、雲端存檔及加密金鑰中繼資料。存檔可能包含你的遊戲進度與設定；支援加密的存檔會以密文形式儲存。</li>
+          <li><strong>服務與安全資料：</strong>登入狀態、驗證所需的識別憑證，以及服務供應商在提供、維護和保護服務時可能產生的技術紀錄。</li>
+        </ul>
+
+        <h2>資料用途與帳號驗證</h2>
+        <p>我們使用上述資料建立及驗證帳號、在支援的遊戲間共用登入狀態、提供個人檔案與雲端存檔功能、維護服務安全，以及處理你提出的問題。Firebase Authentication 直接處理電子郵件與密碼驗證；密碼不會傳送至本專案的遊戲 API。登入狀態會依 Firebase 的瀏覽器本機持續性設定保存在你的瀏覽器中。</p>
+
+        <h2>服務供應商與資料分享</h2>
+        <p>為提供服務，資料可能由 Firebase（帳號驗證及相關雲端資料服務）與 Render（遊戲 API 託管）等服務供應商依其服務條款及隱私權政策處理。遊戲 API 會在驗證帳號後，以帳號識別碼處理相應的個人檔案或存檔。我們不會因本政策而將你的資料出售給他人；除提供服務、維護安全、遵守法律要求或取得你同意所必要外，不會任意提供你的帳號資料。</p>
+
+        <h2>保存與安全</h2>
+        <p>資料會在提供帳號及遊戲功能所需期間保存。服務使用傳輸加密及存取控制等措施保護資料；支援加密的雲端存檔會以密文儲存。不過，網際網路傳輸及電子儲存方式都無法保證絕對安全。</p>
+
+        <h2>你的選擇與聯絡方式</h2>
+        <p>你可以停止使用服務並從共用帳號中心登出。如需詢問資料、提出更正或刪除請求，請透過<a href="mailto:sky.breaded.4g@icloud.com" target="_blank" rel="noopener noreferrer">反映管道</a>聯絡我們；請勿在公開留言中張貼密碼、驗證碼或其他敏感資料。</p>
+
+        <h2>政策變更</h2>
+        <p>我們可能因服務或法規變更更新本政策。更新版本會發布於本頁，並更新頁面所列日期。繼續使用相關服務前，請留意政策內容。</p>
+      </article>
+      <nav aria-label="相關頁面">
+        <a href="./account/">返回共用帳號中心</a>
+        <a href="./terms.html">閱讀使用條款</a>
+        <a href="./">光風濟月GAMES首頁</a>
+      </nav>
+    </main>
+  </body>
+</html>

@@ -25,7 +25,7 @@ export { xLoad, xLobby, xPause, xResult, xStage } from "./menu-lobby.js";
 
 /* ===== NEON SHARD · 新版選單（資料與工具） ===== */
 export const XCAT = [["近戰"], ["遠程"]];
-// 功能：取得指定武器的分類名稱（近戰＝揮砍型，其餘為遠程；由武器資料判斷，新增武器不必改這裡）。
+// 功能：取得指定武器的分類名稱
 export const wCat = (i) => (ALLWEAPON.getWeapon()[i]?.meleeArcEnabled ? "近戰" : "遠程");
 // 功能：取得武器描述中的模式欄位。
 export const wMode = (i) => (WD[i] || "").split("·")[0];
