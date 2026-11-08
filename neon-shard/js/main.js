@@ -19,7 +19,8 @@ import { legend } from "./game/elite.js";
 import { update } from "./game/simulation.js";
 import { tutorial } from "./game/tutorial.js";
 import { applyLO } from "./game/weapons.js";
-import { buildHome } from "./ui/menu.js";
+import { buildHome, refreshAccountLabel } from "./ui/menu.js";
+import { accountService } from "./account/index.js";
 import { render, showOv } from "./ui/render.js";
 import { init as init_core_viewport } from "./core/viewport.js";
 import { init as init_game_elite } from "./game/elite.js";
@@ -42,6 +43,10 @@ import { init as init_game_tutorial } from "./game/tutorial.js";
 import { init as init_api_extension } from "./api/extension.js";
 import "./techniques/index.js"; // 術式武器的內容
 import { initTechniques } from "./game/techniques.js";
+
+// 遊戲允許訪客直接遊玩；背景還原同源 Firebase Auth，不等待 Render 個人資料而阻塞遊戲啟動。
+accountService.addEventListener("change", refreshAccountLabel);
+void accountService.restore().catch((error) => console.warn("[account] Firebase auth restore failed", error));
 
 /**
  * 讓出主執行緒，讓瀏覽器先處理繪製與輸入。啟動工作被切成幾段，每段之間呼叫一次，
@@ -84,6 +89,7 @@ applyLO();
 setup();
 await yieldToMain(); // ── 第 3 段結束
 buildHome(); // 建大廳 DOM（最重的一步）
+refreshAccountLabel();
 fsm.transition("menu");
 showOv(0);
 G.last = performance.now();
