@@ -44,9 +44,11 @@ import { init as init_api_extension } from "./api/extension.js";
 import "./techniques/index.js"; // 術式武器的內容
 import { initTechniques } from "./game/techniques.js";
 
-// 遊戲允許訪客直接遊玩；背景還原同源 Firebase Auth，不等待 Render 個人資料而阻塞遊戲啟動。
-accountService.addEventListener("change", refreshAccountLabel);
-void accountService.restore().catch((error) => console.warn("[account] Firebase auth restore failed", error));
+// 遊戲允許訪客直接遊玩；只在瀏覽器啟動共用 Auth，絕不阻塞遊戲啟動。
+if (typeof window !== "undefined" && window.location?.origin) {
+  accountService.addEventListener("change", refreshAccountLabel);
+  void accountService.restore().catch((error) => console.warn("[account] Firebase auth restore failed", error));
+}
 
 /**
  * 讓出主執行緒，讓瀏覽器先處理繪製與輸入。啟動工作被切成幾段，每段之間呼叫一次，
