@@ -14,6 +14,7 @@ export class AccountService extends EventTarget {
   #keys = null;
   #profile = null;
   #authReady = null;
+  #authStateReady = false;
   #unsubscribeAuth = null;
   #authGeneration = 0;
   #lastWarm = 0;
@@ -25,6 +26,7 @@ export class AccountService extends EventTarget {
     this.#crypto = crypto;
   }
 
+  get authReady() { return this.#authStateReady; }
   get signedIn() { return Boolean(this.#user); }
   get unlocked() { return this.#keys !== null; }
   get profile() { return this.#profile; }
@@ -72,9 +74,17 @@ export class AccountService extends EventTarget {
   async restore() {
     if (!this.#authReady) {
       this.#authReady = (async () => {
-        const user = await this.#auth.waitForAuthState();
-        this.#setUser(user, { restoreProfile: false });
-        this.#unsubscribeAuth = await this.#auth.observeAuth((nextUser) => this.#setUser(nextUser));
+        try {
+          const user = await this.#auth.waitForAuthState();
+          this.#setUser(user, { restoreProfile: false });
+          this.#unsubscribeAuth = await this.#auth.observeAuth((nextUser) => this.#setUser(nextUser));
+          this.#authStateReady = true;
+          this.#emit();
+        } catch (error) {
+          this.#authStateReady = true;
+          this.#emit(error?.message || "共用登入服務初始化失敗。");
+          throw error;
+        }
       })().catch((error) => {
         this.#authReady = null;
         throw error;

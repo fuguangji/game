@@ -92,7 +92,9 @@ export class AccountView {
       for (const fn of this.#listeners) fn();
     }, { signal: this.#abort.signal });
     this.render();
-    this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
+    if (typeof window !== "undefined" && window.location?.origin) {
+      this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
+    }
   }
 
   #setNotice(text, error = false) {
@@ -133,7 +135,13 @@ export class AccountView {
   render() {
     this.#statusEl = h("p", { class: "ns-status" + (this.#notice.error ? " err" : ""), role: "status", "aria-live": "polite" }, this.#notice.text);
     const panel = h("section", { class: "ns-account" });
-    if (!this.#service.signedIn) this.#renderSignedOut(panel);
+    if (!this.#service.authReady) {
+      panel.append(
+        h("header", { class: "ns-intro" },
+          h("h2", {}, "正在確認登入狀態…"),
+          h("p", {}, "正在還原這個網站共用的 Firebase 登入工作階段，請稍候。")),
+        this.#statusEl);
+    } else if (!this.#service.signedIn) this.#renderSignedOut(panel);
     else this.#renderSignedIn(panel);
     this.#container.replaceChildren(panel);
   }
@@ -239,6 +247,16 @@ export class AccountView {
           h("li", { class: "warn" }, "⚠️ 忘記密碼可能就解不開雲端存檔，請把密碼記好。"))),
       this.#seg(),
       form,
+      h("a", {
+        class: "x-btn blk",
+        href: (() => {
+          const origin = globalThis.location?.origin || "https://fuguangji.github.io";
+          const current = globalThis.location?.href || new URL("/neon-shard/", origin).href;
+          const target = new URL("/account/", origin);
+          target.searchParams.set("returnTo", current);
+          return target.href;
+        })(),
+      }, "前往完整帳號中心"),
       this.#statusEl);
   }
 

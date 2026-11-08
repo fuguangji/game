@@ -70,6 +70,13 @@ export const xSaveLO = () => {
   store.setJSON(KEYS.loadout, G.LO);
 };
 // 功能：切換至指定介面分頁或遊戲狀態。
+/** Firebase 登入狀態更新時，只刷新個人檔案標題，不重建整個頁面。 */
+export function refreshAccountLabel() {
+  if (XS.t !== "a") return;
+  const subtitle = $("xT")?.querySelector("small");
+  if (subtitle) subtitle.textContent = `歡迎回來，${accountService.displayName}`;
+}
+
 export const xGo = (t) => {
   if (t !== XS.t) {
     XS.t = t;
