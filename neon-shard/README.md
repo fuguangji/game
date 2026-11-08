@@ -21,12 +21,12 @@ node --expose-internals tools/check-undefined.cjs js         # 有沒有用到�
 | # | 位置 | 常數 | 要填什麼 |
 |---|---|---|---|
 | 1 | `js/account/config.js` | `DEFAULT_API_BASE` | 後端（`neon-shard-api`）部署在 Render 的網址，例如 `https://xxxx.onrender.com`。目前是占位 `https://neon-shard-api.onrender.com`，若不是你的實際網址一定要改 |
-| 2 | `js/account/config.js` | `DEFAULT_FIREBASE_API_KEY`（目前 `"REPLACE_ME"`） | Firebase Console → 專案設定 → 一般 → 你的應用程式（Web）→ `apiKey`。這是公開值，不是密鑰。**沒填時登入會直接顯示「尚未設定 Firebase API Key」** |
+| 2 | `../account/firebase-config.js` | `FIREBASE_CONFIG` | 與帳號中心共用的 Firebase Web App 設定。所有同源遊戲必須使用同一個 Firebase default app 與 browser-local persistence。 |
 | 3 | Render 環境變數（`neon-shard-api/.env.example`） | `ALLOWED_ORIGINS` | 遊戲實際開啟的網址，完全一致、含 `https://`、不含結尾斜線，多個用逗號分隔。目前範例是 `https://fuguangji.github.io`，請確認是不是你的 |
 | 4 | Render 環境變數 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase 服務帳戶金鑰 JSON（整份貼成一行）。**絕對不要提交到 Git** |
 | 5 | Firebase Console | — | 啟用 Authentication 的 Email/Password；建立 Firestore；發佈 `neon-shard-api/firestore.rules` |
 
-測試時可以不改檔案，在載入遊戲前加一段腳本覆寫：`window.NEON_SHARD_API_BASE = "http://localhost:10000"; window.NEON_SHARD_FIREBASE_KEY = "…";`。
+測試時可以不改檔案，在載入遊戲前加一段腳本覆寫：`window.NEON_SHARD_API_BASE = "http://localhost:10000";`。Firebase Web 設定一律由 repo root 的 `account/firebase-config.js` 管理。
 
 我「不確定、已先用常數寫好」的其他項目（需要時再調，不影響上線）：
 

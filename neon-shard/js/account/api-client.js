@@ -1,5 +1,6 @@
 /**
- * API 用戶端：逾時、錯誤碼、token 自動更新都在這裡處理，畫面層只需要處理 ApiError。
+ * Render API 用戶端。Firebase SDK 管理登入狀態與 ID Token 更新；
+ * 本類別只負責附加 Token、逾時、錯誤處理，以及 401 時強制更新 Token 後重試一次。
  */
 export class ApiError extends Error {
   constructor(message, { status = 0, code = "", cause } = {}) {
@@ -12,22 +13,15 @@ export class ApiError extends Error {
 
 export class ApiClient {
   #base;
-  #sessions;
   #timeoutMs;
   #fetch;
-  #refresher;
+  #getToken;
   #refreshing = null;
-  /** session 無法更新（已過期）時呼叫，讓上層回到登入畫面 */
-  onSessionExpired = () => {};
 
-  /**
-   * @param {{baseUrl:string, sessions:import('./session-store.js').SessionStore, refresher?:(refreshToken:string)=>Promise<object>, timeoutMs?:number, fetchImpl?:typeof fetch}} o
-   *   refresher：用 refreshToken 換新 session（Firebase Auth）。後端不再提供 /api/auth/refresh（回 410）。
-   */
-  constructor({ baseUrl, sessions, refresher = null, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a) }) {
-    this.#refresher = refresher;
+  constructor({ baseUrl, getToken, timeoutMs = 25_000, fetchImpl = (...a) => globalThis.fetch(...a) }) {
+    if (typeof getToken !== "function") throw new TypeError("ApiClient 需要 Firebase ID Token provider。");
     this.#base = String(baseUrl || "").replace(/\/$/, "");
-    this.#sessions = sessions;
+    this.#getToken = getToken;
     this.#timeoutMs = timeoutMs;
     this.#fetch = fetchImpl;
   }
@@ -35,21 +29,30 @@ export class ApiClient {
   async request(path, { method = "GET", body, auth = true } = {}) {
     if (!this.#base) throw new ApiError("尚未設定雲端伺服器網址。", { code: "NO_API_BASE" });
     try {
-      return await this.#send(path, { method, body, auth });
+      return await this.#send(path, { method, body, auth, forceRefresh: false });
     } catch (error) {
-      if (!(auth && error instanceof ApiError && error.status === 401 && this.#sessions.current)) throw error;
-      if (!(await this.#refresh())) {
-        this.#expire();
-        throw new ApiError("登入已過期，請重新登入。", { status: 401, code: "SESSION_EXPIRED" });
-      }
-      return this.#send(path, { method, body, auth }); // 用新 token 重試一次
+      if (!(auth && error instanceof ApiError && error.status === 401)) throw error;
+      const token = await this.#refreshToken();
+      if (!token) throw error;
+      // 只重試一次；Render 的拒絕不會擅自登出 Firebase 共用帳號。
+      return this.#send(path, { method, body, auth, forceRefresh: true, token });
     }
   }
 
-  async #send(path, { method, body, auth }) {
+  async #refreshToken() {
+    this.#refreshing ??= Promise.resolve(this.#getToken(true)).catch(() => null).finally(() => {
+      this.#refreshing = null;
+    });
+    return this.#refreshing;
+  }
+
+  async #send(path, { method, body, auth, forceRefresh, token: suppliedToken }) {
     const headers = { "Content-Type": "application/json" };
-    const session = this.#sessions.current;
-    if (auth && session) headers.Authorization = `Bearer ${session.accessToken}`;
+    if (auth) {
+      const token = suppliedToken ?? await this.#getToken(forceRefresh);
+      if (!token) throw new ApiError("請先登入遊戲帳號，再使用雲端功能。", { status: 401, code: "NOT_SIGNED_IN" });
+      headers.Authorization = `Bearer ${token}`;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
     let response;
@@ -74,30 +77,5 @@ export class ApiClient {
       });
     }
     return result;
-  }
-
-  /** 單一飛行：同時多個請求遇到 401（或主動更新）只會送出一次 refresh */
-  refresh() { return this.#refresh(); }
-
-  #refresh() {
-    this.#refreshing ??= (async () => {
-      const current = this.#sessions.current;
-      if (!current || !this.#refresher) return false;
-      try {
-        const next = await this.#refresher(current.refreshToken);
-        this.#sessions.set({ ...next, userId: next.userId ?? current.userId });
-        return true;
-      } catch {
-        return false;
-      } finally {
-        this.#refreshing = null;
-      }
-    })();
-    return this.#refreshing;
-  }
-
-  #expire() {
-    this.#sessions.clear();
-    try { this.onSessionExpired(); } catch (error) { console.error(error); }
   }
 }

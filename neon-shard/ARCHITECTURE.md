@@ -25,11 +25,11 @@
 | `js/account/account-service.js` | 157 |  |
 | `js/account/account-view.js` | 169 |  |
 | `js/account/api-client.js` | 98 |  |
-| `js/account/firebase-auth.js` | 110 | Firebase Authentication（REST）：註冊、登入、更新 token；密碼只交給 Google，不經過後端 |
+| `account/shared-auth.js` | — | 全站共用 Firebase Auth default app、browser-local persistence、登入狀態與 ID Token |
 | `js/account/cloud-crypto.js` | 345 |  |
 | `js/account/config.js` | 17 |  |
-| `js/account/index.js` | 15 | 帳號系統組裝：把設定、Session、API、加密與服務接在一起（整個遊戲共用一份） |
-| `js/account/session-store.js` | 59 |  |
+| `js/account/index.js` | — | 帳號系統組裝：共用 Auth、Render API 與加密服務 |
+
 | `js/api/extension.js` | 29 | 對外擴充 API（window.NEON_SHARD_API） |
 | `js/config/boss-catalog.js` | 91 |  |
 | `js/config/bullet-catalog.js` | 121 |  |
@@ -153,9 +153,9 @@
 
 | 類別 | 責任 |
 |---|---|
-| `SessionStore` | 登入工作階段（sessionStorage）；格式不正確一律視為未登入 |
-| `ApiClient` | 逾時（伺服器喚醒中不會永遠卡住）、錯誤碼、**401 自動 refresh 一次**（多個請求共用一次 refresh） |
-| `AccountService` | 登入／金鑰解鎖／上傳／下載的邏輯，不碰 DOM；狀態改變發出 `change` 事件 |
+| `AccountService` | 訂閱共用 Firebase Auth；跨分頁登入／登出同步；管理 Render profile、金鑰與雲端存檔；狀態改變發出 `change` 事件 |
+| `ApiClient` | 逾時、錯誤碼、使用共用 Firebase ID Token；401 時強制更新 Token 並重試一次，不擅自登出共用帳號 |
+| `AccountView` | 個人檔案「雲端同步」分頁的登入／註冊／登出、金鑰解鎖與存檔操作畫面 |
 | `AccountView` | 畫面：使用 `<form>`、所有文字走 `textContent`、訊息不會被重繪吃掉 |
 
 ### 這次修掉的帳號頁面問題
@@ -165,9 +165,8 @@
 2. **套用雲端存檔不安全**：原本把 `SV` 清空後直接塞入解密內容，缺欄位會讓帳號頁當場崩潰（`SV.clr.filter`），
    也不會刷新出戰配置與角色。現在以預設值為底、型別驗證後合併，並更新 `CHR`、出戰配置與畫面；覆蓋前會要求確認。
 3. **成功訊息永遠看不到**：先顯示訊息又立刻整頁重繪，訊息被清掉。訊息現在由畫面保存。
-4. **登入逾時（401）後畫面卡在已登入**：session 被清掉但畫面沒更新，按鈕會丟出 `Cannot read properties of null`。
-   現在先嘗試 refresh；失敗則回到登入畫面並顯示「登入已過期」。
-5. **`refreshToken` 存了卻從沒用過**：後端有 `/api/auth/refresh`，前端現在會用。
+4. **登入逾時（401）後畫面卡在已登入**：現在由 Firebase SDK 管理 Token 更新；Render 連續拒絕時顯示 API 錯誤，不擅自登出跨遊戲共用帳號。
+5. Firebase SDK 統一管理 ID Token 與 refresh；前端不再自行保存或更新 refresh token。
 6. **雲端伺服器冷啟動時畫面永久鎖死**：`fetch` 沒有逾時。現在 25 秒逾時並提示「免費主機閒置後需要 30～60 秒喚醒」。
 7. **用訊息字串判斷「沒有存檔」**（`includes("No save exists")`）：改用錯誤碼 `SAVE_NOT_FOUND`；版本衝突（`REVISION_CONFLICT`）也有明確提示。
 8. **個人資料卡的狀態標籤永遠是「尚未連結線上帳號」**，登入後也不變；重新整理後暱稱也回到「訪客」。現在會隨登入狀態更新，並在載入時補抓暱稱。
@@ -283,12 +282,12 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 
 ## 後端整合（neon-shard-api）
 
-- **登入**：瀏覽器直接用 Firebase Auth REST 註冊／登入（`account/firebase-auth.js`），取得 ID token；之後所有後端請求帶 `Authorization: Bearer <ID token>`。
-  後端的 `/api/auth/signup|login|refresh` 一律回 410，所以前端不再呼叫它們；token 更新也改走 Firebase（`ApiClient` 的 `refresher`）。
+- **登入**：個人檔案的「雲端同步」透過 repo root `account/shared-auth.js` 使用共用 Firebase SDK 註冊／登入／登出；所有同源遊戲共用同一份 Auth persistence。
+  後端的 `/api/auth/signup|login|refresh` 一律回 410；`ApiClient` 直接向共用 Auth 取得 ID Token，401 時要求 SDK 強制更新後重試一次。
 - **第一次登入**：先呼叫 `GET /api/identity/me`（後端在這時建立 Firestore 使用者與暱稱保留），註冊時再 `PUT /api/profile` 設定暱稱，最後 `GET /api/profile/me`。
   加密金鑰的 `userId` 現在是 Firebase UID；舊版（Supabase UUID）建立的雲端存檔與金鑰無法沿用，需要重新註冊。
 - **雲端存檔**：流程不變（金鑰註冊 `PUT /api/keys`、存檔 `POST/PUT /api/player-data`、ECDSA 簽章、`expectedRevision`），前後端簽章格式有跨專案測試（`neon-shard-api/test/browser-crypto.test.js`）。
-- **線上聯機**：`profile/realtime-client.js` 連 `wss://<API>/api/realtime`，用 `AccountService.getFreshAccessToken()` 取得有效 token。舊的 Firebase Realtime Database／WebRTC 房間程式與規則檔已移除。
+- **線上聯機**：`profile/realtime-client.js` 連 `wss://<API>/api/realtime`，用 `AccountService.getFreshAccessToken()` 取得共用 Firebase Auth ID Token。跨分頁登出會同步關閉聯機。
 - **對戰**：`game/online-match.js`（控制器）、`game/online-state.js`（旗標）、`ui/online-hud.js`（資訊條與結算）。連線屬於控制器、不屬於頁面，所以頁面重繪不會斷線。戰鬥核心只在四處接入：`simulation.update`（tick、跳過波次與商店、子彈對幽靈）、`battle.hurt`（競爭模式忽略本地傷害、對戰不發獎勵）、`progress.pause`（不凍結）、`render`（畫幽靈與對方子彈）。
 - **喚醒**：打開「雲端同步」分頁時 `warmUp()` 先打 `/api/health` 喚醒休眠中的 Render（5 分鐘內只打一次）。
 - 已移除的重複／未使用檔案：`js/cloud-account.js`、`js/cloud-crypto.js`、`js/cloud-config.js`、`js/online/online.js`、`js/account/account-features.js`、`js/profile/firebase-room-client.js`、`js/profile/firebase-config.js`、`firebase.database.rules.json`。
