@@ -92,7 +92,9 @@ export class AccountView {
       for (const fn of this.#listeners) fn();
     }, { signal: this.#abort.signal });
     this.render();
-    this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
+    if (typeof window !== "undefined" && window.location?.origin) {
+      this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
+    }
   }
 
   #setNotice(text, error = false) {
@@ -248,8 +250,10 @@ export class AccountView {
       h("a", {
         class: "x-btn blk",
         href: (() => {
-          const target = new URL("/account/", location.origin);
-          target.searchParams.set("returnTo", location.href);
+          const origin = globalThis.location?.origin || "https://fuguangji.github.io";
+          const current = globalThis.location?.href || new URL("/neon-shard/", origin).href;
+          const target = new URL("/account/", origin);
+          target.searchParams.set("returnTo", current);
           return target.href;
         })(),
       }, "前往完整帳號中心"),
