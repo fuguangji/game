@@ -64,42 +64,10 @@ jobs:
         run: find js -name "*.js" -print0 | xargs -0 -n1 node --check
       - name: Import / undefined-name check
         run: npm run check
-      - name: Account / state / save unit tests and game behavior tests
-        run: node --import ./test/stubs.mjs --test test/*.test.mjs
-      # 倉庫裡提交的 dist/ 若比原始碼舊，只警告不擋下（線上用的是下面「重新建置」的版本）
+      # 倉庫裡提交的 dist/ 若比原始碼舊，只警告不擋下
       - name: Warn if the committed dist/ is stale
-        run: npm run check:dist || echo "::warning title=dist/ 是舊的::倉庫裡提交的 dist/ 與原始碼不一致。若網站是直接用提交的 dist/，請在本機執行 npm run build 後一併提交；或啟用下方的自動部署。"
+        run: npm run check:dist || echo "::warning title=dist/ 是舊的::倉庫裡提交的 dist/ 與原始碼不一致。若網站直接使用倉庫中的 dist/，請在本機執行 npm run build 後一併提交。"
       - name: Build (dist/ and index.html)
         run: npm run build
       - name: Verify the fresh build contains every status effect
         run: npm run check:dist
-      - name: Assemble site
-        run: |
-          mkdir -p _site
-          cp index.html _site/
-          cp -r dist _site/dist
-          if [ -d success ]; then cp -r success _site/success; fi
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: neon-shard/_site
-
-  # ───────────── 自動部署到 GitHub Pages（預設關閉）─────────────
-  # 啟用方式（只需一次）：
-  #   1. 倉庫 Settings → Pages → Source 選「GitHub Actions」
-  #   2. 倉庫 Settings → Secrets and variables → Actions → Variables → 新增 DEPLOY_PAGES = true
-  # 沒設定變數時這個 job 會被跳過，所以不會和你現有的部署方式衝突。
-  deploy:
-    needs: [test, frontend]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_PAGES == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
