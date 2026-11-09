@@ -64,6 +64,8 @@ jobs:
         run: find js -name "*.js" -print0 | xargs -0 -n1 node --check
       - name: Import / undefined-name check
         run: npm run check
+      - name: Account / state / save unit tests and game behavior tests
+        run: node --import ./test/stubs.mjs --test test/*.test.mjs
       # 倉庫裡提交的 dist/ 若比原始碼舊，只警告不擋下
       - name: Warn if the committed dist/ is stale
         run: npm run check:dist || echo "::warning title=dist/ 是舊的::倉庫裡提交的 dist/ 與原始碼不一致。若網站直接使用倉庫中的 dist/，請在本機執行 npm run build 後一併提交。"
