@@ -5,7 +5,7 @@ import { settings } from "../core/settings-store.js";
 import { G } from "../core/game-state.js";
 import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
-import { STG, SV, SV_DEFAULTS, mergeSave, save } from "../game/progress.js";
+import { STG, SV, SV_DEFAULTS, mergeSave, migrateSave, save } from "../game/progress.js";
 import { startTutorial } from "../game/tutorial.js";
 import { startShopGuide } from "./shop-guide.js";
 import { ALLWEAPON, applyLO } from "../game/weapons.js";
@@ -20,6 +20,7 @@ import { showOv } from "./render.js";
 export function applyRemoteSave(remoteSave) {
   const next = JSON.parse(JSON.stringify(SV_DEFAULTS));
   mergeSave(next, remoteSave, { allowUnknown: false });
+  migrateSave(next); // 舊版雲端存檔的關卡編號要搬到新的關卡表
   for (const key of Object.keys(SV)) delete SV[key];
   Object.assign(SV, next);
   G.CHR = CHS[SV.char] || CHS[0];

@@ -30,6 +30,77 @@ import { drawTiles } from "../game/tiles.js";
 import { drawTechniques } from "../game/techniques.js";
 import { drawEnemyFx } from "../game/enemy-effects.js";
 
+/* ───────────── 牆格快取 ─────────────
+ * 牆格的外觀只由「剩餘血量 v」與「裂痕花樣」決定，不必每幀、每格重畫路徑與組色彩字串：
+ * 先把每種外觀畫成一張小圖（離屏畫布），之後每個牆格只做一次 drawImage。
+ * 縮放比例（DPR × 縮放）改變時重建；建不起來（沒有離屏畫布）就退回逐格繪製。
+ */
+const CRACK_VARIANTS = 4;
+const cellHash = (i, j) => ((i * 73856093) ^ (j * 19349663)) >>> 0;
+
+/** 畫一個牆格。v < 0 = 打不破的外牆；v 1~6 = 剩餘血量（越低裂痕越多）；h = 決定裂痕花樣的雜湊 */
+function paintWall(c, v, x, y, h) {
+  c.lineWidth = 2;
+  if (v < 0) {
+    c.fillStyle = "rgba(168,85,247,.22)";
+    c.strokeStyle = "#5fa88f";
+    c.fillRect(x + 3, y + 3, T - 6, T - 6);
+    c.strokeRect(x + 3, y + 3, T - 6, T - 6);
+    c.beginPath();
+    c.moveTo(x + 11, y + 11);
+    c.lineTo(x + T - 11, y + T - 11);
+    c.moveTo(x + T - 11, y + 11);
+    c.lineTo(x + 11, y + T - 11);
+    c.stroke();
+    return;
+  }
+  c.fillStyle = hc(v, 0.18);
+  c.strokeStyle = hc(v, 0.9);
+  c.fillRect(x + 3, y + 3, T - 6, T - 6);
+  c.strokeRect(x + 3, y + 3, T - 6, T - 6);
+  if (v < 6) {
+    const q = (n) => (((h * (n + 3) * 2654435761) >>> 0) % 1000) / 1000;
+    c.lineWidth = 1.5;
+    c.beginPath();
+    for (let k = 0; k < 6 - v; k++) {
+      const a = q(k) * TAU, l = 8 + q(k + 9) * 9, cx0 = x + T / 2, cy0 = y + T / 2;
+      c.moveTo(cx0, cy0);
+      const mx = cx0 + Math.cos(a) * l, my = cy0 + Math.sin(a) * l;
+      c.lineTo(mx, my);
+      c.lineTo(mx + Math.cos(a + 0.7) * 7, my + Math.sin(a + 0.7) * 7);
+    }
+    c.stroke();
+  }
+}
+
+let wallSprites = null; // { scale, solid, hp: [v][variant] }；null = 尚未建立，false = 建立失敗（改用逐格繪製）
+function buildWallSprites(scale) {
+  const px = Math.max(8, Math.ceil(T * scale));
+  const make = (v, variant) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = px;
+    const g = canvas.getContext("2d");
+    if (!g) throw new Error("no 2d context");
+    g.setTransform(px / T, 0, 0, px / T, 0, 0);
+    g.lineJoin = "round";
+    paintWall(g, v, 0, 0, cellHash(variant * 7 + 1, variant * 13 + 5));
+    return canvas;
+  };
+  const hp = [];
+  for (let v = 1; v <= 6; v++) hp[v] = Array.from({ length: v < 6 ? CRACK_VARIANTS : 1 }, (_, k) => make(v, k));
+  return { scale, solid: make(-1, 0), hp };
+}
+
+function wallSprite(v, i, j, scale) {
+  if (wallSprites === false) return null;
+  if (!wallSprites || Math.abs(wallSprites.scale - scale) > 0.02) {
+    try { wallSprites = buildWallSprites(scale); } catch { wallSprites = false; return null; }
+  }
+  if (v < 0) return wallSprites.solid;
+  const list = wallSprites.hp[Math.min(6, v)];
+  return list ? list[cellHash(i, j) % list.length] : null;
+}
+
 // 繪製整個場景（地圖、物件、特效、HUD）
 export function render() {
   cx.setTransform(G.DPR, 0, 0, G.DPR, 0, 0);
@@ -74,49 +145,14 @@ export function render() {
   cx.stroke();
   cx.globalAlpha = 1;
   cx.lineJoin = "round";
+  const wallScale = G.DPR * G.S;
   for (let j = j0; j <= j1; j++)
     for (let i = i0; i <= i1; i++) {
       const v = G.grid[j * N + i];
       if (!v) continue;
-      const x = i * T,
-        y = j * T;
-      if (v < 0) {
-        cx.fillStyle = "rgba(168,85,247,.22)";
-        cx.strokeStyle = "#5fa88f";
-        cx.lineWidth = 2;
-        cx.fillRect(x + 3, y + 3, T - 6, T - 6);
-        cx.strokeRect(x + 3, y + 3, T - 6, T - 6);
-        cx.beginPath();
-        cx.moveTo(x + 11, y + 11);
-        cx.lineTo(x + T - 11, y + T - 11);
-        cx.moveTo(x + T - 11, y + 11);
-        cx.lineTo(x + 11, y + T - 11);
-        cx.stroke();
-        continue;
-      }
-      cx.fillStyle = hc(v, 0.18);
-      cx.strokeStyle = hc(v, 0.9);
-      cx.lineWidth = 2;
-      cx.fillRect(x + 3, y + 3, T - 6, T - 6);
-      cx.strokeRect(x + 3, y + 3, T - 6, T - 6);
-      if (v < 6) {
-        const h = ((i * 73856093) ^ (j * 19349663)) >>> 0,
-          q = (n) => (((h * (n + 3) * 2654435761) >>> 0) % 1000) / 1000;
-        cx.lineWidth = 1.5;
-        cx.beginPath();
-        for (let k = 0; k < 6 - v; k++) {
-          const a = q(k) * TAU,
-            l = 8 + q(k + 9) * 9,
-            cx0 = x + T / 2,
-            cy0 = y + T / 2;
-          cx.moveTo(cx0, cy0);
-          const mx = cx0 + Math.cos(a) * l,
-            my = cy0 + Math.sin(a) * l;
-          cx.lineTo(mx, my);
-          cx.lineTo(mx + Math.cos(a + 0.7) * 7, my + Math.sin(a + 0.7) * 7);
-        }
-        cx.stroke();
-      }
+      const sprite = wallSprite(v, i, j, wallScale);
+      if (sprite) cx.drawImage(sprite, i * T, j * T, T, T);
+      else paintWall(cx, v, i * T, j * T, cellHash(i, j)); // 不支援離屏畫布時的退路
     }
   drawTiles(cx, i0, i1, j0, j1, G.time); // 特殊方塊（見 tiles.js）
   cx.strokeStyle = G.bti > 0.05 ? G.bcol : "#5fa88f";

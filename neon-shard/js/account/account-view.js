@@ -10,6 +10,7 @@
  * - 所有使用者文字都走 textContent，不會有 XSS；樣式在 css/ui-kit.css
  */
 import { h } from "../core/dom-utils.js";
+import { accountPageUrl } from "./config.js";
 import { confirmDialog } from "../ui/feedback.js";
 
 const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
@@ -249,13 +250,7 @@ export class AccountView {
       form,
       h("a", {
         class: "x-btn blk",
-        href: (() => {
-          const origin = globalThis.location?.origin || "https://fuguangji.github.io";
-          const current = globalThis.location?.href || new URL("/neon-shard/", origin).href;
-          const target = new URL("/account/", origin);
-          target.searchParams.set("returnTo", current);
-          return target.href;
-        })(),
+        href: accountPageUrl({ returnTo: globalThis.location?.href }),
       }, "前往完整帳號中心"),
       this.#statusEl);
   }

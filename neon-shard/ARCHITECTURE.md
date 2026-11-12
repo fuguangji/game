@@ -291,3 +291,15 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 - **對戰**：`game/online-match.js`（控制器）、`game/online-state.js`（旗標）、`ui/online-hud.js`（資訊條與結算）。連線屬於控制器、不屬於頁面，所以頁面重繪不會斷線。戰鬥核心只在四處接入：`simulation.update`（tick、跳過波次與商店、子彈對幽靈）、`battle.hurt`（競爭模式忽略本地傷害、對戰不發獎勵）、`progress.pause`（不凍結）、`render`（畫幽靈與對方子彈）。
 - **喚醒**：打開「雲端同步」分頁時 `warmUp()` 先打 `/api/health` 喚醒休眠中的 Render（5 分鐘內只打一次）。
 - 已移除的重複／未使用檔案：`js/cloud-account.js`、`js/cloud-crypto.js`、`js/cloud-config.js`、`js/online/online.js`、`js/account/account-features.js`、`js/profile/firebase-room-client.js`、`js/profile/firebase-config.js`、`firebase.database.rules.json`。
+- **更正**：上面這句清單裡的 `js/online/online.js`、`js/profile/firebase-room-client.js`、`js/profile/firebase-config.js`、`firebase.database.rules.json` 其實仍留在 repo 裡，遊戲本體沒有任何地方匯入它們（線上聯機走 Render WebSocket，見 `js/profile/realtime-client.js`）。其中 Firebase WebRTC 這一組（`firebase-room-client.js`＋`firebase-config.js`＋規則檔）已修好並有整合測試（`test/firebase-room-client.test.mjs`），可作為「不經伺服器的 P2P 房間」的備用方案；`js/online/online.js` 是舊版殘留，可以放心刪除。
+
+## 關卡表與存檔版本
+
+- 關卡定義在 `game/progress.js` 的 `STG`；**無盡深淵必須是最後一個（`g: 0`）**。新增關卡請插在它前面，並把 `SAVE_STAGE_LAYOUT` 加 1、在 `migrateSave()` 補上舊存檔的搬移規則（目前 v2：無盡深淵從第 8 個變成最後一個，舊存檔的無盡最佳波數與選取關卡會自動搬過去，本機存檔與雲端存檔載入時都會執行）。
+- 關卡解鎖是線性的（`SV.clr[i-1]`），所以無盡模式不能放在新關卡後面（它永遠不會「通關」）。
+- 特殊地形的出現機率寫在 `game/tiles.js` 各方塊的 `density(stage, index)`，`index` 是 `STG` 的索引。目前：冰封港灣（冰面）、毒蜂巢穴（毒氣）、熔岩熔爐／終焉黎明（岩漿）、雷暴平原／棱鏡迴廊（磁化地板）、各關零星的治療泉與炸藥桶。
+- 地圖生成後會做一次洪水填色（`world-helpers.js` 的 `openSealedPockets`）：被打不破的外牆圍住、走不到的空地會補成可打破的牆，避免敵人或補給刷在孤島裡。
+
+## 帳號登入頁網址
+
+共用帳號中心在 `/game/account/`。遊戲內的「前往完整帳號中心」由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算，可用 `window.NEON_SHARD_ACCOUNT_URL` 覆寫；`returnTo` 只允許回到同一個網站。

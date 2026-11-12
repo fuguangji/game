@@ -28,6 +28,8 @@ node --expose-internals tools/check-undefined.cjs js         # 有沒有用到�
 
 測試時可以不改檔案，在載入遊戲前加一段腳本覆寫：`window.NEON_SHARD_API_BASE = "http://localhost:10000";`。Firebase Web 設定一律由 repo root 的 `account/firebase-config.js` 管理。
 
+**帳號登入頁網址**：共用帳號中心在 `/game/account/`（GitHub Pages 專案站台 `fuguangji/game`）。遊戲內「前往完整帳號中心」按鈕由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算（遊戲在 `/game/neon-shard/` 就會得到 `/game/account/`），不再寫死網域根目錄的 `/account/`；若改用自訂網域或測試，可在載入遊戲前設定 `window.NEON_SHARD_ACCOUNT_URL = "https://…/account/";`。
+
 我「不確定、已先用常數寫好」的其他項目（需要時再調，不影響上線）：
 
 | 位置 | 常數 | 目前值 / 說明 |
@@ -216,7 +218,7 @@ burn: {
 // 岩漿地板：站上去每 0.5 秒受傷；越後面的關卡越多
 registerTile({
   name: "岩漿", color: "#ff5a14",
-  density: (stage) => (stage.g ? 0.03 : 0.04),
+  density: (stage, index) => (stage.g ? 0.03 : 0.04),
   onStand(p, dt, { hurt }) {
     p.lavaT = (p.lavaT ?? 0) - dt;
     if (p.lavaT <= 0) { p.lavaT = 0.5; hurt(4, { quiet: true }); }
@@ -233,7 +235,7 @@ registerTile({
 });
 ```
 
-欄位：`density(stage)` 每格出現機率（0 或省略 = 不自動生成）、`onStand(p, dt, api)`、`onBreak(x, y, api)`、`draw(cx, x, y, size, time)` 自訂繪製（省略就畫 `color` 色塊或外框）。
+欄位：`density(stage, index)` 每格出現機率（`index` 是關卡編號，見 `STG`）（0 或省略 = 不自動生成）、`onStand(p, dt, api)`、`onBreak(x, y, api)`、`draw(cx, x, y, size, time)` 自訂繪製（省略就畫 `color` 色塊或外框）。
 玩家出生區（中心 5 格內）不會生成。教學關是乾淨的空地，不會有特殊方塊。
 
 ---
@@ -249,6 +251,6 @@ registerTile({
 - 新增內容後：訓練場能叫出來、圖鑑有列出、狀態效果在角色身上有光環與 HUD 圖示。
 - 術式武器：在訓練場「武器」分頁裝備，確認技能鈕、冷卻、能量條；各技能與術式場的視覺與手感；塵流懸圖的數字鍵與手機面板；被熔斷時是否真的不能攻擊。
 
-術式武器（青羽鎩等 7 把）的操作、技能表與新增方式見 `TECHNIQUES.md`。
+術式武器（青羽鎩等 10 把）的操作、技能表與新增方式見 `TECHNIQUES.md`。
 
 更多結構與模組職責見 `ARCHITECTURE.md`。

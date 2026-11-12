@@ -99,6 +99,7 @@ export const STATUS = Object.freeze({
   /** 百花齊放：場內所有人術式反噬 +10% */
   bloom: { label: "花域", color: "#ff9ad0", icon: "heal", defaultDuration: 0.25, backlashMul: () => 1.1 },
   stealth: { label: "隱身", color: "#ff8a3d", icon: "speed", defaultDuration: 8 },
+  overload: { label: "過載", color: "#ffe14a", icon: "fast", defaultDuration: 8, damageDealtMul: () => 1.35, speedMul: () => 1.2 },
 });
 
 const defOf = (name) => {

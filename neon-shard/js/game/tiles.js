@@ -14,7 +14,7 @@
  *   solid      見上；預設 false
  *   hp         solid 方塊的血量，1~6；預設 3
  *   color      預設繪製顏色（#rrggbb）
- *   density    (stage) => 0~1：每格出現的機率；stage 是目前關卡（STG 的一列）。省略或 0 = 不自動生成
+ *   density    (stage, index) => 0~1：每格出現的機率；stage 是目前關卡（STG 的一列），index 是關卡編號（STG 的索引，0 起算；無盡模式是最後一個）。省略或 0 = 不自動生成
  *   onStand    (p, dt, api) 玩家站在地板上時每幀呼叫（api = { hurt, applyStatus }）
  *   onBreak    (x, y, api) solid 方塊被打破時呼叫（x, y 是世界座標；api = { zones: G.zones }）
  *   draw       (cx, x, y, size, time) 自訂繪製（省略就畫 color 色塊）
@@ -52,7 +52,7 @@ export const tileDef = (id) => (id > 0 ? TILES[id - 1] ?? null : null);
 export const tileAt = (i, j) => (G.tile && i >= 0 && j >= 0 && i < N && j < N ? tileDef(G.tile[j * N + i]) : null);
 
 /** 建立新的方塊圖層，並依各方塊的 density 隨機放置。genMap 在填好 grid 之後呼叫 */
-export function placeTiles(stage) {
+export function placeTiles(stage, index = 0) {
   G.tile = new Uint16Array(N * N);
   if (!TILES.length) return;
   for (let j = 1; j < N - 1; j++)
@@ -60,7 +60,7 @@ export function placeTiles(stage) {
       const idx = j * N + i;
       if (G.grid[idx] !== 0 || Math.max(Math.abs(i - CENTER), Math.abs(j - CENTER)) <= SAFE_RADIUS) continue;
       for (let k = 0; k < TILES.length; k++) {
-        const t = TILES[k], d = t.density?.(stage) ?? 0;
+        const t = TILES[k], d = t.density?.(stage, index) ?? 0;
         if (d > 0 && Math.random() < d) {
           G.tile[idx] = k + 1;
           if (t.solid) G.grid[idx] = t.hp;
@@ -107,9 +107,10 @@ export function drawTiles(cx, i0, i1, j0, j1, time) {
 }
 
 /* ───────────── 方塊清單：新增方塊從這裡開始（範例見 README） ───────────── */
+/** 關卡編號（STG 索引）：0 訓練場、1 霓虹街區、2 數據峽谷、3 虛空核心、4 冰封港灣、5 毒蜂巢穴、6 虛空裂隙、7 終焉之塔、8 熔岩熔爐、9 雷暴平原、10 棱鏡迴廊、11 終焉黎明、12 無盡深淵 */
 registerTile({
   name: "炸藥桶", color: "#ffaa00", solid: true, hp: 1,
-  density: (stage) => stage >= 3 ? 0.01 : 0,
+  density: (_stage, index) => (index >= 2 ? 0.012 : 0),
   onBreak(x, y, { zones }) {
     zones.push({ k: "bomb", x, y, r: 90, t: 0.3, max: 0.3, col: "#ff9f2a", dmg: 30 });
   },
@@ -125,15 +126,15 @@ registerTile({
 });
 registerTile({
   name: "冰面", color: "#a0e0ff", solid: false,
-  density: (stage) => 0,
+  density: (_stage, index) => (index === 4 ? 0.07 : index === 12 ? 0.02 : 0),
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "fast", {duration:0.1});
+    applyStatus(p, "fast", { duration: 0.1 });
   },
   draw(cx, x, y, size) {
     cx.save();
-    cx.fillStyle = "#00bfff";
+    cx.fillStyle = "#00bfff55";
     cx.fillRect(x + 2, y + 2, size - 4, size - 4);
-    cx.strokeStyle = "#00bfffb7";
+    cx.strokeStyle = "#7fdcffb7";
     cx.lineWidth = 3;
     cx.strokeRect(x + 2, y + 2, size - 4, size - 4);
     cx.restore();
@@ -141,11 +142,11 @@ registerTile({
 });
 registerTile({
   name: "岩漿地板", color: "#ff3300", solid: false,
-  density: (stage) => stage >= 5 ? 0.02 : 0,
+  density: (_stage, index) => (index === 8 ? 0.06 : index === 11 ? 0.04 : [3, 7].includes(index) ? 0.03 : index === 12 ? 0.02 : 0),
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "burn", {duration:10});
+    applyStatus(p, "burn", { duration: 2.5 }); // 離開後再燒 2.5 秒（原本 10 秒，踩一下就燒太久）
   },
-  draw(cx, x, y, size) {
+  draw(cx, x, y, size, time) {
     cx.save();
     cx.fillStyle = "#ff330055";
     cx.fillRect(x + 2, y + 2, size - 4, size - 4);
@@ -157,9 +158,9 @@ registerTile({
 });
 registerTile({
   name: "毒氣地板", color: "#00ff00", solid: false,
-  density: (stage) => stage >= 10 ? 0.02 : 0,
+  density: (_stage, index) => (index === 5 ? 0.06 : [6, 12].includes(index) ? 0.02 : 0),
   onStand(p, dt, { applyStatus }) {
-    applyStatus(p, "poison", {duration:0.5});
+    applyStatus(p, "poison", { duration: 0.5 });
   },
   draw(cx, x, y, size) {
     cx.save();
@@ -168,6 +169,52 @@ registerTile({
     cx.strokeStyle = "#00aa00";
     cx.lineWidth = 3;
     cx.strokeRect(x + 2, y + 2, size - 4, size - 4);
+    cx.restore();
+  }
+});
+registerTile({
+  name: "磁化地板", color: "#ffe14a", solid: false,
+  density: (_stage, index) => (index === 9 ? 0.06 : index === 10 ? 0.03 : index === 12 ? 0.02 : 0),
+  onStand(p, dt, { applyStatus }) {
+    applyStatus(p, "slow", { duration: 0.4 }); // 踩在磁場上被吸住：移動變慢
+  },
+  draw(cx, x, y, size, time) {
+    cx.save();
+    cx.fillStyle = "#ffe14a22";
+    cx.fillRect(x + 2, y + 2, size - 4, size - 4);
+    cx.strokeStyle = "#ffe14a";
+    cx.globalAlpha = 0.55 + 0.25 * Math.sin(time * 4 + x * 0.01);
+    cx.lineWidth = 2;
+    cx.strokeRect(x + 5, y + 5, size - 10, size - 10);
+    cx.beginPath();
+    cx.moveTo(x + size * 0.35, y + size * 0.3);
+    cx.lineTo(x + size * 0.55, y + size * 0.5);
+    cx.lineTo(x + size * 0.42, y + size * 0.5);
+    cx.lineTo(x + size * 0.62, y + size * 0.72);
+    cx.stroke();
+    cx.restore();
+  }
+});
+registerTile({
+  name: "治療泉", color: "#3dff8f", solid: false,
+  density: (_stage, index) => (index >= 1 ? 0.006 : 0),
+  onStand(p, dt) {
+    p.hp = Math.min(p.mhp, p.hp + 6 * dt); // 站著每秒回 6 點血
+  },
+  draw(cx, x, y, size, time) {
+    const c = size / 2, pulse = 0.6 + 0.25 * Math.sin(time * 3 + x * 0.02);
+    cx.save();
+    cx.fillStyle = "#3dff8f22";
+    cx.fillRect(x + 2, y + 2, size - 4, size - 4);
+    cx.globalAlpha = pulse;
+    cx.strokeStyle = "#3dff8f";
+    cx.lineWidth = 3;
+    cx.beginPath();
+    cx.moveTo(x + c, y + size * 0.25);
+    cx.lineTo(x + c, y + size * 0.75);
+    cx.moveTo(x + size * 0.25, y + c);
+    cx.lineTo(x + size * 0.75, y + c);
+    cx.stroke();
     cx.restore();
   }
 });

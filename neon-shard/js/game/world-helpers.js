@@ -5,7 +5,7 @@ import { profile } from "../core/render-profile.js";
 import { MW, N, T, TAU } from "../core/viewport.js";
 import { PN } from "../game-config.js";
 import { coin, cur, jit } from "./pickups.js";
-import { ST } from "./progress.js";
+import { ST, SV } from "./progress.js";
 import { breakTile, placeTiles } from "./tiles.js";
 
 // 功能：讀取地圖格；超出地圖邊界時視為不可通行。
@@ -74,7 +74,29 @@ export function genMap() {
       }
       G.grid[j * N + i] = v;
     }
-  placeTiles(ST()); // 特殊方塊圖層（見 tiles.js）
+  openSealedPockets();
+  placeTiles(ST(), SV.sel); // 特殊方塊圖層（見 tiles.js）
+}
+
+/**
+ * 從出生點洪水填色：被「打不破的外牆」整圈封住、走不進去的空地，一律補成可打破的牆。
+ * 否則敵人、補給可能刷在玩家永遠到不了的孤島裡（波次打不完、掉落物拿不到）。
+ */
+function openSealedPockets() {
+  const seen = new Uint8Array(N * N), stack = [22 * N + 22];
+  seen[22 * N + 22] = 1;
+  while (stack.length) {
+    const idx = stack.pop(), i = idx % N, j = (idx - i) / N;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di, nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue;
+      const n = nj * N + ni;
+      if (seen[n] || G.grid[n] === -1) continue; // 可打破的牆算「走得進去」
+      seen[n] = 1;
+      stack.push(n);
+    }
+  }
+  for (let k = 0; k < N * N; k++) if (G.grid[k] === 0 && !seen[k]) G.grid[k] = 6;
 }
 
 // 功能：尋找符合距離條件且未被障礙物阻擋的位置。

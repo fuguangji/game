@@ -1,7 +1,8 @@
 /** 塵流懸液：控場系術式。術式場「塵流懸圖」有 9 層同心圓，可以分層旋轉、單獨爆破。 */
 import { G } from "../core/game-state.js";
 import { TAU } from "../core/viewport.js";
-import { aoe, bulletsIn, domain, enemiesIn, hitEnemy, registerTechnique, ring, strokeRing } from "../game/techniques.js";
+import { isBossType } from "../config/index.js";
+import { aoe, bulletsIn, domain, enemiesIn, field, hitEnemy, registerTechnique, ring, strokeRing } from "../game/techniques.js";
 import { mv } from "../game/world-helpers.js";
 
 const RING_W = 40; // 每一層的寬度（像素）
@@ -20,6 +21,42 @@ registerTechnique({
       name: "裂解", cost: 25, cd: 10,
       desc: "範圍內敵人的能量被快速消耗（6 秒持續失去生命，Boss 只受 1/4），流失的能量會補給你",
       cast({ p }) { aoe(p.x, p.y, 250, 0, { fx: [["drain", { duration: 6 }]] }); ring(p.x, p.y, 250, "#4de1ff", 0.5); },
+    },
+    {
+      name: "聚塵", cost: 18, cd: 7,
+      desc: "把範圍內的敵人一把拉向你（Boss 只被拉近一小段），並讓他們迷失 2.5 秒、找不到你的位置（Boss 迷失時間較短）。與「簡筆」相反：一個推開、一個拉近",
+      cast({ p }) {
+        for (const e of aoe(p.x, p.y, 330, 6, { fx: [["blind", { duration: 2.5 }]] })) {
+          const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+          const pull = Math.max(0, Math.min(d - (p.r + e.r + 20), isBossType(e.t) ? 80 : 240));
+          mv(e, (dx / d) * pull, (dy / d) * pull);
+        }
+        ring(p.x, p.y, 330, "#c9b8a0", 0.45);
+        ring(p.x, p.y, 160, "#c9b8a0", 0.3);
+      },
+    },
+    {
+      name: "塵暴", cost: 30, cd: 14,
+      desc: "5 秒：身邊捲起跟著你移動的塵暴（半徑 150 像素），持續擊飛並傷害靠近的敵人，同時擊散進入範圍的敵方子彈",
+      cast({ p }) {
+        field({
+          x: p.x, y: p.y, r: 150, t: 5, col: "#c9b8a0", follow: true, every: 0.25, dmg: 14, kb: 260,
+          each(dt, f) { for (const b of bulletsIn(f.x, f.y, f.r)) b.life = 0; },
+          draw(cx, f) {
+            cx.save();
+            cx.strokeStyle = "#e6d9c2";
+            cx.lineWidth = 3;
+            cx.globalAlpha = 0.5;
+            for (let k = 0; k < 3; k++) {
+              const a0 = G.time * 5 + (k * TAU) / 3;
+              cx.beginPath();
+              cx.arc(f.x, f.y, f.r * (0.45 + 0.22 * k), a0, a0 + 1.6);
+              cx.stroke();
+            }
+            cx.restore();
+          },
+        });
+      },
     },
   ],
   domains: [

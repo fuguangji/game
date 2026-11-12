@@ -170,10 +170,10 @@ app.get("/api/identity/me", async (req, res, next) => {
   }
 });
 
-// Registration, login, password reset and session persistence belong to Firebase Auth on /account.
+// Registration, login, password reset and session persistence belong to Firebase Auth at /game/account/.
 // The API deliberately never receives account passwords.
-app.post("/api/auth/signup", authLimiter, (_req, _res, next) => next(new HttpError(410, "USE_FIREBASE_AUTH", "Please create your account at /account/ using Firebase Authentication.")));
-app.post("/api/auth/login", authLimiter, (_req, _res, next) => next(new HttpError(410, "USE_FIREBASE_AUTH", "Please sign in at /account/ using Firebase Authentication.")));
+app.post("/api/auth/signup", authLimiter, (_req, _res, next) => next(new HttpError(410, "USE_FIREBASE_AUTH", "Please create your account at the shared account center (/game/account/) using Firebase Authentication.")));
+app.post("/api/auth/login", authLimiter, (_req, _res, next) => next(new HttpError(410, "USE_FIREBASE_AUTH", "Please sign in at the shared account center (/game/account/) using Firebase Authentication.")));
 app.post("/api/auth/refresh", authLimiter, (_req, _res, next) => next(new HttpError(410, "USE_FIREBASE_AUTH", "Firebase automatically refreshes ID tokens in the browser.")));
 
 app.post("/api/auth/logout", requireUser, (_req, res) => res.status(204).end());

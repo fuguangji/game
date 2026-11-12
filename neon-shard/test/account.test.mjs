@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ApiClient, ApiError } from "../js/account/api-client.js";
 import { AccountService } from "../js/account/account-service.js";
-import { safeApiBase } from "../js/account/config.js";
+import { accountPageUrl, safeApiBase } from "../js/account/config.js";
 import { escapeHtml } from "../js/core/dom-utils.js";
 
 const TOKEN = (c) => c.repeat(24);
@@ -224,4 +224,17 @@ test("summarizeSave：缺欄位或型別錯誤也不會丟錯", async () => {
   const { summarizeSave } = await import("../js/account/account-view.js");
   assert.equal(summarizeSave({ coins: 5, sh: 2, co: 1, clr: [1, 0, 1] }), "金幣 5 · 碎片 2 · 晶核 1 · 通關 2 關");
   assert.equal(summarizeSave(null), "金幣 0 · 碎片 0 · 晶核 0 · 通關 0 關");
+});
+
+test("accountPageUrl：依遊戲所在位置推算 /game/account/，returnTo 只允許同站、可用覆寫", () => {
+  const here = "https://fuguangji.github.io/game/neon-shard/?x=1#top";
+  assert.equal(accountPageUrl({ locationHref: here, override: "" }), "https://fuguangji.github.io/game/account/");
+  assert.equal(accountPageUrl({ locationHref: "https://fuguangji.github.io/game/neon-shard/index.html", override: "" }), "https://fuguangji.github.io/game/account/");
+  const withBack = new URL(accountPageUrl({ locationHref: here, returnTo: here, override: "" }));
+  assert.equal(withBack.pathname, "/game/account/");
+  assert.equal(withBack.searchParams.get("returnTo"), here);
+  assert.equal(new URL(accountPageUrl({ locationHref: here, returnTo: "https://evil.example/x", override: "" })).searchParams.has("returnTo"), false);
+  assert.equal(accountPageUrl({ locationHref: undefined, override: "" }), "https://fuguangji.github.io/game/account/");
+  assert.equal(accountPageUrl({ locationHref: here, override: "https://example.org/account/" }), "https://example.org/account/");
+  assert.equal(accountPageUrl({ locationHref: here, override: "javascript:alert(1)" }), "https://fuguangji.github.io/game/account/");
 });

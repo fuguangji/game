@@ -13,7 +13,7 @@
 
 ## 已完成的程式工作
 
-- [x] `/account/` 共用 Firebase Email/Password 註冊、登入、登出、忘記密碼及安全的 `returnTo`。
+- [x] `/game/account/` 共用 Firebase Email/Password 註冊、登入、登出、忘記密碼及安全的 `returnTo`。
 - [x] 同來源頁面透過 Firebase Auth browser-local persistence 共用登入狀態。
 - [x] Render API 透過 Firebase Admin SDK 驗證 ID Token，UID 只從已驗證 Token 取得。
 - [x] 新增 Firestore store：`users/{uid}` 保存個人資料與加密金鑰中繼資料；`users/{uid}/gameData/currentSave` 保存雲端存檔；`displayNames/{normalizedName}` 預留暱稱。
@@ -66,7 +66,7 @@ Firebase Console → Firestore Database → Create database。選擇適合專案
 
 ### 5. 驗證流程
 
-1. 開啟 `https://fuguangji.github.io/account/` 註冊測試帳號。
+1. 開啟 `https://fuguangji.github.io/game/account/` 註冊測試帳號。
 2. 驗證電子郵件（若 Firebase 專案要求），登入後開啟 NEON SHARD。
 3. 在不同分頁／遊戲頁確認登入狀態共用，登出後確認其他分頁更新狀態。
 4. 觸發伺服器身分驗證，確認回傳 UID 與 Firebase 使用者一致。

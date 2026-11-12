@@ -27,6 +27,7 @@ export const SV = {
   char: 0,
   items: { heal: 2, shield: 1, ammo: 1 },
   bagSel: ["heal", "shield", "ammo"],
+  sv: 1, // 關卡表版本（見 migrateSave）；舊存檔沒有這個欄位，載入時會補成 1
 };
 /** 把存檔合併進預設值；型別不符或不是有限數的欄位一律忽略（防止存檔損毀或被竄改） */
 export function mergeSave(target, saved, { allowUnknown = true } = {}) {
@@ -42,6 +43,31 @@ export function mergeSave(target, saved, { allowUnknown = true } = {}) {
   }
 }
 export let SV_DEFAULTS; // 初始化在 init()
+
+/** 關卡表版本。2 = 在「無盡深淵」前面新增 4 關，無盡從第 8 個變成最後一個（第 12 個） */
+export const SAVE_STAGE_LAYOUT = 2;
+const LEGACY_ENDLESS_INDEX = 8;
+
+/**
+ * 把舊版存檔搬到目前的關卡表：舊存檔的「無盡深淵」紀錄（sb[8]、選取中的關卡）移到新的最後一格，
+ * 原本那一格變成新關卡（從 0 開始）。就地修改並回傳同一個物件；已經是新版或不是物件就不動。
+ */
+export function migrateSave(save) {
+  if (!save || typeof save !== "object") return save;
+  const version = Number.isFinite(save.sv) ? save.sv : 1;
+  if (version >= SAVE_STAGE_LAYOUT) return save;
+  const endless = STG.length - 1;
+  if (endless > LEGACY_ENDLESS_INDEX) {
+    if (Array.isArray(save.sb) && Number.isFinite(save.sb[LEGACY_ENDLESS_INDEX])) {
+      save.sb[endless] = Math.max(Number(save.sb[endless]) || 0, save.sb[LEGACY_ENDLESS_INDEX]);
+      save.sb[LEGACY_ENDLESS_INDEX] = 0;
+    }
+    if (Array.isArray(save.clr) && save.clr[LEGACY_ENDLESS_INDEX]) save.clr[LEGACY_ENDLESS_INDEX] = 0; // 舊的無盡紀錄不是新關卡的通關紀錄
+    if (save.sel === LEGACY_ENDLESS_INDEX) save.sel = endless;
+  }
+  save.sv = SAVE_STAGE_LAYOUT;
+  return save;
+}
 // 功能：保存或讀取「save」相關資料。
 export let save, UL, WPR, WPC, UC, UB, CC, CN, UPD; // 初始化在 init()
 export const STG = [
@@ -53,7 +79,13 @@ export const STG = [
     { n: "毒蜂巢穴", g: 15, hm: 1.7, cm: 2.8, dn: 0.28, c: "#9dff3d" },
     { n: "虛空裂隙", g: 16, hm: 1.8, cm: 3.2, dn: 0.2, c: "#7a7aff" },
     { n: "終焉之塔", g: 18, hm: 2, cm: 4, dn: 0.24, c: "#ff2a8a" },
-    { n: "無盡深淵", g: 0, hm: 2.2, cm: 3, dn: 0.235, c: "#ffd23a" },
+    // 第 8~11 關（新增）：每關有自己的地形主題（見 tiles.js 的 density），Boss 沿用既有的（boss 欄位 = Boss 編號）
+    { n: "熔岩熔爐", g: 20, hm: 2.2, cm: 4.4, dn: 0.22, c: "#ff7a3d", boss: 1 },
+    { n: "雷暴平原", g: 22, hm: 2.4, cm: 4.8, dn: 0.18, c: "#ffe14a", boss: 4 },
+    { n: "棱鏡迴廊", g: 24, hm: 2.6, cm: 5.2, dn: 0.26, c: "#7fffe0", boss: 2 },
+    { n: "終焉黎明", g: 26, hm: 3, cm: 6, dn: 0.2, c: "#ff5a7a", boss: 7 },
+    // 無盡模式必須是最後一個（g = 0）；新增關卡請插在它前面，並把 SAVE_STAGE_LAYOUT 加 1、補 migrateSave
+    { n: "無盡深淵", g: 0, hm: 2.4, cm: 3, dn: 0.235, c: "#ffd23a" },
   ],
   ST = () => STG[SV.sel] || STG[0];
 
@@ -143,13 +175,14 @@ G.RUN = { dmg: 0 };
 SV_DEFAULTS = JSON.parse(JSON.stringify(SV));
  // 預設存檔（套用雲端存檔時當底）
 mergeSave(SV, store.getJSON(KEYS.save, isPlainObject, {}));
+migrateSave(SV);
 save = () => {
     store.setJSON(KEYS.save, SV);
   };
 UL = (k) => (SV.up[k] || 0) + ((G.CHR && G.CHR["L" + k]) || 0);
 WPR = [
     // 武器價格（索引＝武器編號，見 weapons.js 的順序）：青羽鎩、未雨鎩、閃霰劍、塵流懸液、噐體熔融、銘骨衍枝曲、驥隱流楓、符咒（起始，免費）
-    1000, 1000, 1300, 1000, 1200, 1000, 1400,0,1000
+    1000, 1000, 1300, 1000, 1200, 1000, 1400, 0, 1000, 1500
   ];
 WPC = Array(WPR.length).fill("coins");
 UC = {
