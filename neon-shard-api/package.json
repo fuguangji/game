@@ -2,12 +2,12 @@
   "name": "neon-shard-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Render API for NovaCircuit identity verification and NEON SHARD encrypted saves",
+  "description": "Render API for NovaCircuit identity verification and NEON FORMULA encrypted saves",
   "type": "module",
   "engines": { "node": ">=22.0.0" },
   "scripts": {
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/room-manager.js && node --check src/rate-limiter.js && node --check src/security.js && node --check src/validation.js && node --check src/display-name.js && node --check src/firebase-store.js && node --check ../neon-shard/js/account/cloud-crypto.js && node --check ../neon-shard/js/account/api-client.js && node --check ../neon-shard/js/account/account-service.js",
+    "check": "node --check src/server.js && node --check src/realtime.js && node --check src/room-manager.js && node --check src/rate-limiter.js && node --check src/security.js && node --check src/validation.js && node --check src/display-name.js && node --check src/firebase-store.js && node --check ../neon-formula/js/account/cloud-crypto.js && node --check ../neon-formula/js/account/api-client.js && node --check ../neon-formula/js/account/account-service.js",
     "test": "node --test"
   },
   "dependencies": {

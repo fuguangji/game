@@ -1,18 +1,18 @@
-name: Neon-shard
+name: NEON FORMULA
 
 on:
   push:
     branches:
       - main
-      - "feature/neon-shard-*"
+      - "feature/neon-formula-*"
     paths:
       - "neon-shard-api/**"
-      - "neon-shard/**"
+      - "neon-formula/**"
       - ".github/workflows/neon-shard-api.yml"
   pull_request:
     paths:
       - "neon-shard-api/**"
-      - "neon-shard/**"
+      - "neon-formula/**"
       - ".github/workflows/neon-shard-api.yml"
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ permissions:
 
 # 同一個分支連續推送時，取消還沒跑完的舊執行
 concurrency:
-  group: neon-shard-${{ github.ref }}
+  group: neon-formula-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -45,12 +45,12 @@ jobs:
       - name: Unit tests
         run: npm test
 
-  # ───────────── 前端：neon-shard（測試 + 建置）─────────────
+  # ───────────── 前端：neon-formula（測試 + 建置）─────────────
   frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: neon-shard
+        working-directory: neon-formula
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

@@ -1,20 +1,20 @@
-# NEON SHARD Online + Custom Skins
+# NEON FORMULA Online + Custom Skins
 
 ## Realtime
 
 The API exposes WebSocket upgrades at `/api/realtime`. The first message must be `{type: "auth", token: "<Firebase ID token>"}`. After the server verifies the token with Firebase Admin SDK, send `{type:"join", mode:"arena"|"boss", code:"ROOM1"}`. Rooms hold up to four authenticated players. Movement uses normalized coordinates; combat has a server-side cooldown. Arena mode synchronizes weak mobs and PvP player positions; boss mode shares a raid boss health pool.
 
-Set `ALLOWED_ORIGINS` to the exact deployed frontend origin(s). 前端在「個人檔案 → 線上聯機」連線（`neon-shard/js/profile/realtime-client.js`）；API 網址在 `neon-shard/js/account/config.js`（或載入前設定 `window.NEON_SHARD_API_BASE`）。
+Set `ALLOWED_ORIGINS` to the exact deployed frontend origin(s). 前端在「個人檔案 → 線上聯機」連線（`neon-formula/js/profile/realtime-client.js`）；API 網址在 `neon-formula/js/account/config.js`（或載入前設定 `window.NEON_FORMULA_API_BASE`）。
 
 ## Custom skins
 
-外觀編輯器已整合進遊戲的「個人檔案 → 外觀」（`neon-shard/js/profile/appearance.js`），只存在本機、不影響遊戲能力。
+外觀編輯器已整合進遊戲的「個人檔案 → 外觀」（`neon-formula/js/profile/appearance.js`），只存在本機、不影響遊戲能力。
 
 ## Deployment checks
 
 1. Deploy `neon-shard-api` with `FIREBASE_SERVICE_ACCOUNT_JSON` and `ALLOWED_ORIGINS`.
 2. Confirm `/api/health` responds and test an authenticated WebSocket handshake.
-3. Run `npm run check` and `npm test` in `neon-shard-api`, then the frontend tests in `neon-shard`.
+3. Run `npm run check` and `npm test` in `neon-shard-api`, then the frontend tests in `neon-formula`.
 
 ## 對戰玩法與協定（v2）
 

@@ -1,4 +1,4 @@
-# NEON SHARD — 開發與部署待辦
+# NEON FORMULA — 開發與部署待辦
 
 最後更新：2026-10-26
 
@@ -67,7 +67,7 @@ Firebase Console → Firestore Database → Create database。選擇適合專案
 ### 5. 驗證流程
 
 1. 開啟 `https://fuguangji.github.io/game/account/` 註冊測試帳號。
-2. 驗證電子郵件（若 Firebase 專案要求），登入後開啟 NEON SHARD。
+2. 驗證電子郵件（若 Firebase 專案要求），登入後開啟 NEON FORMULA。
 3. 在不同分頁／遊戲頁確認登入狀態共用，登出後確認其他分頁更新狀態。
 4. 觸發伺服器身分驗證，確認回傳 UID 與 Firebase 使用者一致。
 5. 初始化／解鎖加密金鑰，測試雲端存檔建立、讀取、revision 衝突與帳號隔離。

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="720" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1b2225"/><stop offset="1" stop-color="#3b2b20"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="234" y1="68" x2="480" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d8b27b"/><stop offset="1" stop-color="#876347"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#bg)" d="M0 0h720v280H0z"/>
+  <path fill="#dc944d" fill-opacity=".12" d="M0 210h720v70H0z"/>
+  <path stroke="#f1bf79" stroke-opacity=".12" d="M0 236h720M74 0v280m572-280v280"/>
+  <path fill="#182023" d="M0 209h720v71H0z"/>
+  <path fill="#263134" d="m168 219 37-54h68l29 54h-134Zm180 0 26-75h76l30 75H348Zm187 0 23-43h76l28 43H535Z"/>
+  <path stroke="#d8b27b" stroke-width="8" d="M210 165v-45h64V93h77V70h87v60h52v49"/>
+  <path stroke="#88adb0" stroke-width="5" d="M119 193h87v-34h62v39h92v-49h84v30h104"/>
+  <path fill="url(#metal)" d="M214 120h58v45h-58zM351 93h77v51h-77zM482 179h8v45h-8z"/>
+  <path fill="#f3c27b" d="M231 133h9v16h-9zm19 0h9v16h-9zm119-25h10v17h-10zm20 0h10v17h-10zm20 0h10v17h-10z"/>
+  <circle cx="565" cy="70" r="23" stroke="#f1bf79" stroke-opacity=".72" stroke-width="3"/>
+  <path stroke="#f1bf79" stroke-width="3" d="M565 51v38m-19-19h38"/>
+</svg>

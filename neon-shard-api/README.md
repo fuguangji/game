@@ -1,4 +1,4 @@
-# NEON SHARD API
+# NEON FORMULA API
 
 Render hosts the server-side API. Firebase is the identity and account-data provider; GitHub Pages hosts the frontend.
 
@@ -12,14 +12,14 @@ Render hosts the server-side API. Firebase is the identity and account-data prov
 
 ## Owner configuration
 
-完整的「要填哪些常數」清單在前端專案的 `neon-shard/README.md`（「部署前要填的常數」）。後端這邊只需要：
+完整的「要填哪些常數」清單在前端專案的 `neon-formula/README.md`（「部署前要填的常數」）。後端這邊只需要：
 
 1. Firebase Console → Authentication → 啟用 **Email/Password**。
 2. 建立 Cloud Firestore 資料庫，並發佈本資料夾的 `firestore.rules`（全部拒絕瀏覽器直接存取；只有本服務的 Admin SDK 能讀寫）。
 3. 在 Render 設定 `FIREBASE_SERVICE_ACCOUNT_JSON`（整份服務帳戶 JSON，一行；這是伺服器密鑰，不可提交）。
 4. 在 Render 設定 `ALLOWED_ORIGINS` 為前端實際網址（完全一致）。
 5. 重新部署後檢查 `/api/health` 與 `/api/ready`。
-6. 前端 Render API 網址由 `neon-shard/js/account/config.js` 設定；Firebase Web App 設定集中於 repo root `account/firebase-config.js`。
+6. 前端 Render API 網址由 `neon-formula/js/account/config.js` 設定；Firebase Web App 設定集中於 repo root `account/firebase-config.js`。
 
 Until the Firebase service account is configured, the API process can still start and health checks can respond, but identity/profile/save endpoints correctly return `503 FIREBASE_ADMIN_NOT_CONFIGURED`.
 

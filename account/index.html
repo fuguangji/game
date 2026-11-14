@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Hanexo｜共用帳號中心</title>
+    <title>NovaCircuit｜共用帳號中心</title>
     <style>
       :root {
         color-scheme: dark;
@@ -258,12 +258,12 @@
             <line x1="18.5" y1="17" x2="19.5" y2="17" stroke-width="1" />
           </svg> </span
         ><span
-          ><strong>光風濟月 · Hanexo｜共用帳號中心</strong
+          ><strong>光風濟月 · NovaCircuit｜共用帳號中心</strong
           ><small>SHARED ACCOUNT / ONE IDENTITY</small></span
         >
       </a>
       <section class="panel">
-        <div class="eyebrow">IDENTITY CENTER · Hanexo</div>
+        <div class="eyebrow">IDENTITY CENTER · NovaCircuit</div>
         <h1 class="title">一個帳號，通行所有遊戲。</h1>
         <p class="desc">
           在這裡登入或建立帳號，回到遊戲後並重新整理就能沿用同一個登入狀態。
@@ -341,7 +341,7 @@
 
       const $ = (id) => document.getElementById(id);
       const accountBase = new URL("../", location.href);
-      const fallbackReturn = new URL("neon-shard/", accountBase).href;
+      const fallbackReturn = new URL("neon-formula/", accountBase).href;
       function safeReturnTo() {
         const raw = new URLSearchParams(location.search).get("returnTo");
         if (!raw) return fallbackReturn;

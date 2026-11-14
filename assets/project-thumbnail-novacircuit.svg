@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="720" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#122238"/><stop offset="1" stop-color="#172748"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="288" y1="72" x2="431" y2="174" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d1efff"/><stop offset="1" stop-color="#73b9ed"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#bg)" d="M0 0h720v280H0z"/>
+  <circle cx="360" cy="128" r="95" stroke="#8fc8f0" stroke-opacity=".12"/>
+  <circle cx="360" cy="128" r="130" stroke="#8fc8f0" stroke-opacity=".08"/>
+  <path stroke="#84c9f2" stroke-width="3" d="M176 83h79v48h50m159 0h34V80h46m-278 91h51v-40m191 40h-39v-40m-109 48v41m0-130V92"/>
+  <path fill="url(#cloud)" d="M309 143c-17 0-30-13-30-29s13-29 30-29c8-20 27-33 50-33 30 0 53 23 53 53 20 0 36 16 36 36s-16 36-36 36H309c-19 0-34-15-34-34s15-34 34-34Z"/>
+  <circle cx="176" cy="83" r="6" fill="#83d8ff"/><circle cx="544" cy="80" r="6" fill="#83d8ff"/>
+  <circle cx="255" cy="171" r="6" fill="#83d8ff"/><circle cx="465" cy="171" r="6" fill="#83d8ff"/>
+  <path fill="#183855" stroke="#b5e7ff" stroke-width="3" d="M360 105a17 17 0 1 0 0 34 17 17 0 0 0 0-34Z"/>
+  <path stroke="#b5e7ff" stroke-linecap="round" stroke-width="4" d="M337 165c6-11 15-16 23-16s17 5 23 16"/>
+</svg>
