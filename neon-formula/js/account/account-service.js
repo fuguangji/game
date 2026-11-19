@@ -213,7 +213,14 @@ export class AccountService extends EventTarget {
     return userId;
   }
 
-  async uploadSave(save) {
+  /**
+   * 加密並上傳存檔。
+   * @param {object} save
+   * @param {{expectedRevision?: number|null}} [options] 呼叫端已經知道雲端目前的版本號時傳進來，就不必先多打一次 GET：
+   *   數字 = 更新那個版本；null = 雲端還沒有存檔（建立第一份）；省略 = 先向伺服器查詢版本（舊行為）
+   * @returns {Promise<number>} 新的版本號
+   */
+  async uploadSave(save, { expectedRevision } = {}) {
     const userId = this.#requireUnlocked();
     const generation = this.#authGeneration;
     const keys = this.#keys;
@@ -227,11 +234,15 @@ export class AccountService extends EventTarget {
     const sensitiveEnvelope = await this.#crypto.encryptSave(userId, keys, save);
     assertSession();
     let revision = null;
-    try {
-      revision = (await this.#api.request("/api/player-data")).revision;
-      assertSession();
-    } catch (error) {
-      if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error;
+    if (expectedRevision === undefined) {
+      try {
+        revision = (await this.#api.request("/api/player-data")).revision;
+        assertSession();
+      } catch (error) {
+        if (!(error instanceof ApiError && error.code === "SAVE_NOT_FOUND")) throw error;
+      }
+    } else {
+      revision = Number.isInteger(expectedRevision) ? expectedRevision : null;
     }
     assertSession();
     const method = revision === null ? "POST" : "PUT";
@@ -244,8 +255,8 @@ export class AccountService extends EventTarget {
       assertSession();
       return result.revision;
     } catch (error) {
-      if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
-        throw new ApiError("雲端存檔剛被其他裝置更新。請先「下載雲端存檔」確認內容，再決定是否上傳。", { status: 409, code: error.code });
+      if (error instanceof ApiError && (error.code === "REVISION_CONFLICT" || error.code === "SAVE_ALREADY_EXISTS")) {
+        throw new ApiError("雲端存檔剛被其他裝置更新。", { status: 409, code: error.code });
       }
       throw error;
     }

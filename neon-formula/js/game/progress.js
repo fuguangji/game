@@ -44,6 +44,27 @@ export function mergeSave(target, saved, { allowUnknown = true } = {}) {
 }
 export let SV_DEFAULTS; // 初始化在 init()
 
+/** 存檔寫入後的通知（雲端同步用來知道「本機有變動」）。回傳取消訂閱的函式 */
+const saveListeners = new Set();
+export function onSave(fn) {
+  saveListeners.add(fn);
+  return () => saveListeners.delete(fn);
+}
+
+/**
+ * 把任意來源的存檔（雲端、匯入…）整理成目前版本的完整存檔：以預設值為底、只接受型別相符的欄位、搬移舊版關卡編號。
+ * 不會修改傳入的物件，也不會動到 SV。
+ */
+export function normalizeSave(raw) {
+  const next = JSON.parse(JSON.stringify(SV_DEFAULTS));
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const copy = JSON.parse(JSON.stringify(raw));
+    migrateSave(copy); // 先搬移再合併：舊存檔的 sv 欄位才不會被預設值蓋掉
+    mergeSave(next, copy, { allowUnknown: false });
+  }
+  return next;
+}
+
 /** 關卡表版本。2 = 在「無盡深淵」前面新增 4 關，無盡從第 8 個變成最後一個（第 12 個） */
 export const SAVE_STAGE_LAYOUT = 2;
 const LEGACY_ENDLESS_INDEX = 8;
@@ -178,6 +199,9 @@ mergeSave(SV, store.getJSON(KEYS.save, isPlainObject, {}));
 migrateSave(SV);
 save = () => {
     store.setJSON(KEYS.save, SV);
+    for (const fn of saveListeners) {
+      try { fn(); } catch (error) { console.error("[save] listener failed", error); }
+    }
   };
 UL = (k) => (SV.up[k] || 0) + ((G.CHR && G.CHR["L" + k]) || 0);
 WPR = [

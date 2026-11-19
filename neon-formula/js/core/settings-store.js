@@ -27,6 +27,9 @@ export const SETTING_SPEC = Object.freeze({
   particleDensity: Object.freeze({ def: "auto", oneOf: ["auto", "low", "normal", "high"] }), // 粒子密度
   screenShake: Object.freeze({ def: true }), // 畫面震動
   showFps: Object.freeze({ def: false }), // 顯示效能資訊
+
+  /* 雲端 */
+  cloudAutoSync: Object.freeze({ def: true }), // 登入並解鎖後自動同步存檔（關閉後只剩手動同步）
 });
 
 /** 所有設定與預設值（唯讀） */

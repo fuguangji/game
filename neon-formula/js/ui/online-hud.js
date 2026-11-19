@@ -28,13 +28,20 @@ export function mountOnlineHud(match) {
     strip.hidden = !show;
     if (!show) return;
     const me = s.players.find((p) => p.id === match.myId);
+    const ping = match.latency != null ? ` · ${match.latency}ms` : "";
+    const lost = s.connection === "reconnecting";
+    strip.classList.toggle("bad", lost);
+    if (lost) {
+      strip.textContent = `⚠ 連線中斷，重新連線中（${s.reconnect?.attempt ?? 1}/${s.reconnect?.of ?? "?"}）· 你的位置會保留 30 秒`;
+      return;
+    }
     if (onlineState.pvp) {
       const alive = s.players.filter((p) => p.alive !== false).length;
       const left = s.endsAt ? Math.max(0, s.endsAt - Date.now()) : 0;
-      strip.textContent = `競爭模式 · ${s.endsAt ? `剩 ${fmtTime(left)} · ` : ""}存活 ${alive}/${s.players.length} · 我的分數 ${Math.round(me?.score ?? 0)}`;
+      strip.textContent = `競爭模式 · ${s.endsAt ? `剩 ${fmtTime(left)} · ` : ""}存活 ${alive}/${s.players.length} · 我的分數 ${Math.round(me?.score ?? 0)}${ping}`;
     } else {
-      const mates = [...match.ghosts.values()].map((g) => `${g.name} ${g.alive ? `${Math.round(g.hp ?? 0)}%` : "倒下"}`);
-      strip.textContent = `合作模式 · Boss ${Math.round((s.bossHp / s.bossPool) * 100)}%${mates.length ? ` · 隊友：${mates.join("、")}` : ""}`;
+      const mates = [...match.ghosts.values()].map((g) => `${g.name} ${g.connected === false ? "（斷線）" : g.alive ? `${Math.round(g.hp ?? 0)}%` : "倒下"}`);
+      strip.textContent = `合作模式 · Boss ${Math.round((s.bossHp / s.bossPool) * 100)}%${mates.length ? ` · 隊友：${mates.join("、")}` : ""}${ping}`;
     }
   }
 
@@ -63,6 +70,7 @@ export function mountOnlineHud(match) {
   const render = () => { renderStrip(); renderEnd(); };
   match.addEventListener("change", render);
   match.addEventListener("hud", renderStrip);
+  match.addEventListener("latency", renderStrip);
   match.addEventListener("leave-request", async () => {
     if (match.state.status === "ended") return;
     const ok = await confirmDialog({ title: "離開對戰？", body: "對戰不會暫停；離開後會中斷連線，這一場的成績不會保留。", confirmText: "離開", cancelText: "繼續戰鬥", danger: true });

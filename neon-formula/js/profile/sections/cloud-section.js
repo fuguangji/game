@@ -13,7 +13,7 @@ export class CloudSection extends ProfileSection {
     this.#deps = deps;
     const host = h("div");
     this.#el = h("section", { class: "ns-feature-card" }, h("h3", {}, "雲端同步"), host);
-    this.#view = deps.AccountView.mount(host, deps.accountService, { getSave: deps.bridge.getSave, applySave: deps.bridge.applySave });
+    this.#view = deps.AccountView.mount(host, deps.accountService, { getSave: deps.bridge.getSave, applySave: deps.bridge.applySave, cloudSync: deps.cloudSync, settings: deps.settings });
   }
 
   get element() { return this.#el; }

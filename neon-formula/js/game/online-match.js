@@ -74,6 +74,9 @@ export function nearestFree(px, py) {
   return { x: 22.5 * T, y: 22.5 * T };
 }
 
+/** 重連用盡次數、放棄時的關閉代碼；與 profile/realtime-client.js 的 GAVE_UP_CODE 同值（game 層不依賴 profile 層，test/online-match.test.mjs 會檢查兩邊一致） */
+export const GAVE_UP_CODE = 4000;
+
 const initial = () => ({
   status: "idle", // idle → connecting → lobby → playing → ended
   phase: "lobby", // 伺服器房間階段（lobby / playing / ended）
@@ -87,9 +90,12 @@ const initial = () => ({
   endsAt: 0,
   result: null,
   message: "",
+  connection: "ok", // ok | reconnecting：意外斷線時本機戰鬥照常進行，背景自動重連
+  reconnect: null, // { attempt, of }
 });
 
 export class OnlineMatch extends EventTarget {
+  #latency = null;
   #createClient = null;
   #backToMenuHook = null;
   #client = null;
@@ -170,20 +176,31 @@ export class OnlineMatch extends EventTarget {
     this.#backToMenuHook?.(); // 顯示大廳並切到個人檔案分頁（由 ui/account.js 提供）
   }
 
+  /** 最近一次量到的來回延遲（毫秒）；沒有連線或還沒量到是 null */
+  get latency() { return this.#latency; }
+
   #wire(client) {
     const alive = () => this.#client === client;
     const on = (type, fn) => client.addEventListener(type, (e) => { if (alive()) fn(e.detail); });
     on("state", (d) => {
-      if (d.state === "closed") {
+      if (d.state === "reconnecting") {
+        // 意外斷線：不結束對戰。伺服器替我們保留位置 30 秒，這段時間背景自動重連
+        this.#set({ connection: "reconnecting", reconnect: { attempt: d.attempt, of: d.of }, message: `連線中斷，正在重新連線…（第 ${d.attempt}/${d.of} 次）` });
+      } else if (d.state === "closed") {
         const wasBattle = onlineState.active;
+        const gaveUp = d.code === GAVE_UP_CODE;
         this.#client = null;
+        this.#latency = null;
+        const why = gaveUp ? "重新連線失敗，已放棄。" : d.code === 4409 ? "這個帳號在別處登入了。" : "與伺服器的連線中斷了。";
         if (wasBattle) {
           if (fsm.state === "play") fsm.transition("over");
           G.shown = 1;
-          this.#set({ status: "ended", result: null, message: "與伺服器的連線中斷了。" });
-        } else this.#set({ ...initial(), message: `連線已關閉（${d.code ?? ""}）。` });
+          this.#set({ status: "ended", result: null, connection: "ok", reconnect: null, message: why });
+        } else this.#set({ ...initial(), message: gaveUp || d.code === 4409 ? why : `連線已關閉（${d.code ?? ""}）。` });
       }
     });
+    on("reconnected", () => this.#set({ connection: "ok", reconnect: null, message: "" }));
+    on("latency", (d) => { this.#latency = d.ms; this.dispatchEvent(new CustomEvent("latency", { detail: d })); });
     on("problem", (d) => this.#set({ message: d.message }));
     on("room", (d) => this.#onRoom(d));
     on("started", (d) => this.#beginBattle(d));
@@ -210,7 +227,7 @@ export class OnlineMatch extends EventTarget {
 
   #upsertGhost(p) {
     const g = this.#ghosts.get(p.id) ?? { id: p.id, x: p.x * MW, y: p.y * MW, tx: p.x * MW, ty: p.y * MW, col: COLORS[this.#ghosts.size % COLORS.length], alive: true };
-    Object.assign(g, { name: p.name, hp: p.hp, alive: p.alive !== false, kills: p.kills ?? 0, score: p.score ?? 0 });
+    Object.assign(g, { name: p.name, hp: p.hp, alive: p.alive !== false, kills: p.kills ?? 0, score: p.score ?? 0, connected: p.connected !== false });
     if (Number.isFinite(p.x) && !onlineState.active) { g.tx = p.x * MW; g.ty = p.y * MW; g.x = g.tx; g.y = g.ty; }
     this.#ghosts.set(p.id, g);
   }

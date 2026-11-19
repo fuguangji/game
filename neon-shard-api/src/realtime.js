@@ -95,12 +95,14 @@ export function attachRealtime(server, { firebaseAuth, allowedOrigins = [], mana
         case "hit": manager.hit(player, msg.target, Number(msg.dmg)); break;
         case "bossDamage": manager.bossDamage(player, Number(msg.amount)); break;
         case "died": manager.died(player); break;
+        case "ping": safeSend(socket, { type: "pong", t: Number.isFinite(Number(msg.t)) ? Number(msg.t) : 0 }); break; // 讓用戶端量測來回延遲
         case "attack": manager.attack(player); break; // 舊版：只在大廳可用
         default: break;
       }
     });
 
-    const cleanup = () => { clearTimeout(authTimeout); if (player) manager.leave(player); };
+    // 連線中斷（不是玩家主動按離開）：交給房間規則決定要不要保留位置，讓玩家有機會重連
+    const cleanup = () => { clearTimeout(authTimeout); if (player) manager.disconnect(player); };
     socket.on("close", cleanup);
     socket.on("error", cleanup);
   });

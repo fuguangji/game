@@ -103,6 +103,6 @@ export class OnlineSection extends ProfileSection {
     const base = idle ? STATUS_TEXT.idle : s.status === "lobby" ? `已加入 ${s.code} · ${mode.label} · ${s.players.length}/4 人` : STATUS_TEXT[s.status] ?? "";
     const hint = inLobby ? (m.isHost ? (canStart ? "你是房主，準備好就按「開始對戰」。" : `等待玩家加入（需要至少 ${mode.minPlayers} 人）…`) : s.phase === "lobby" ? "等待房主開始對戰…" : "房主還沒有重置房間，請稍候…") : "";
     this.#status.textContent = [base, hint, s.message].filter(Boolean).join("　");
-    this.#roster.replaceChildren(...s.players.map((p) => h("li", {}, `${p.id === s.hostId ? "★ " : ""}${p.name}${p.id === m.myId ? "（你）" : ""}`)));
+    this.#roster.replaceChildren(...s.players.map((p) => h("li", {}, `${p.id === s.hostId ? "★ " : ""}${p.name}${p.id === m.myId ? `（你${m.latency != null ? ` · ${m.latency}ms` : ""}）` : ""}${p.connected === false ? "（連線中斷，等待重連）" : ""}`)));
   }
 }

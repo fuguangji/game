@@ -8,7 +8,7 @@ import { apply as applyInterp, restore as restoreInterp, snapshot } from "./core
 import { platform } from "./core/platform.js";
 import { degradeAutoTier, initRenderProfile, onScaleChange, setParticleBudget } from "./core/render-profile.js";
 import { onlineMatch } from "./game/online-match.js";
-import { configureOnline } from "./ui/account.js";
+import { configureCloudSync, configureOnline } from "./ui/account.js";
 import { mountOnlineHud } from "./ui/online-hud.js";
 import { SimGovernor } from "./core/sim-governor.js";
 import { settings } from "./core/settings-store.js";
@@ -163,4 +163,5 @@ addEventListener("resize", () => {
 
 tutorial.init();
 configureOnline();
+configureCloudSync();
 mountOnlineHud(onlineMatch); // 線上對戰的資訊條、結算面板與暫停鍵處理

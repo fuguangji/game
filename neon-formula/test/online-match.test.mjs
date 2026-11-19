@@ -198,3 +198,84 @@ test("nearestFree：出生點在牆裡也會找到空地", () => {
   const i = (p.x / T) | 0, j = (p.y / T) | 0;
   assert.equal(G.grid[j * N + i], 0);
 });
+
+/* ───────────── 斷線重連與延遲（見 realtime-client.js） ───────────── */
+test("重連：兩層的「放棄重連」關閉代碼一致", async () => {
+  const { GAVE_UP_CODE: clientCode } = await import(path.join(root, "profile/realtime-client.js"));
+  const { GAVE_UP_CODE } = await import(path.join(root, "game/online-match.js"));
+  assert.equal(GAVE_UP_CODE, clientCode);
+});
+
+test("重連：對戰中意外斷線不結束對戰，只顯示重連狀態；重連成功後恢復", async () => {
+  const { client } = await enter("arena");
+  run(30);
+  client.push("state", { state: "reconnecting", attempt: 2, of: 6, inMs: 1000 });
+  assert.equal(fsm.state, "play", "戰鬥照常進行");
+  assert.equal(onlineMatch.state.status, "playing");
+  assert.equal(onlineMatch.state.connection, "reconnecting");
+  assert.match(onlineMatch.state.message, /2\/6/);
+  run(60);
+  assert.equal(fsm.state, "play");
+  client.push("reconnected", {});
+  assert.equal(onlineMatch.state.connection, "ok");
+  assert.equal(onlineMatch.state.message, "");
+  assert.equal(onlineMatch.state.status, "playing");
+  leave();
+});
+
+test("重連：用盡次數放棄 → 才結算並說明原因；被別處登入頂掉有專屬說明", async () => {
+  let { client } = await enter("arena");
+  client.push("state", { state: "reconnecting", attempt: 6, of: 6, inMs: 10000 });
+  client.push("state", { state: "closed", code: 4000 });
+  assert.equal(onlineMatch.state.status, "ended");
+  assert.match(onlineMatch.state.message, /重新連線失敗/);
+  assert.equal(onlineMatch.state.connection, "ok", "結算畫面不再顯示重連中");
+  assert.equal(fsm.state, "over");
+  leave();
+  ({ client } = await enter("boss"));
+  client.push("state", { state: "closed", code: 4409 });
+  assert.match(onlineMatch.state.message, /別處登入/);
+  leave();
+});
+
+test("重連：重連後伺服器重發的開戰訊息（resumed）在本機戰鬥還在時被忽略，不會重開一局", async () => {
+  const { client } = await enter("arena", { seed: 999 });
+  run(60);
+  const grid = Array.from(G.grid), x = G.pl.x, y = G.pl.y;
+  client.push("started", { type: "started", resumed: true, mode: "arena", spawns: { me: { x: 0.2, y: 0.2 } }, endsAt: Date.now() + 5000, playerCount: 2, bossPool: 1000, seed: 999 });
+  assert.deepEqual(Array.from(G.grid), grid, "地圖沒被重建");
+  assert.equal(G.pl.x, x); assert.equal(G.pl.y, y);
+  leave();
+});
+
+test("重連：重新整理頁面後回來（本機沒有戰鬥），resumed 的開戰訊息會用同一個種子還原戰鬥", async () => {
+  await enter("arena", { seed: 4242 });
+  const original = Array.from(G.grid);
+  leave(); // 模擬頁面重新整理：本機戰鬥沒了
+  assert.equal(onlineState.active, false);
+  const client = new FakeClient();
+  onlineMatch.configure({ createClient: () => client, backToMenu: () => {} });
+  await onlineMatch.connect({ mode: "arena", code: "TEST01" });
+  client.push("room", { type: "room", code: "TEST01", mode: "arena", phase: "playing", hostId: "me", players: [{ id: "me", name: "我", x: 0.2, y: 0.2, hp: 60, alive: true, connected: true }, { id: "p2", name: "乙", x: 0.8, y: 0.8, hp: 100, alive: true, connected: true }], endsAt: Date.now() + 50000 });
+  client.push("started", { type: "started", resumed: true, mode: "arena", spawns: { me: { x: 0.2, y: 0.2 }, p2: { x: 0.8, y: 0.8 } }, endsAt: Date.now() + 50000, playerCount: 2, bossPool: 1000, seed: 4242 });
+  assert.equal(onlineState.active, true);
+  assert.equal(fsm.state, "play");
+  assert.deepEqual(Array.from(G.grid), original, "同一個種子 → 同一張地圖");
+  leave();
+});
+
+test("對手斷線的狀態會顯示在幽靈玩家上；延遲事件更新 latency", async () => {
+  const { client } = await enter("boss");
+  const players = (c) => [{ id: "me", name: "我", x: 0.2, y: 0.2, hp: 100, alive: true }, { id: "p2", name: "乙", x: 0.8, y: 0.8, hp: 100, alive: true, connected: c }];
+  client.push("room", { type: "room", code: "TEST01", mode: "boss", phase: "playing", hostId: "me", players: players(false), bossHp: 1000, mobs: [], endsAt: 0 });
+  assert.equal(onlineMatch.ghosts.get("p2").connected, false);
+  client.push("room", { type: "room", code: "TEST01", mode: "boss", phase: "playing", hostId: "me", players: players(true), bossHp: 1000, mobs: [], endsAt: 0 });
+  assert.equal(onlineMatch.ghosts.get("p2").connected, true);
+  const seen = [];
+  onlineMatch.addEventListener("latency", (e) => seen.push(e.detail.ms));
+  assert.equal(onlineMatch.latency, null);
+  client.push("latency", { ms: 63 });
+  assert.equal(onlineMatch.latency, 63);
+  assert.deepEqual(seen, [63]);
+  leave();
+});

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RoomManager } from "../src/room-manager.js";
+import { MATCH_RULES, RoomManager } from "../src/room-manager.js";
 import { TokenBucket } from "../src/rate-limiter.js";
 
 /** 假連線：把收到的訊息記下來 */
@@ -266,4 +266,131 @@ test("舊版攻擊只在大廳可用；對戰中改用 hit / bossDamage", () => 
   assert.equal(m.attack(a.player), true);
   m.start(a.player); now += 1000;
   assert.equal(m.attack(a.player), false);
+});
+
+/* ───────────── 斷線重連 ───────────── */
+
+function clockManager() {
+  const clock = { t: 1_000_000 };
+  const m = new RoomManager({ now: () => clock.t });
+  return { m, clock };
+}
+
+test("斷線：大廳裡直接移除（還沒開始不需要保留位置）", () => {
+  const { m } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "LOBBY1", mode: "arena" });
+  m.join(b.player, { code: "LOBBY1", mode: "arena" });
+  m.disconnect(b.player);
+  assert.equal(a.last("room").players.length, 1);
+});
+
+test("斷線：對戰中保留位置、對手看到「連線中斷」，對戰不會因此結束", () => {
+  const { m } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "DROP01", mode: "arena" });
+  m.join(b.player, { code: "DROP01", mode: "arena" });
+  m.start(a.player);
+  m.disconnect(b.player);
+  const snap = a.last("room");
+  assert.equal(snap.phase, "playing");
+  assert.equal(snap.players.length, 2, "位置還在");
+  assert.equal(snap.players.find((p) => p.id === "b").connected, false);
+  assert.equal(snap.players.find((p) => p.id === "a").connected, true);
+  assert.equal(a.last("end"), undefined, "沒有因為對手斷線就結束");
+});
+
+test("重連：寬限期內用同一帳號回來，沿用血量與分數，並重發開戰資訊（種子、出生點）與戰況", () => {
+  const { m, clock } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "BACK01", mode: "arena" });
+  m.join(b.player, { code: "BACK01", mode: "arena" });
+  m.start(a.player);
+  const started = a.last("started");
+  a.player.x = b.player.x = 0.5; a.player.y = b.player.y = 0.5; // 拉近距離，hit 才會成立
+  m.hit(a.player, "b", 30); // b 剩 70 血
+  m.disconnect(b.player);
+  clock.t += 10_000; // 10 秒後回來
+  const b2 = connect(m, "b");
+  assert.equal(m.join(b2.player, { code: "BACK01", mode: "arena" }).ok, true);
+  assert.equal(b2.player.hp, 70, "血量沿用");
+  const resumed = b2.last("started");
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.seed, started.seed, "同一個亂數種子 → 還原同一張地圖");
+  assert.deepEqual(resumed.spawns, started.spawns);
+  assert.equal(b2.last("combat").players.find((p) => p.id === "b").hp, 70);
+  assert.equal(a.last("room").players.find((p) => p.id === "b").connected, true, "對手看到他回來了");
+  assert.equal(a.inbox.filter((x) => x.type === "started").length, 1, "其他人不會收到第二次開戰訊息");
+});
+
+test("重連：逾時未回來就被移出房間；競爭模式因此只剩一人 → 結算", () => {
+  const { m, clock } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "LATE01", mode: "arena" });
+  m.join(b.player, { code: "LATE01", mode: "arena" });
+  m.start(a.player);
+  m.disconnect(b.player);
+  clock.t += MATCH_RULES.reconnectGraceMs - 1000;
+  m.tick();
+  assert.equal(a.last("room").players.length, 2, "還在寬限期");
+  clock.t += 2000;
+  m.tick();
+  assert.equal(a.last("room").players.length, 1, "逾時移除");
+  assert.equal(a.last("end").result.winnerId, "a");
+  // 太晚才回來：對戰已經結束，只能以新玩家身分加入已結束的房間 → 被拒絕
+  const b2 = connect(m, "b");
+  assert.equal(m.join(b2.player, { code: "LATE01", mode: "arena" }).ok, false);
+});
+
+test("重連：合作模式只有一位玩家也能斷線重連，Boss 血量沿用", () => {
+  const { m, clock } = clockManager();
+  const a = connect(m, "a");
+  m.join(a.player, { code: "COOP01", mode: "boss" });
+  m.start(a.player);
+  m.bossDamage(a.player, 100);
+  m.disconnect(a.player);
+  clock.t += 5000;
+  m.tick();
+  const a2 = connect(m, "a");
+  assert.equal(m.join(a2.player, { code: "COOP01", mode: "boss" }).ok, true);
+  assert.equal(a2.last("combat").bossHp, MATCH_RULES.bossPool - 100);
+  assert.equal(a2.last("started").resumed, true);
+});
+
+test("斷線的舊連線事後才觸發，不會影響已經重連的新連線；主動離開後的斷線也是無動作", () => {
+  const { m } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "OLD001", mode: "arena" });
+  m.join(b.player, { code: "OLD001", mode: "arena" });
+  m.start(a.player);
+  const b2 = connect(m, "b");
+  m.join(b2.player, { code: "OLD001", mode: "arena" }); // 新連線先到
+  m.disconnect(b.player); // 舊連線之後才被偵測到斷線
+  assert.equal(a.last("room").players.find((p) => p.id === "b").connected, true, "新連線不受影響");
+  m.leave(b2.player);
+  assert.doesNotThrow(() => m.disconnect(b2.player));
+});
+
+test("結算中斷線也保留位置：重連後看得到結算；房主逾時離開時換房主", () => {
+  const { m, clock } = clockManager();
+  const a = connect(m, "a"), b = connect(m, "b");
+  m.join(a.player, { code: "END001", mode: "arena" });
+  m.join(b.player, { code: "END001", mode: "arena" });
+  m.start(a.player);
+  a.player.x = b.player.x = 0.5; a.player.y = b.player.y = 0.5;
+  for (let i = 0; i < 6; i++) { clock.t += 1000; m.hit(a.player, "b", 40); }
+  assert.equal(a.last("end").result.winnerId, "a");
+  m.disconnect(a.player); // 房主在結算畫面斷線
+  clock.t += MATCH_RULES.reconnectGraceMs + 1;
+  m.tick();
+  assert.equal(b.last("room").hostId, "b", "房主逾時離開 → 房主換人");
+});
+
+test("ping 的回應由連線層處理；房間規則層的 tick 對沒有人斷線的房間沒有副作用", () => {
+  const { m } = clockManager();
+  const a = connect(m, "a");
+  m.join(a.player, { code: "TICK01", mode: "boss" });
+  const before = a.inbox.length;
+  m.tick(); m.tick();
+  assert.equal(a.inbox.length, before);
 });

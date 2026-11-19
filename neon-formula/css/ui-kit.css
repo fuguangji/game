@@ -193,3 +193,21 @@ html[data-platform="mobile"] .tq-ring{min-width:30px;min-height:26px;font-size:1
 .ol-scores li{display:flex;justify-content:space-between;gap:10px;padding:5px 9px;border-radius:8px;background:#ffffff0d;font-size:.9rem}
 .ol-scores li.me{background:#8fe3cf26;box-shadow:0 0 0 1px #8fe3cf88}
 .ol-btn{min-height:42px;padding:0 22px;margin-top:6px;border:1px solid #8fe3cf;border-radius:10px;background:#8fe3cf;color:#04140f;font:inherit;font-weight:700;cursor:pointer}
+
+/* 多選項對話框（衝突時三選一） */
+.ns-choices{display:grid;gap:10px;margin-top:14px}
+.ns-choice{display:grid;gap:4px}
+.ns-choice small{padding:0 4px;line-height:1.45}
+
+/* 雲端同步狀態 */
+.ns-syncbox{display:grid;gap:10px;padding:14px;border:1px solid #ffffff1a;border-radius:12px;background:#0e1f1b}
+.ns-syncbox h3{margin:0;font-size:1rem}
+.ns-syncline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ns-syncmsg{margin:0;font-size:.88rem;line-height:1.55;color:var(--mu)}
+.ns-switch{display:flex;gap:8px;align-items:center;font-size:.9rem;cursor:pointer}
+.ns-adv{margin-top:2px}
+.ns-adv summary{cursor:pointer;color:var(--mu);font-size:.85rem}
+.ns-adv .ns-sync{margin-top:10px}
+.ns-badge.bad{color:#ff7a8a;border-color:#ff7a8a88}
+.ns-badge.busy{color:#8fe3cf;border-color:#8fe3cf88}
+.ol-strip.bad{border-color:#ff7a8a99;color:#ffb3bd;background:#2a0d12cc}

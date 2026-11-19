@@ -83,3 +83,42 @@ export function confirmDialog({ title, body = "", confirmText = "確定", cancel
     (danger ? cancelBtn : confirmBtn).focus(); // 危險操作預設停在「取消」，避免手滑
   });
 }
+
+/**
+ * 多選項對話框（確認框只有「確定／取消」，遇到要三選一的情況用這個）
+ * @param {{title: string, body?: string|Node, choices: {value: string, label: string, hint?: string, danger?: boolean, primary?: boolean}[], cancelText?: string}} options
+ * @returns {Promise<string|null>} 玩家選的 value；按取消、Esc 或點背景回傳 null
+ */
+export function choiceDialog({ title, body = "", choices, cancelText = "先不處理" }) {
+  activeDialog?.(null);
+  return new Promise((resolve) => {
+    const previousFocus = document.activeElement;
+    const lines = typeof body === "string" ? body.split("\n").map((line) => h("p", {}, line)) : [body];
+    const buttons = choices.map((c) => h("div", { class: "ns-choice" },
+      h("button", { type: "button", class: `x-btn blk ${c.danger ? "dng" : c.primary ? "pri" : ""}`, "data-value": c.value }, c.label),
+      c.hint ? h("small", { class: "ns-note" }, c.hint) : null));
+    const cancelBtn = h("button", { type: "button", class: "x-btn" }, cancelText);
+    const sheet = h("div", { class: "ns-dialog-sheet", role: "alertdialog", "aria-modal": "true", "aria-label": title },
+      h("h2", {}, title),
+      h("div", { class: "ns-dialog-body" }, ...lines),
+      h("div", { class: "ns-choices" }, ...buttons),
+      h("div", { class: "ns-dialog-actions" }, cancelBtn));
+    const overlay = h("div", { class: "ns-dialog" }, sheet);
+    const finish = (result) => {
+      if (activeDialog !== finish) return;
+      activeDialog = null;
+      globalThis.removeEventListener?.("keydown", onKey, true);
+      overlay.remove?.();
+      previousFocus?.focus?.();
+      resolve(result);
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault?.(); e.stopPropagation?.(); finish(null); } };
+    choices.forEach((c, i) => buttons[i].querySelector("button").addEventListener("click", () => finish(c.value)));
+    cancelBtn.addEventListener("click", () => finish(null));
+    overlay.addEventListener("pointerdown", (e) => { if (e.target === overlay) finish(null); });
+    activeDialog = finish;
+    globalThis.addEventListener?.("keydown", onKey, true);
+    document.body.append(overlay);
+    buttons[0]?.querySelector("button")?.focus();
+  });
+}

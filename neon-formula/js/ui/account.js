@@ -2,10 +2,14 @@
 import { API_BASE } from "../account/config.js";
 import { AccountView, accountService } from "../account/index.js";
 import { settings } from "../core/settings-store.js";
+import { KEYS, isPlainObject, store } from "../core/save-store.js";
+import { fsm } from "../core/state-machine.js";
+import { CloudSync } from "../account/cloud-sync.js";
+import { onlineState } from "../game/online-state.js";
 import { G } from "../core/game-state.js";
 import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
-import { STG, SV, SV_DEFAULTS, mergeSave, migrateSave, save } from "../game/progress.js";
+import { STG, SV, SV_DEFAULTS, normalizeSave, onSave, save } from "../game/progress.js";
 import { startTutorial } from "../game/tutorial.js";
 import { startShopGuide } from "./shop-guide.js";
 import { ALLWEAPON, applyLO } from "../game/weapons.js";
@@ -18,15 +22,53 @@ import { showOv } from "./render.js";
 
 /** 把雲端存檔安全地套用到本機：以預設值為底，只接受型別相符的欄位，並刷新畫面與出戰配置 */
 export function applyRemoteSave(remoteSave) {
-  const next = JSON.parse(JSON.stringify(SV_DEFAULTS));
-  mergeSave(next, remoteSave, { allowUnknown: false });
-  migrateSave(next); // 舊版雲端存檔的關卡編號要搬到新的關卡表
+  const next = normalizeSave(remoteSave); // 補預設值、只收型別相符的欄位、搬移舊版關卡編號（見 progress.js）
   for (const key of Object.keys(SV)) delete SV[key];
   Object.assign(SV, next);
   G.CHR = CHS[SV.char] || CHS[0];
   save();
   applyLO();
   if (window.upd) window.upd();
+}
+
+/** 雲端同步引擎（由 main.js 呼叫 configureCloudSync() 後才存在；之前是 null） */
+export let cloudSync = null;
+
+/**
+ * 建立雲端同步並接上遊戲：本機存檔一有變動就排程上傳；回到分頁、恢復網路、回到主選單時檢查雲端有沒有新進度。
+ * 只在瀏覽器環境啟動；沒登入或沒解鎖金鑰時什麼都不會發生，不影響單機遊玩。
+ */
+export function configureCloudSync() {
+  if (cloudSync) return cloudSync;
+  cloudSync = new CloudSync({
+    service: accountService,
+    bridge: {
+      getSave: () => JSON.parse(JSON.stringify(SV)),
+      applySave: applyRemoteSave,
+      normalize: normalizeSave,
+      canApply: () => fsm.state === "menu" && !onlineState.active, // 戰鬥、商店、線上對戰中不替換存檔
+    },
+    storage: {
+      get: () => store.getJSON(KEYS.cloudSync, isPlainObject, null),
+      set: (meta) => store.setJSON(KEYS.cloudSync, meta),
+      clear: () => store.remove(KEYS.cloudSync),
+    },
+    defaults: SV_DEFAULTS,
+    autoEnabled: () => settings.get("cloudAutoSync"),
+  });
+  onSave(() => cloudSync.markDirty());
+  fsm.onEnter("menu", () => cloudSync.poke("pending"));
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") cloudSync.poke("poll");
+      else cloudSync.flush();
+    });
+    globalThis.addEventListener?.("online", () => cloudSync.poke("poll"));
+    globalThis.addEventListener?.("pagehide", () => cloudSync.flush());
+    const timer = setInterval(() => { if (document.visibilityState === "visible") cloudSync.poke("poll"); }, 300_000);
+    timer?.unref?.(); // 不要讓這個計時器拖住 Node（測試）結束
+  }
+  return cloudSync;
 }
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -65,5 +107,5 @@ const profileBridge = {
 
 // 功能：建立「個人檔案」頁面（個人檔案、設定、外觀、雲端同步、線上聯機）。
 export function xAccount(v) {
-  ProfilePage.mount(v, { bridge: profileBridge, accountService, AccountView, settings, apiBase: API_BASE });
+  ProfilePage.mount(v, { bridge: profileBridge, accountService, AccountView, settings, apiBase: API_BASE, cloudSync: configureCloudSync() });
 }

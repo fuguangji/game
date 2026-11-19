@@ -11,7 +11,7 @@
  */
 import { h } from "../core/dom-utils.js";
 import { accountPageUrl } from "./config.js";
-import { confirmDialog } from "../ui/feedback.js";
+import { choiceDialog, confirmDialog } from "../ui/feedback.js";
 
 const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,6 +40,24 @@ export function friendlyError(error, action = "other") {
   return message;
 }
 
+/** 同步狀態 → 顯示文字與徽章樣式 */
+export const SYNC_LABELS = Object.freeze({
+  off: ["未登入", "warn"],
+  locked: ["需要解鎖", "warn"],
+  idle: ["待命", "ok"],
+  syncing: ["同步中…", "busy"],
+  synced: ["已同步", "ok"],
+  pending: ["雲端有新進度", "warn"],
+  conflict: ["需要你決定", "bad"],
+  offline: ["離線，稍後重試", "warn"],
+  error: ["同步失敗", "bad"],
+});
+
+/** 衝突時顯示給玩家的說明：兩邊的進度並排 */
+export function conflictBody(conflict) {
+  return `這台裝置\n${summarizeSave(conflict.local)}\n\n雲端（版本 ${conflict.remote.revision}）\n${summarizeSave(conflict.remote.save)}\n\n這台裝置第一次和這個帳號同步，兩邊卻都已經有進度。請選擇怎麼處理：`;
+}
+
 export class AccountView {
   static #current = null;
 
@@ -52,6 +70,7 @@ export class AccountView {
   #notice = { text: "", error: false };
   #statusEl = null;
   #lastSync = null;
+  #asking = false;
   #listeners = new Set();
 
   /**
@@ -92,9 +111,43 @@ export class AccountView {
       this.render();
       for (const fn of this.#listeners) fn();
     }, { signal: this.#abort.signal });
+    const sync = this.#bridge.cloudSync;
+    sync?.addEventListener("status", () => {
+      if (!this.#container.isConnected) return this.destroy();
+      this.render();
+      if (sync.status === "conflict") this.#askConflict();
+    }, { signal: this.#abort.signal });
     this.render();
+    if (sync?.status === "conflict") this.#askConflict();
     if (typeof window !== "undefined" && window.location?.origin) {
       this.#service.restore().catch((error) => this.#setNotice(error?.message || "共用登入服務初始化失敗。", true));
+    }
+  }
+
+  /** 衝突：兩邊都有進度、沒有共同的底。讓玩家三選一（一次只會開一個對話框） */
+  async #askConflict() {
+    const sync = this.#bridge.cloudSync;
+    if (!sync?.conflict || this.#asking) return;
+    this.#asking = true;
+    try {
+      const choice = await choiceDialog({
+        title: "這台裝置和雲端都有進度",
+        body: conflictBody(sync.conflict),
+        choices: [
+          { value: "merge", label: "合併兩邊（建議）", primary: true, hint: "保留兩邊的進度：武器與角色取聯集、通關與最佳波數取較高、貨幣取較大值。" },
+          { value: "cloud", label: "以雲端為準", danger: true, hint: "這台裝置目前的進度會被取代。" },
+          { value: "local", label: "以這台裝置為準", danger: true, hint: "雲端上的進度會被取代。" },
+        ],
+        cancelText: "先不處理（自動同步暫停）",
+      });
+      if (!choice) return this.#setNotice("衝突還沒處理，自動同步暫停中。本機存檔沒有任何變動。", true);
+      await this.#run(async () => {
+        await sync.resolveConflict(choice);
+        this.#setNotice(choice === "merge" ? "已合併兩邊的進度並同步。" : choice === "cloud" ? "已用雲端進度取代這台裝置。" : "已用這台裝置的進度取代雲端。");
+      }, { busyText: "處理中…" });
+    } finally {
+      this.#asking = false;
+      this.render();
     }
   }
 
@@ -284,6 +337,8 @@ export class AccountView {
       return;
     }
 
+    if (this.#bridge.cloudSync) return this.#renderSyncPanel(panel, head, logout);
+
     const upload = h("button", { type: "button", class: "x-btn pri", onclick: () => this.#run(async () => {
       const revision = await svc.uploadSave(this.#bridge.getSave());
       this.#lastSync = { text: `${this.#clock()} 已上傳（雲端版本 ${revision}）` };
@@ -315,7 +370,67 @@ export class AccountView {
       h("div", { class: "ns-row ns-foot" }, logout, h("small", { class: "ns-note" }, "登出不會刪除這台裝置上的本機存檔。")));
   }
 
-  #clock() {
-    return new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+  /* ---------- 已登入：自動同步面板 ---------- */
+  #renderSyncPanel(panel, head, logout) {
+    const sync = this.#bridge.cloudSync, settings = this.#bridge.settings;
+    const [label, tone] = SYNC_LABELS[sync.status] ?? SYNC_LABELS.idle;
+    const last = sync.lastSyncAt ? `上次同步 ${this.#clock(sync.lastSyncAt)}${sync.revision != null ? `（雲端版本 ${sync.revision}）` : ""}` : "這台裝置還沒有同步過";
+    const syncNow = h("button", { type: "button", class: "x-btn pri", onclick: () => this.#run(async () => {
+      await sync.sync({ reason: "manual" });
+      if (sync.status === "conflict") return; // 對話框由狀態事件開啟
+      this.#setNotice(sync.status === "synced" ? "已是最新：這台裝置和雲端一致。" : sync.message || "完成。", sync.status === "error" || sync.status === "offline");
+    }, { busyText: "同步中…" }) }, "立即同步");
+    const auto = settings ? h("label", { class: "ns-switch" },
+      h("input", { type: "checkbox", checked: settings.get("cloudAutoSync"), onchange: (e) => {
+        settings.set("cloudAutoSync", e.target.checked);
+        this.#setNotice(e.target.checked ? "已開啟自動同步：進度有變動時會自動加密上傳。" : "已關閉自動同步，之後請手動按「立即同步」。");
+        if (e.target.checked) sync.poke("manual");
+      } }),
+      h("span", {}, "自動同步（進度有變動時自動上傳，回到遊戲時自動檢查雲端）")) : null;
+
+    const resolve = sync.status === "conflict"
+      ? h("button", { type: "button", class: "x-btn dng", onclick: () => this.#askConflict() }, "處理衝突…")
+      : null;
+
+    const upload = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
+      const ok = await confirmDialog({
+        title: "用這台裝置覆蓋雲端？",
+        body: `這台裝置\n${summarizeSave(this.#bridge.getSave())}\n\n會直接取代雲端上的存檔，不做合併。`,
+        confirmText: "覆蓋雲端", cancelText: "取消", danger: true,
+      });
+      if (!ok) return this.#setNotice("已取消，雲端沒有任何變動。");
+      const revision = await sync.forceUpload();
+      this.#setNotice(`上傳完成（雲端版本 ${revision}）：${summarizeSave(this.#bridge.getSave())}`);
+    }, { busyText: "正在加密並上傳…" }) }, "強制上傳（覆蓋雲端）");
+
+    const download = h("button", { type: "button", class: "x-btn", onclick: () => this.#run(async () => {
+      this.#setNotice("正在取得雲端存檔…");
+      const { save, revision } = await this.#service.downloadSave();
+      const ok = await confirmDialog({
+        title: "用雲端存檔覆蓋本機？",
+        body: `雲端（版本 ${revision}）\n${summarizeSave(save)}\n\n這台裝置\n${summarizeSave(this.#bridge.getSave())}\n\n覆蓋後無法復原，也不做合併。`,
+        confirmText: "用雲端覆蓋本機", cancelText: "取消", danger: true,
+      });
+      if (!ok) return this.#setNotice("已取消，本機存檔沒有任何變動。");
+      await sync.forcePull();
+      this.#setNotice(`已載入：${summarizeSave(save)}`);
+    }, { busyText: "正在下載並解密…" }) }, "強制載入（覆蓋本機）");
+
+    panel.append(head,
+      h("div", { class: "ns-syncbox" },
+        h("h3", {}, "雲端同步"),
+        h("div", { class: "ns-syncline" }, h("span", { class: `ns-badge ${tone}` }, label), h("small", { class: "ns-note" }, last)),
+        sync.message ? h("p", { class: "ns-syncmsg" }, sync.message) : null,
+        h("p", { class: "ns-meta" }, `這台裝置：${summarizeSave(this.#bridge.getSave())}`),
+        auto,
+        h("div", { class: "ns-row" }, syncNow, resolve),
+        h("details", { class: "ns-adv" }, h("summary", {}, "進階：強制覆蓋"),
+          h("div", { class: "ns-sync" }, h("div", { class: "ns-sync-card" }, h("p", {}, "不做比對與合併，直接用這台裝置覆蓋雲端。"), upload), h("div", { class: "ns-sync-card" }, h("p", {}, "不做比對與合併，直接用雲端覆蓋這台裝置。"), download)))),
+      this.#statusEl,
+      h("div", { class: "ns-row ns-foot" }, logout, h("small", { class: "ns-note" }, "登出不會刪除這台裝置上的本機存檔。")));
+  }
+
+  #clock(at) {
+    return new Date(at ?? Date.now()).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
   }
 }

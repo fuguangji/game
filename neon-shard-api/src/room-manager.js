@@ -47,6 +47,8 @@ export const MATCH_RULES = Object.freeze({
   /** 分數：擊倒玩家、擊倒弱敵人各得幾分 */
   scorePerKill: 3,
   scorePerMob: 1,
+  /** 對戰中斷線時替玩家保留位置的時間（毫秒）：期間內用同一帳號重新連線，會回到原本的血量、分數與位置 */
+  reconnectGraceMs: 30_000,
   /** 舊版 attack（只在大廳可用）的冷卻與範圍 */
   attackCooldownMs: 450,
   pvpRange: 0.12,
@@ -56,7 +58,7 @@ const SPAWNS = [[0.2, 0.2], [0.8, 0.8], [0.8, 0.2], [0.2, 0.8]];
 const MOB_SPAWNS = [[0.22, 0.28], [0.75, 0.62], [0.66, 0.25]];
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-const publicPlayer = ({ id, name, x, y, hp, kills, score, alive }) => ({ id, name, x, y, hp, kills, score, alive });
+const publicPlayer = ({ id, name, x, y, hp, kills, score, alive, connected }) => ({ id, name, x, y, hp, kills, score, alive, connected: connected !== false });
 const publicMob = ({ id, x, y, hp }) => ({ id, x, y, hp });
 
 function freshMobs() {
@@ -67,6 +69,7 @@ function makeRoom(code, mode, hostId) {
   return {
     code, mode, hostId, phase: "lobby", players: new Map(),
     bossHp: MATCH_RULES.bossPool, mobs: freshMobs(), startedAt: 0, endsAt: 0, result: null,
+    seed: 0, spawns: {}, // 開戰時的亂數種子與出生點：斷線重連的玩家需要它們才能還原同一張地圖
   };
 }
 
@@ -104,7 +107,7 @@ export class RoomManager {
     const bucket = ({ capacity, perSecond }) => new TokenBucket({ capacity, refillPerSecond: perSecond, now: this.#now });
     return {
       id, name: String(name).slice(0, 20), send, close, x: 0.5, y: 0.5, hp: MATCH_RULES.playerHp, kills: 0, score: 0, alive: true,
-      lastAttack: 0, lastShot: 0, room: null,
+      lastAttack: 0, lastShot: 0, room: null, connected: true, droppedAt: 0,
       hitBucket: bucket(MATCH_RULES.hitBudget),
       bossBucket: bucket(MATCH_RULES.bossBudget),
     };
@@ -135,7 +138,29 @@ export class RoomManager {
     player.room = room;
     room.players.set(player.id, player);
     broadcast(room, snapshot(room));
+    if (sameUser && room.phase === "playing") this.#resume(room, player);
     return { ok: true };
+  }
+
+  /** 對戰中重新連線回來的玩家：只發給他本人「開戰資訊」與目前戰況（其他人不受影響） */
+  #resume(room, player) {
+    const send = (data) => { try { player.send(data); } catch { /* 連線已經斷了 */ } };
+    send({ type: "started", resumed: true, mode: room.mode, spawns: room.spawns, endsAt: room.endsAt, playerCount: room.players.size, bossPool: MATCH_RULES.bossPool, seed: room.seed });
+    send(combatMessage(room));
+  }
+
+  /**
+   * 連線中斷（不是玩家主動離開）。大廳裡直接移除；對戰中／結算中替他保留位置一段時間（reconnectGraceMs），
+   * 期間內同一帳號重新連線就回到原位，逾時才真正移出房間。
+   */
+  disconnect(player) {
+    const room = player.room;
+    if (!room) return;
+    if (room.players.get(player.id) !== player) { player.room = null; return; } // 已被這個帳號的新連線取代
+    if (room.phase === "lobby") return this.leave(player);
+    player.connected = false;
+    player.droppedAt = this.#now();
+    broadcast(room, snapshot(room));
   }
 
   /** 離開房間。必須是「同一個連線物件」才會刪除，避免舊連線關閉時把新連線踢出房間 */
@@ -172,7 +197,9 @@ export class RoomManager {
       Object.assign(p, { x, y, hp: MATCH_RULES.playerHp, kills: 0, score: 0, alive: true });
       spawns[p.id] = { x, y };
     }
-    broadcast(room, { type: "started", mode: room.mode, spawns, endsAt: room.endsAt, playerCount: room.players.size, bossPool: MATCH_RULES.bossPool, seed: Math.floor(Math.random() * 2 ** 31) });
+    room.spawns = spawns;
+    room.seed = Math.floor(Math.random() * 2 ** 31);
+    broadcast(room, { type: "started", mode: room.mode, spawns, endsAt: room.endsAt, playerCount: room.players.size, bossPool: MATCH_RULES.bossPool, seed: room.seed });
     broadcast(room, snapshot(room));
     return { ok: true };
   }
@@ -298,6 +325,11 @@ export class RoomManager {
   /** 定時呼叫（約每 0.5 秒）：時間到、弱敵人重生 */
   tick() {
     const t = this.#now();
+    for (const room of [...this.#rooms.values()]) { // 先複製：逾時移除玩家可能刪掉房間
+      for (const p of [...room.players.values()]) {
+        if (p.connected === false && t - p.droppedAt >= MATCH_RULES.reconnectGraceMs) this.leave(p);
+      }
+    }
     for (const room of this.#rooms.values()) {
       if (room.phase !== "playing" || room.mode !== "arena") continue;
       let changed = false;
