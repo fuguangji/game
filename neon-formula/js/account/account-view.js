@@ -13,9 +13,28 @@ import { h } from "../core/dom-utils.js";
 import { accountPageUrl } from "./config.js";
 import { choiceDialog, confirmDialog } from "../ui/feedback.js";
 
-const NICKNAME_PATTERN = /^[^<>&"'`%_\\\u0000-\u001f\u007f]{1,24}$/u;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
+
+/**
+ * 「去帳號中心登入」的標記：離開遊戲前寫進 sessionStorage，回來時用來顯示「已登入」或「沒有完成登入」的提示。
+ * 只是提示用（不含任何憑證），超過 30 分鐘視為過期；sessionStorage 不可用時整個功能靜默略過。
+ */
+export const LOGIN_REDIRECT_FLAG = "neonShardLoginRedirect";
+const LOGIN_REDIRECT_TTL_MS = 30 * 60_000;
+const flagStore = () => { try { return globalThis.sessionStorage ?? null; } catch { return null; } };
+export function markLoginRedirect(now = Date.now()) {
+  try { flagStore()?.setItem(LOGIN_REDIRECT_FLAG, String(now)); } catch { /* 無痕模式等情況：略過 */ }
+}
+/** 取出並清掉標記；有標記且沒過期回傳 true */
+export function takeLoginRedirect(now = Date.now()) {
+  const store = flagStore();
+  if (!store) return false;
+  try {
+    const at = Number(store.getItem(LOGIN_REDIRECT_FLAG));
+    store.removeItem(LOGIN_REDIRECT_FLAG);
+    return Number.isFinite(at) && at > 0 && now - at >= 0 && now - at < LOGIN_REDIRECT_TTL_MS;
+  } catch { return false; }
+}
 const SLOW_SERVER_MS = 6000; // 超過這麼久還沒回應，就說明可能是伺服器在喚醒
 
 /** 把存檔整理成一行白話摘要（用在覆蓋前的比對） */
@@ -65,7 +84,9 @@ export class AccountView {
   #service;
   #bridge;
   #abort = new AbortController();
-  #mode = "login";
+  #keysRegistered = null; // 這個帳號是否已設定過加密金鑰：null = 還不知道
+  #keysChecking = false;
+  #keysUid = null;
   #busy = false;
   #notice = { text: "", error: false };
   #statusEl = null;
@@ -107,6 +128,8 @@ export class AccountView {
   #start() {
     this.#service.addEventListener("change", (e) => {
       if (!this.#container.isConnected) return this.destroy();
+      const uid = this.#service.userId ?? null;
+      if (uid !== this.#keysUid) { this.#keysUid = uid; this.#keysRegistered = null; }
       if (e.detail?.notice) this.#notice = { text: e.detail.notice, error: true };
       this.render();
       for (const fn of this.#listeners) fn();
@@ -226,86 +249,29 @@ export class AccountView {
     };
   }
 
-  #seg() {
-    const options = [["login", "登入"], ["signup", "建立帳號"]];
-    return h("div", { class: "ns-seg", role: "tablist", "aria-label": "登入或建立帳號" },
-      ...options.map(([mode, text]) => h("button", {
-        type: "button", role: "tab", class: "ns-seg-btn" + (this.#mode === mode ? " on" : ""), "aria-selected": String(this.#mode === mode),
-        onclick: () => { if (this.#mode === mode) return; this.#mode = mode; this.#notice = { text: "", error: false }; this.render(); this.#container.querySelector("input")?.focus(); },
-      }, text)));
-  }
-
   /* ---------- 未登入 ---------- */
   #renderSignedOut(panel) {
-    const signup = this.#mode === "signup";
-    const email = this.#field({ label: "電子郵件", type: "email", autocomplete: "email", maxLength: 254, help: signup ? "用來登入與接收驗證信。" : "" });
-    const password = this.#field({
-      label: "密碼", type: "password", password: true, maxLength: 256, minLength: signup ? MIN_PASSWORD : 1,
-      autocomplete: signup ? "new-password" : "current-password",
-      help: signup ? `至少 ${MIN_PASSWORD} 個字元。這個密碼同時保護你的雲端存檔，請記好。` : "",
-    });
-    const nickname = signup ? this.#field({ label: "遊戲暱稱", type: "text", autocomplete: "nickname", maxLength: 24, help: "1～24 個字，會顯示在個人檔案。不能包含 < > & \" ' ` % _ \\" }) : null;
-
-    // 即時提示：邊打邊告訴玩家還缺什麼，而不是按下送出才被罵
-    if (signup) {
-      password.input.addEventListener("input", () => {
-        const left = MIN_PASSWORD - password.input.value.length;
-        password.fail("");
-        if (left > 0) password.setHelp(`還差 ${left} 個字元。`);
-        else password.setHelp("✓ 長度足夠。這個密碼同時保護你的雲端存檔，請記好。", true);
-      });
-      nickname.input.addEventListener("input", () => {
-        const value = nickname.input.value.trim();
-        nickname.fail("");
-        if (value && !NICKNAME_PATTERN.test(value)) nickname.setHelp("暱稱含有不允許的符號，請移除。");
-        else nickname.setHelp(`${value.length} / 24 字`, !!value);
-      });
-    }
-    email.input.addEventListener("input", () => email.fail(""));
-
-    const validate = () => {
-      const problems = [];
-      if (!EMAIL_PATTERN.test(email.input.value.trim())) problems.push([email, "請輸入正確的電子郵件，例如 name@example.com。"]);
-      if (!password.input.value) problems.push([password, "請輸入密碼。"]);
-      else if (signup && password.input.value.length < MIN_PASSWORD) problems.push([password, `密碼至少要 ${MIN_PASSWORD} 個字元。`]);
-      if (signup && !NICKNAME_PATTERN.test(nickname.input.value.trim())) problems.push([nickname, "暱稱需為 1～24 個字，且不能包含 < > & \" ' ` % _ \\ 或控制字元。"]);
-      for (const f of [email, password, nickname]) f?.fail("");
-      for (const [field, message] of problems) field.fail(message);
-      problems[0]?.[0].input.focus();
-      return problems.length === 0;
-    };
-
-    const submit = h("button", { type: "submit", class: "x-btn pri blk" }, signup ? "建立帳號" : "登入");
-    const form = h("form", { class: "ns-form", novalidate: true, onsubmit: (e) => {
-      e.preventDefault();
-      if (!validate()) { this.#setNotice("請先修正標示的欄位。", true); return; }
-      this.#run(async () => {
-        const creds = { email: email.input.value.trim(), password: password.input.value };
-        if (signup) {
-          const { needsEmailConfirmation } = await this.#service.signUp({ ...creds, displayName: nickname.input.value.trim() });
-          this.#setNotice(needsEmailConfirmation ? "帳號已建立！請到信箱點擊驗證連結，完成後回到這裡「登入」。" : "帳號建立完成，存檔加密金鑰已準備好。");
-        } else {
-          await this.#service.logIn(creds);
-          this.#setNotice("登入成功，可以開始同步存檔了。");
-        }
-      }, { busyText: signup ? "正在建立帳號並產生加密金鑰…" : "登入中…", action: signup ? "signup" : "login" });
-    } }, email.wrap, password.wrap, nickname?.wrap, submit);
-
     panel.append(
       h("header", { class: "ns-intro" },
         h("h2", {}, "雲端存檔 ", h("span", { class: "ns-pill" }, "選用")),
         h("p", {}, "不登入也能完整遊玩，進度會保存在這台裝置。登入後，可以在不同裝置之間接關。"),
         h("ul", { class: "ns-points" },
           h("li", {}, "🔒 存檔內容會先在這台裝置加密，再上傳。"),
-          h("li", {}, "📱 換手機或電腦時，登入後按「從雲端載入」就能接關。"),
-          h("li", { class: "warn" }, "⚠️ 忘記密碼可能就解不開雲端存檔，請把密碼記好。"))),
-      this.#seg(),
-      form,
-      h("a", {
-        class: "x-btn blk",
-        href: accountPageUrl({ returnTo: globalThis.location?.href }),
-      }, "前往完整帳號中心"),
+          h("li", {}, "📱 換手機或電腦時，登入後就能接關，兩台裝置各自玩的進度還會自動合併。"),
+          h("li", { class: "warn" }, "⚠️ 忘記雲端存檔的加密密碼就解不開存檔，請把它記好。"))),
+      h("div", { class: "ns-syncbox" },
+        h("h3", {}, "登入請到帳號中心"),
+        h("p", { class: "ns-syncmsg" }, "註冊、登入、忘記密碼都在共用的帳號中心處理。登入完成會自動回到遊戲，遊戲只讀取登入狀態，不會看到你的密碼。"),
+        h("button", { type: "button", class: "x-btn pri blk", onclick: () => this.#goToAccountCenter() }, "前往帳號中心登入／註冊")),
       this.#statusEl);
+  }
+
+  /** 導向帳號中心登入；登入完成後帳號中心會依 returnTo 送回目前這一頁（見 config.js 的 accountPageUrl） */
+  #goToAccountCenter() {
+    const url = accountPageUrl({ returnTo: globalThis.location?.href });
+    markLoginRedirect();
+    this.#setNotice("正在前往帳號中心…");
+    (this.#bridge.navigate ?? ((target) => globalThis.location.assign(target)))(url);
   }
 
   /* ---------- 已登入 ---------- */
@@ -324,8 +290,14 @@ export class AccountView {
     }, { busyText: "登出中…" }) }, "登出");
 
     if (!svc.unlocked) {
-      const password = this.#field({ label: "登入密碼", type: "password", password: true, autocomplete: "current-password", maxLength: 256,
-        help: "重新整理頁面後，加密金鑰需要用密碼重新解鎖。密碼只在這台裝置的記憶體中使用，不會被儲存。" });
+      if (this.#keysRegistered === null) {
+        this.#checkKeys();
+        panel.append(head, h("p", { class: "ns-note" }, "正在確認雲端存檔的設定…"), h("div", { class: "ns-row" }, logout), this.#statusEl);
+        return;
+      }
+      if (this.#keysRegistered === false) return this.#renderKeySetup(panel, head, logout);
+      const password = this.#field({ label: "雲端存檔加密密碼", type: "password", password: true, autocomplete: "current-password", maxLength: 256,
+        help: "每次開啟遊戲都要解鎖一次。密碼只在這台裝置的記憶體中使用，不會被送出或儲存。這是你設定雲端存檔時輸入的密碼（建議與帳號密碼相同）。" });
       panel.append(head, h("form", { class: "ns-form", onsubmit: (e) => {
         e.preventDefault();
         if (!password.input.value) { password.fail("請輸入密碼。"); password.input.focus(); return; }
@@ -368,6 +340,54 @@ export class AccountView {
       h("p", { class: "ns-meta" }, `這台裝置：${summarizeSave(this.#bridge.getSave())}`, this.#lastSync ? h("br") : null, this.#lastSync?.text ?? null),
       this.#statusEl,
       h("div", { class: "ns-row ns-foot" }, logout, h("small", { class: "ns-note" }, "登出不會刪除這台裝置上的本機存檔。")));
+  }
+
+  /** 查這個帳號有沒有設定過加密金鑰（決定顯示「解鎖」還是「第一次設定」） */
+  #checkKeys() {
+    if (this.#keysChecking) return;
+    this.#keysChecking = true;
+    const uid = this.#service.userId;
+    this.#service.keysRegistered()
+      .then((registered) => { if (this.#service.userId === uid) this.#keysRegistered = registered; })
+      .catch((error) => {
+        // 查不到（離線、伺服器睡著）：先顯示一般的解鎖畫面，避免卡在「確認中」；若其實還沒設定，解鎖時會得到明確的錯誤
+        if (this.#service.userId === uid) this.#keysRegistered = true;
+        this.#setNotice(error?.message || "暫時無法確認雲端存檔設定。", true);
+      })
+      .finally(() => { this.#keysChecking = false; if (this.#container.isConnected) this.render(); });
+  }
+
+  /** 在帳號中心註冊的新帳號：第一次使用雲端存檔，設定加密密碼（要輸入兩次，打錯就等於把存檔鎖死，所以不能省） */
+  #renderKeySetup(panel, head, logout) {
+    const svc = this.#service;
+    const password = this.#field({ label: "雲端存檔加密密碼", type: "password", password: true, autocomplete: "new-password", maxLength: 256, minLength: MIN_PASSWORD,
+      help: `至少 ${MIN_PASSWORD} 個字元。存檔會先用它在這台裝置加密才上傳。` });
+    const confirm = this.#field({ label: "再輸入一次", type: "password", password: true, autocomplete: "new-password", maxLength: 256, minLength: MIN_PASSWORD });
+    password.input.addEventListener("input", () => {
+      const left = MIN_PASSWORD - password.input.value.length;
+      password.fail("");
+      if (left > 0) password.setHelp(`還差 ${left} 個字元。`);
+      else password.setHelp("✓ 長度足夠。", true);
+    });
+    confirm.input.addEventListener("input", () => confirm.fail(""));
+    const submit = h("button", { type: "submit", class: "x-btn pri" }, "設定並啟用雲端存檔");
+    panel.append(head,
+      h("header", { class: "ns-intro" },
+        h("h2", {}, "第一次使用雲端存檔"),
+        h("p", {}, "請設定一組加密密碼。建議和帳號密碼相同，比較不會忘。"),
+        h("ul", { class: "ns-points" }, h("li", { class: "warn" }, "⚠️ 忘記這組密碼就無法解開雲端存檔，任何人（包括我們）都救不回來。"))),
+      h("form", { class: "ns-form", novalidate: true, onsubmit: (e) => {
+        e.preventDefault();
+        password.fail(""); confirm.fail("");
+        if (password.input.value.length < MIN_PASSWORD) { password.fail(`密碼至少要 ${MIN_PASSWORD} 個字元。`); password.input.focus(); return; }
+        if (password.input.value !== confirm.input.value) { confirm.fail("兩次輸入的密碼不一樣。"); confirm.input.focus(); return; }
+        this.#run(async () => {
+          await svc.unlock(password.input.value, { createIfMissing: true });
+          this.#keysRegistered = true;
+          this.#setNotice("加密密碼設定完成，雲端存檔已啟用。");
+        }, { busyText: "正在產生加密金鑰…" });
+      } }, password.wrap, confirm.wrap, h("div", { class: "ns-row" }, submit, logout)),
+      this.#statusEl);
   }
 
   /* ---------- 已登入：自動同步面板 ---------- */

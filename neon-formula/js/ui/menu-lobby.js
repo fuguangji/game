@@ -41,7 +41,7 @@ export function xLobby(v) {
   }
   const hero = xh(
     "x-pn x-hero",
-    `${xEmb()}<div class="x-wm">NEON FORMULA</div><div class="x-tag">霓虹幾何，瞄準與閃避</div><div class="x-hs"><span><b>${G.best}</b>最高分</span><span><b>${cl}/8</b>關卡通關</span><span><b>${SV.own.length}/${ALLWEAPON.getWeapon().length}</b>槍械解鎖</span></div>`,
+    `${xEmb()}<div class="x-wm">NEON-FORMULA</div><div class="x-tag">霓虹幾何，瞄準與閃避</div><div class="x-hs"><span><b>${G.best}</b>最高分</span><span><b>${cl}/8</b>關卡通關</span><span><b>${SV.own.length}/${ALLWEAPON.getWeapon().length}</b>槍械解鎖</span></div>`,
   );
   hero.append(controlCard()); // 首頁操作簡圖：預設顯示目前平台（電腦／手機），可切換
   const lst = xh("x-pair");

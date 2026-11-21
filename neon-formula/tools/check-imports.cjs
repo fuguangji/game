@@ -4,7 +4,7 @@ const acorn = require("internal/deps/acorn/acorn/dist/acorn");
 const fs = require("fs"), path = require("path");
 function walkDir(d) { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? (e.name === "test" ? [] : walkDir(path.join(d, e.name))) : e.name.endsWith(".js") ? [path.join(d, e.name)] : []); }
 const exportsOf = new Map();
-// NEON FORMULA 的共用 Auth 模組位於 repository root，和 account center 使用同一個來源。
+// NEON-FORMULA 的共用 Auth 模組位於 repository root，和 account center 使用同一個來源。
 const sharedAccountFiles = ["../account/shared-auth.js", "../account/firebase-config.js"]
   .map((f) => path.resolve(f))
   .filter((f) => fs.existsSync(f));

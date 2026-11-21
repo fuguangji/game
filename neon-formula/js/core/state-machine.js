@@ -131,7 +131,7 @@ export class StateMachine {
 /** 全域唯一的遊戲狀態機 */
 export const fsm = new StateMachine(GameStates.MENU, DEFAULT_TRANSITIONS);
 
-/* ---- 對外擴充 API（window.NEON_FORMULA_API 使用） ---- */
+/* ---- 對外擴充 API（window.NEON_SHARD_API 使用，名稱與原本相同） ---- */
 export function registerStateTransition(from, to, allowed = true) {
   return fsm.addTransition(from, to, allowed);
 }

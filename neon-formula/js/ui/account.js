@@ -5,7 +5,9 @@ import { settings } from "../core/settings-store.js";
 import { KEYS, isPlainObject, store } from "../core/save-store.js";
 import { fsm } from "../core/state-machine.js";
 import { CloudSync } from "../account/cloud-sync.js";
+import { takeLoginRedirect } from "../account/account-view.js";
 import { onlineState } from "../game/online-state.js";
+import { toast } from "./feedback.js";
 import { G } from "../core/game-state.js";
 import { MW } from "../core/viewport.js";
 import { CHS } from "../game/chips.js";
@@ -29,6 +31,17 @@ export function applyRemoteSave(remoteSave) {
   save();
   applyLO();
   if (window.upd) window.upd();
+}
+
+/**
+ * 從帳號中心登入回到遊戲後的提示（只有「是從遊戲按『前往帳號中心』離開的」才會顯示）。
+ * 登入狀態本身由 Firebase 共用登入（同源、瀏覽器本機持久化）還原，這裡只負責告訴玩家下一步。
+ */
+export async function announceLoginReturn() {
+  if (!takeLoginRedirect()) return;
+  await accountService.restore().catch(() => {});
+  if (accountService.signedIn) toast(`已從帳號中心登入：${accountService.displayName}。到「個人檔案」解鎖雲端存檔後就會開始同步。`, { type: "success", duration: 6000 });
+  else toast("沒有完成登入，目前仍是訪客模式（進度保存在這台裝置）。", { type: "info", duration: 5000 });
 }
 
 /** 雲端同步引擎（由 main.js 呼叫 configureCloudSync() 後才存在；之前是 null） */

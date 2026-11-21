@@ -23,6 +23,15 @@ const groups = [
 ];
 
 let missing = 0;
+
+// 共用帳號檔（倉庫根目錄 account/）必須保持外部載入，不能被打包進來（見 build.mjs 的 keepSharedAccountExternal）。
+// 內嵌的話，線上版會固定在建置當下那份檔案；若建置機器上是替身檔，登入就會一直失敗。
+const map = JSON.parse(readFileSync(path.join(root, "dist/app.js.map"), "utf8"));
+const inlined = map.sources.filter((source) => /^(\.\.\/)+account\//.test(source));
+if (inlined.length) { missing++; console.error(`✗ 共用帳號檔被打包進 dist/app.js：${inlined.join("、")}`); }
+else if (!bundle.includes('"../../account/shared-auth.js"')) { missing++; console.error("✗ dist/app.js 沒有以外部方式載入 ../../account/shared-auth.js"); }
+else console.log("✓ 共用帳號檔保持外部載入（../../account/shared-auth.js），沒有被打包進 dist/app.js");
+if (/Error\("stub"\)/.test(bundle)) { missing++; console.error('✗ dist/app.js 含有測試用的替身程式（Error("stub")）'); }
 for (const [title, table, pattern] of groups) {
   const lost = Object.keys(table).filter((key) => !pattern(key).test(bundle));
   if (lost.length) { missing += lost.length; console.error(`✗ ${title}：dist/app.js 缺少 ${lost.join("、")}`); }

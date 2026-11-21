@@ -18,7 +18,7 @@ test("canonicalJson sorts object keys recursively", () => {
 test("P-256 signature round-trips in browser-compatible IEEE-P1363 format", () => {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
   const publicJwk = publicKey.export({ format: "jwk" });
-  const message = "neon-formula test signature";
+  const message = "neon-shard test signature";
   const signature = sign("sha256", Buffer.from(message), {
     key: privateKey,
     dsaEncoding: "ieee-p1363",

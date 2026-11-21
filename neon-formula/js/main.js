@@ -8,7 +8,7 @@ import { apply as applyInterp, restore as restoreInterp, snapshot } from "./core
 import { platform } from "./core/platform.js";
 import { degradeAutoTier, initRenderProfile, onScaleChange, setParticleBudget } from "./core/render-profile.js";
 import { onlineMatch } from "./game/online-match.js";
-import { configureCloudSync, configureOnline } from "./ui/account.js";
+import { announceLoginReturn, configureCloudSync, configureOnline } from "./ui/account.js";
 import { mountOnlineHud } from "./ui/online-hud.js";
 import { SimGovernor } from "./core/sim-governor.js";
 import { settings } from "./core/settings-store.js";
@@ -47,7 +47,7 @@ import { initTechniques } from "./game/techniques.js";
 // 遊戲允許訪客直接遊玩；只在瀏覽器啟動共用 Auth，絕不阻塞遊戲啟動。
 if (typeof window !== "undefined" && window.location?.origin) {
   accountService.addEventListener("change", refreshAccountLabel);
-  void accountService.restore().catch((error) => console.warn("[account] Firebase auth restore failed", error));
+  void accountService.restore().catch((error) => console.warn("[account] Firebase auth restore failed", error)).finally(announceLoginReturn);
 }
 
 /**

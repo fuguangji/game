@@ -1,14 +1,14 @@
-# NEON FORMULA 前端架構
+# NEON-FORMULA 前端架構
 
 原本單一的 `main.js`（13,700 行、87 個全域 `let`、11 個被「猴子補丁」改寫的函式）已拆成下列模組。
-所有模組都是 ES module，**必須透過 http(s) 伺服器開啟**（例如 `npx serve neon-formula`），直接雙擊 `index.html`（file://）瀏覽器會擋住。
+所有模組都是 ES module，**必須透過 http(s) 伺服器開啟**（例如 `npx serve neon-shard`），直接雙擊 `index.html`（file://）瀏覽器會擋住。
 
 ## 設計原則
 
 - **共用狀態集中在 `G`**（`core/game-state.js`）：所有可變的全域狀態都是 `GameState` 的欄位，物件建構後立刻 `Object.seal`，
   拼錯欄位名稱會直接報錯，不會悄悄新增新欄位。
 - **狀態由 `fsm` 管理**（`core/state-machine.js`）：menu / play / pause / shop / over 的合法轉移集中在一處；
-  可用 `addTransition` / `addGuard` / `onEnter` / `onExit` 擴充（也可透過 `window.NEON_FORMULA_API`），全部回傳「取消」函式。
+  可用 `addTransition` / `addGuard` / `onEnter` / `onExit` 擴充（也可透過 `window.NEON_SHARD_API`），全部回傳「取消」函式。
 - **事件取代猴子補丁**（`core/event-bus.js`）：核心函式只「宣告發生了什麼」（`PLAYER_SHOT`、`ENEMY_KILLED`…），
   教學等系統自行訂閱；單一監聽者出錯不會影響遊戲。
 - **所有存檔讀寫走 `SaveStore`**（`core/save-store.js`）：隱私模式、容量滿、資料損毀都會回傳預設值而不是讓遊戲當掉。
@@ -30,7 +30,7 @@
 | `js/account/config.js` | 17 |  |
 | `js/account/index.js` | — | 帳號系統組裝：共用 Auth、Render API 與加密服務 |
 
-| `js/api/extension.js` | 29 | 對外擴充 API（window.NEON_FORMULA_API） |
+| `js/api/extension.js` | 29 | 對外擴充 API（window.NEON_SHARD_API） |
 | `js/config/boss-catalog.js` | 91 |  |
 | `js/config/bullet-catalog.js` | 121 |  |
 | `js/config/creature-definition.js` | 81 |  |
@@ -183,7 +183,7 @@
 ## 測試與靜態檢查
 
 ```bash
-cd neon-formula
+cd neon-shard
 node --import ./test/stubs.mjs --test test/*.test.mjs      # 40 項
 node --expose-internals tools/check-imports.cjs js         # 每個 import 都有對應的 export
 node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告／沒 import 的名稱
@@ -302,4 +302,34 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 
 ## 帳號登入頁網址
 
-共用帳號中心在 `/game/account/`。遊戲內的「前往完整帳號中心」由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算，可用 `window.NEON_FORMULA_ACCOUNT_URL` 覆寫；`returnTo` 只允許回到同一個網站。
+共用帳號中心在 `/game/account/`。遊戲內的「前往完整帳號中心」由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算，可用 `window.NEON_SHARD_ACCOUNT_URL` 覆寫；`returnTo` 只允許回到同一個網站。
+
+## 雲端同步（自動同步與衝突合併）
+
+- `js/account/cloud-sync.js`：同步引擎（不碰遊戲全域狀態，帳號、存檔存取、儲存、計時器都由外面注入，所以能完整測試）。本機存檔變動（`progress.js` 的 `onSave`）→ 去抖 8 秒後自動加密上傳；登入／解鎖、回到分頁、恢復網路、回到主選單、每 5 分鐘 → 檢查雲端有沒有別台裝置的新進度。狀態：`off / locked / idle / syncing / synced / pending / conflict / offline / error`。
+- `js/account/save-merge.js`：三方合併（本機、雲端、上次同步時的存檔 `base`）。貨幣＝`base + 本機變化 + 雲端變化`；武器、角色取聯集；通關與最佳波數逐格取大；強化等級取大；晶片、道具逐項三方合併（道具上限 9）；選擇類欄位（關卡、角色、背包、武器晶片配置）只有一邊改過就用那邊、兩邊都改用本機。沒有 `base`（這台裝置從沒同步過）時貨幣一律取較大值，避免同一份進度被加總翻倍。新增存檔欄位時到 `MERGE_RULES` 補規則；沒列出的欄位用「選擇」規則，不會漏掉。
+- 「上次同步」資訊（`neonShardCloudSync`：帳號、雲端版本號、當時的存檔）存在本機，以帳號區分；換帳號不會拿到別人的合併底。
+- **只有一種情況不會自動決定**：第一次同步、兩邊都已經有進度 → 狀態 `conflict`，由玩家選「合併／以雲端為準／以本機為準」。
+- 戰鬥、商店、線上對戰中不會把雲端進度套用到本機（`canApply`），狀態 `pending`，回到主選單後自動套用。上傳時撞到版本衝突（別台剛上傳）會重新取得雲端、重新合併再傳，最多 3 輪。網路錯誤／5xx／429 標示離線並指數退避重試（5 秒起、最多 5 分鐘）；4xx 不重試。
+- 設定 `cloudAutoSync`（預設開）可關閉自動同步；個人檔案頁的「進階：強制覆蓋」保留原本的直接上傳／下載。
+- 伺服器端 API 沒有改動；`AccountService.uploadSave(save, { expectedRevision })` 多了可選參數，呼叫端已知版本號時不必先多打一次 GET。
+- 測試：`test/cloud-sync.test.mjs`（合併規則、兩台裝置的情境、版本衝突、離線重試、衝突選擇）。
+
+## 建置：共用帳號檔不打包進 dist
+
+倉庫根目錄的 `account/`（`shared-auth.js`、`firebase-config.js`…）是整個站台共用的登入程式，`tools/build.mjs` 的 `keepSharedAccountExternal` 外掛讓它**保持外部載入**：`dist/app.js` 裡的匯入會寫成 `../../account/shared-auth.js`（部署在 `/game/` 底下就是 `/game/account/shared-auth.js`，和 `index.dev.html` 直接載入原始模組時指到的是同一個檔案）。`js/account/` 底下遊戲自己的模組照常打包。
+
+- 好處：帳號檔只有一份、改了就生效，不會被「拍」進某次建置；在沒有真正帳號檔的機器（測試機、CI）建置也不會把替身寫進線上版。
+- `npm run check:dist` 會檢查：sourcemap 裡沒有根目錄 `account/` 的來源、有外部匯入、沒有 `Error("stub")`。**部署流程（deploy-site.yml）不會重新建置，直接發佈 repo 裡的 `dist/`**，所以提交前一定要 `npm run build && npm run check:dist`。
+
+## 登入流程（帳號中心登入 → 遊戲讀取）
+
+1. **登入只在帳號中心做**：遊戲內沒有帳號、密碼輸入欄位。遊戲的「雲端」頁在未登入時只有「前往帳號中心登入／註冊」按鈕，導向 `/game/account/?returnTo=<目前這一頁>`（`js/account/config.js` 的 `accountPageUrl()`；`returnTo` 只允許同一個網站）。離開前會在 `sessionStorage` 留一個**只含時間、不含任何憑證**的提示標記（`neonShardLoginRedirect`，30 分鐘過期）。
+2. **登入狀態存在哪裡**：帳號中心用 Firebase Auth 登入，登入狀態由 Firebase 存在瀏覽器的本機持久化（IndexedDB，見 `dev.md`「同來源頁面透過 Firebase Auth browser-local persistence 共用登入狀態」）。`/game/account/` 與 `/game/neon-shard/` 是同一個來源，所以遊戲載入 `account/shared-auth.js` 後用 `waitForAuthState()` 直接還原，並用 `observeAuth()` 接收跨分頁的登入／登出（在帳號中心登出，遊戲頁會同步登出並清掉記憶體裡的加密金鑰）。API 與 WebSocket 用的 ID token 也由同一個來源提供（`getIdentityToken()`），短期有效、由 Firebase SDK 自動更新。
+3. **回到遊戲**：`main.js` 啟動時還原登入狀態；若帶有提示標記，會顯示「已從帳號中心登入」或「沒有完成登入」的提示（`ui/account.js` 的 `announceLoginReturn()`）。
+4. **雲端存檔的加密金鑰**：帳號密碼同時是存檔加密金鑰的來源，而遊戲不會拿到密碼，所以金鑰在遊戲內本機處理：
+   - 帳號已設定過金鑰 → 顯示「解鎖」，輸入加密密碼（只在這台裝置的記憶體使用，不送出、不儲存）。每次開啟遊戲都要解鎖一次。
+   - 在帳號中心新註冊、還沒有金鑰 → 顯示「第一次使用雲端存檔」，設定加密密碼（要輸入兩次）。`AccountService.unlock(password, { createIfMissing: true })` 才會建立；預設不會，避免打錯密碼就被當成新密碼。建議與帳號密碼相同。
+5. **為什麼不把登入資訊另外寫進 Cookie**：Cookie 會隨每個請求送往 `fuguangji.github.io`（靜態主機根本不需要它），瀏覽器端 JS 寫的 Cookie 也不能設 `HttpOnly`，防不了 XSS；同一個網域下其他專案頁也讀得到。Firebase 的持久化已經是同源共用的瀏覽器儲存，Token 不放進 Cookie 反而比較安全。真正的 `HttpOnly` Cookie 必須由伺服器（Render）設定，但 GitHub Pages 與 Render 是不同網站，屬於第三方 Cookie，Safari／Firefox 會擋，不可靠。
+6. 舊的遊戲內註冊／登入方法（`AccountService.signUp / logIn`）還在，給測試與需要內嵌登入的情境用，畫面不會呼叫。
+- 測試：`test/login-flow.test.mjs`（共用登入的跨頁行為、金鑰設定／解鎖、導向與提示標記）。

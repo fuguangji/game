@@ -227,9 +227,9 @@ test("summarizeSave：缺欄位或型別錯誤也不會丟錯", async () => {
 });
 
 test("accountPageUrl：依遊戲所在位置推算 /game/account/，returnTo 只允許同站、可用覆寫", () => {
-  const here = "https://fuguangji.github.io/game/neon-formula/?x=1#top";
+  const here = "https://fuguangji.github.io/game/neon-shard/?x=1#top";
   assert.equal(accountPageUrl({ locationHref: here, override: "" }), "https://fuguangji.github.io/game/account/");
-  assert.equal(accountPageUrl({ locationHref: "https://fuguangji.github.io/game/neon-formula/index.html", override: "" }), "https://fuguangji.github.io/game/account/");
+  assert.equal(accountPageUrl({ locationHref: "https://fuguangji.github.io/game/neon-shard/index.html", override: "" }), "https://fuguangji.github.io/game/account/");
   const withBack = new URL(accountPageUrl({ locationHref: here, returnTo: here, override: "" }));
   assert.equal(withBack.pathname, "/game/account/");
   assert.equal(withBack.searchParams.get("returnTo"), here);

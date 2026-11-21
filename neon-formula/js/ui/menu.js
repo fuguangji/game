@@ -23,7 +23,7 @@ export { xShop } from "./menu-shop.js";
 export { trPick, xCodex, xEnemyCmp } from "./menu-codex.js";
 export { xLoad, xLobby, xPause, xResult, xStage } from "./menu-lobby.js";
 
-/* ===== NEON FORMULA · 新版選單（資料與工具） ===== */
+/* ===== NEON-FORMULA · 新版選單（資料與工具） ===== */
 export const XCAT = [["近戰"], ["遠程"]];
 // 功能：取得指定武器的分類名稱
 export const wCat = (i) => (ALLWEAPON.getWeapon()[i]?.meleeArcEnabled ? "近戰" : "遠程");

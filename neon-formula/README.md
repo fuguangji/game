@@ -1,4 +1,4 @@
-# NEON FORMULA
+# NEON-FORMULA
 
 霓虹幾何風格的俯視角射擊遊戲，純前端（ES modules）。主題：冷冽松霧。
 
@@ -26,9 +26,11 @@ node --expose-internals tools/check-undefined.cjs js         # 有沒有用到�
 | 4 | Render 環境變數 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase 服務帳戶金鑰 JSON（整份貼成一行）。**絕對不要提交到 Git** |
 | 5 | Firebase Console | — | 啟用 Authentication 的 Email/Password；建立 Firestore；發佈 `neon-shard-api/firestore.rules` |
 
-測試時可以不改檔案，在載入遊戲前加一段腳本覆寫：`window.NEON_FORMULA_API_BASE = "http://localhost:10000";`。Firebase Web 設定一律由 repo root 的 `account/firebase-config.js` 管理。
+測試時可以不改檔案，在載入遊戲前加一段腳本覆寫：`window.NEON_SHARD_API_BASE = "http://localhost:10000";`。Firebase Web 設定一律由 repo root 的 `account/firebase-config.js` 管理。
 
-**帳號登入頁網址**：共用帳號中心在 `/game/account/`（GitHub Pages 專案站台 `fuguangji/game`）。遊戲內「前往完整帳號中心」按鈕由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算（遊戲在 `/game/neon-formula/` 就會得到 `/game/account/`），不再寫死網域根目錄的 `/account/`；若改用自訂網域或測試，可在載入遊戲前設定 `window.NEON_FORMULA_ACCOUNT_URL = "https://…/account/";`。
+**雲端同步**：登入並解鎖金鑰後，進度會自動加密同步，兩台裝置各自玩過會自動合併，詳見 `ARCHITECTURE.md` 的「雲端同步」。**線上聯機**：對戰中斷線會保留位置 30 秒並自動重連，詳見 `neon-shard-api/README-ONLINE.md`。
+
+**帳號登入頁網址**：共用帳號中心在 `/game/account/`（GitHub Pages 專案站台 `fuguangji/game`）。遊戲內「前往完整帳號中心」按鈕由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算（遊戲在 `/game/neon-shard/` 就會得到 `/game/account/`），不再寫死網域根目錄的 `/account/`；若改用自訂網域或測試，可在載入遊戲前設定 `window.NEON_SHARD_ACCOUNT_URL = "https://…/account/";`。
 
 我「不確定、已先用常數寫好」的其他項目（需要時再調，不影響上線）：
 
@@ -254,3 +256,14 @@ registerTile({
 術式武器（青羽鎩等 10 把）的操作、技能表與新增方式見 `TECHNIQUES.md`。
 
 更多結構與模組職責見 `ARCHITECTURE.md`。
+
+## 命名對照：遊戲叫 NEON-FORMULA，但以下識別字沿用 `neon-shard`
+
+
+| 識別字 | 原因 |
+|---|---|
+| `neonShardSave`、`neonShardBest`、`neonShardSettings`…（`js/core/save-store.js` 的 localStorage 鍵）、`neon-shard.custom-skin.v1` | 改了鍵名，玩家的本機存檔、設定、外觀會「消失」（其實還在，但讀不到） |
+| `neon-shard:key-bundle:v1`、`neon-shard:save-envelope:v1`、`neon-shard-save-v1` 等（`js/account/cloud-crypto.js`、`neon-shard-api/src/security.js`） | 這些是加密金鑰推導與簽章的「用途標籤」，前後端必須一致；改了，既有的雲端存檔**無法解密**、請求簽章也會被伺服器拒絕 |
+| 伺服器 `neon-shard-api`、`https://neon-shard-api.onrender.com`、`/api/health` 回傳的 `service` | 依需求保持不變（也是 Render 服務名稱與網址） |
+| `window.NEON_SHARD_API`、`NEON_SHARD_API_BASE`、`NEON_SHARD_ACCOUNT_URL`、`NEON_SHARD_ICE_SERVERS` | 對外的擴充與設定入口，改名會讓既有的外掛與設定失效 |
+| 資料夾與網址路徑 `neon-shard/`（`/game/neon-shard/`） | 改了會讓書籤與外部連結失效，且要同步改部署流程；如需改，請在舊路徑留一個導向頁 |

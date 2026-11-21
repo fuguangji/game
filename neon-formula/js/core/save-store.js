@@ -4,29 +4,16 @@
  * - 讀取時可附驗證函式，不合格的資料一律當作不存在
  */
 export const KEYS = Object.freeze({
-  loadout: "neonFormulaLO",
-  best: "neonFormulaBest",
-  save: "neonFormulaSave",
-  autoAim: "neonFormulaAA",
-  tutorialDone: "neonFormulaTutorialDone",
-  shopGuideDone: "neonFormulaShopGuideDone",
-  starterGift: "neonFormulaStarterGift",
-  trainingTip: "neonFormulaTrainingTip",
-  settings: "neonFormulaSettings",
-  cloudSync: "neonFormulaCloudSync",
-});
-
-const LEGACY_KEYS = Object.freeze({
-  [KEYS.loadout]: "neonShardLO",
-  [KEYS.best]: "neonShardBest",
-  [KEYS.save]: "neonShardSave",
-  [KEYS.autoAim]: "neonShardAA",
-  [KEYS.tutorialDone]: "neonShardTutorialDone",
-  [KEYS.shopGuideDone]: "neonShardShopGuideDone",
-  [KEYS.starterGift]: "neonShardStarterGift",
-  [KEYS.trainingTip]: "neonShardTrainingTip",
-  [KEYS.settings]: "neonShardSettings",
-  [KEYS.cloudSync]: "neonShardCloudSync",
+  loadout: "neonShardLO",
+  best: "neonShardBest",
+  save: "neonShardSave",
+  autoAim: "neonShardAA",
+  tutorialDone: "neonShardTutorialDone",
+  shopGuideDone: "neonShardShopGuideDone",
+  starterGift: "neonShardStarterGift",
+  trainingTip: "neonShardTrainingTip",
+  settings: "neonShardSettings",
+  cloudSync: "neonShardCloudSync",
 });
 
 export const isPlainObject = (v) =>
@@ -49,19 +36,8 @@ export class SaveStore {
 
   getString(key, fallback = null) {
     try {
-      const value = this.#storage?.getItem(key);
-      if (value !== null && value !== undefined) return value;
-      const legacyKey = LEGACY_KEYS[key];
-      if (!legacyKey) return fallback;
-      const legacyValue = this.#storage?.getItem(legacyKey);
-      if (legacyValue === null || legacyValue === undefined) return fallback;
-      try {
-        this.#storage?.setItem(key, legacyValue);
-        this.#storage?.removeItem(legacyKey);
-      } catch {
-        // Keep returning the legacy value if storage blocks migration.
-      }
-      return legacyValue;
+      const v = this.#storage?.getItem(key);
+      return v === null || v === undefined ? fallback : v;
     } catch {
       return fallback;
     }
@@ -70,14 +46,6 @@ export class SaveStore {
   setString(key, value) {
     try {
       this.#storage?.setItem(key, String(value));
-      const legacyKey = LEGACY_KEYS[key];
-      if (legacyKey) {
-        try {
-          this.#storage?.removeItem(legacyKey);
-        } catch {
-          // The new value is already saved; a stale legacy key is harmless.
-        }
-      }
       return true;
     } catch {
       return false;
@@ -88,8 +56,6 @@ export class SaveStore {
   remove(key) {
     try {
       this.#storage?.removeItem(key);
-      const legacyKey = LEGACY_KEYS[key];
-      if (legacyKey) this.#storage?.removeItem(legacyKey);
       return true;
     } catch {
       return false;

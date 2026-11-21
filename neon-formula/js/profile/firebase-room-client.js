@@ -88,10 +88,10 @@ export function candidateFromDb(value) {
 
 /**
  * ICE 伺服器：預設只有 STUN（對稱型 NAT 連不上）。需要 TURN 時，在載入遊戲前設定
- *   window.NEON_FORMULA_ICE_SERVERS = [{ urls: "turn:example.com:3478", username: "…", credential: "…" }];
+ *   window.NEON_SHARD_ICE_SERVERS = [{ urls: "turn:example.com:3478", username: "…", credential: "…" }];
  * 格式不對的項目會被忽略。
  */
-export function resolveIceServers(extra = globalThis.window?.NEON_FORMULA_ICE_SERVERS) {
+export function resolveIceServers(extra = globalThis.window?.NEON_SHARD_ICE_SERVERS) {
   const list = [...FIREBASE_ICE_SERVERS];
   if (Array.isArray(extra)) {
     for (const item of extra) {

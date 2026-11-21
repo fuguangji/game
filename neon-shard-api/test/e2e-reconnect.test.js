@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { RoomManager } from "../src/room-manager.js";
 import { attachRealtime } from "../src/realtime.js";
 
-const clientPath = fileURLToPath(new URL("../../neon-formula/js/profile/realtime-client.js", import.meta.url));
+const clientPath = fileURLToPath(new URL("../../neon-shard/js/profile/realtime-client.js", import.meta.url));
 const available = fs.existsSync(clientPath) && typeof WebSocket === "function";
 const { RealtimeClient, RealtimeStates } = available ? await import(clientPath) : {};
 

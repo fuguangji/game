@@ -29,6 +29,29 @@ mkdirSync(dist, { recursive: true });
 
 const hash = (file) => createHash("sha256").update(readFileSync(file)).digest("hex").slice(0, 8);
 
+/**
+ * 倉庫根目錄的 account/（共用登入：shared-auth.js、firebase-config.js…）不打包進 dist/app.js，保持外部載入。
+ * 原因：
+ *   - 那是整個站台共用的檔案（帳號頁 /account/ 也在用），應該只有一份、只由它自己更新；
+ *     打包進來會在這台機器建置時「拍下當下的版本」，之後帳號檔改了，遊戲還在用舊的。
+ *   - 在沒有真正帳號檔的環境（例如測試機、CI）建置時，不會把替身或殘缺的檔案悄悄寫進線上版。
+ * dist/app.js 位在 <站台>/neon-shard/dist/，帳號檔在 <站台>/account/，所以改寫成 ../../account/<檔名>
+ * （部署在 /game/ 底下就是 /game/account/…，與 index.dev.html 直接載入原始模組時指到的是同一個檔案）。
+ */
+const repoRoot = path.resolve(root, "..");
+const sharedAccountDir = path.join(repoRoot, "account");
+const keepSharedAccountExternal = {
+  name: "keep-shared-account-external",
+  setup(b) {
+    b.onResolve({ filter: /account\/.+\.js$/ }, (args) => {
+      if (!args.path.startsWith(".")) return null;
+      const abs = path.resolve(args.resolveDir, args.path);
+      if (!abs.startsWith(sharedAccountDir + path.sep)) return null; // js/account/ 底下自己的模組照常打包
+      return { path: `../../${path.relative(repoRoot, abs).split(path.sep).join("/")}`, external: true };
+    });
+  },
+};
+
 // 1. JavaScript
 await esbuild.build({
   entryPoints: [path.join(root, "js/main.js")],
@@ -40,6 +63,7 @@ await esbuild.build({
   target: "es2022",
   legalComments: "none",
   logLevel: "warning",
+  plugins: [keepSharedAccountExternal],
 });
 
 // 2. CSS（保持原本的載入順序）

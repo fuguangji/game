@@ -1,4 +1,4 @@
-# NEON FORMULA
+# NEON-FORMULA
 
 霓虹幾何風格的俯視角射擊遊戲，純前端（ES modules）。主題：冷冽松霧。
 s

@@ -154,6 +154,10 @@ export class AccountService extends EventTarget {
     return this.#loadProfile(uid, generation);
   }
 
+  /**
+   * 遊戲內註冊／登入（舊流程）。目前遊戲的登入介面改為導向帳號中心（見 account-view.js），
+   * 這兩個方法保留給測試與需要內嵌登入的情境，一般畫面不會呼叫。
+   */
   async signUp({ email, password, displayName }) {
     const user = await this.#auth.signUp(email, password, displayName);
     this.#setUser(user, { restoreProfile: false });
@@ -176,8 +180,25 @@ export class AccountService extends EventTarget {
     this.#emit();
   }
 
-  /** 重新整理後重新輸入密碼，僅解鎖本機記憶體中的加密金鑰。 */
-  async unlock(password) {
+  /** 這個帳號是否已經設定過雲端存檔的加密金鑰（沒有 = 第一次使用，需要先設定加密密碼） */
+  async keysRegistered() {
+    if (!this.#user) throw new ApiError("請先登入遊戲帳號。", { code: "NOT_SIGNED_IN" });
+    const uid = this.#user.uid;
+    const generation = this.#authGeneration;
+    const record = await this.#api.request("/api/keys");
+    this.#assertCurrentUser(uid, generation);
+    return Boolean(record.registered);
+  }
+
+  /**
+   * 用密碼解鎖本機記憶體中的加密金鑰（密碼只在這台裝置上使用，不會送出，也不會被儲存）。
+   * 登入在帳號中心完成時，遊戲拿不到密碼，所以「解鎖」與「第一次設定」都在這裡：
+   *   - 已設定過：用密碼解開金鑰；密碼錯誤會丟錯，金鑰維持鎖定。
+   *   - 還沒設定：預設丟 KEYS_NOT_REGISTERED（避免玩家打錯密碼就被當成新密碼）；
+   *     呼叫端明確傳 { createIfMissing: true }（設定畫面，有確認欄位）才會建立新金鑰並註冊。
+   * @returns {Promise<{created: boolean}>}
+   */
+  async unlock(password, { createIfMissing = false } = {}) {
     if (!this.#user) throw new ApiError("請先登入遊戲帳號。", { code: "NOT_SIGNED_IN" });
     const uid = this.#user.uid;
     const generation = this.#authGeneration;
@@ -188,11 +209,21 @@ export class AccountService extends EventTarget {
     this.#assertCurrentUser(uid, generation);
     const record = await this.#api.request("/api/keys");
     this.#assertCurrentUser(uid, generation);
-    if (!record.registered) throw new ApiError("帳號尚未完成金鑰設定；請登出後重新登入。", { code: "KEYS_NOT_REGISTERED" });
+    if (!record.registered) {
+      if (!createIfMissing) throw new ApiError("這個帳號還沒有設定雲端存檔的加密密碼。", { code: "KEYS_NOT_REGISTERED" });
+      const created = await this.#crypto.createAccountKeys(uid, password);
+      this.#assertCurrentUser(uid, generation);
+      await this.#api.request("/api/keys", { method: "PUT", body: created.registration });
+      this.#assertCurrentUser(uid, generation);
+      this.#keys = created.keys;
+      this.#emit();
+      return { created: true };
+    }
     const keys = await this.#crypto.unlockAccountKeys(profile.userId, password, record);
     this.#assertCurrentUser(uid, generation);
     this.#keys = keys;
     this.#emit();
+    return { created: false };
   }
 
   async logOut() {

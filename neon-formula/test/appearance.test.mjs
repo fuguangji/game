@@ -100,23 +100,6 @@ test("SettingsStore：預設值、型別驗證、持久化、損毀資料與重�
   assert.deepEqual(store.all(), { ...SETTING_DEFAULTS });
 });
 
-test("SaveStore：將舊版品牌鍵遷移至 NEON FORMULA，保留玩家存檔", () => {
-  const st = memStorage();
-  const save = JSON.stringify({ coins: 12, own: [1, 2] });
-  st.setItem("neonShardSave", save);
-
-  const store = new SaveStore(st);
-  assert.equal(KEYS.save, "neonFormulaSave");
-  assert.deepEqual(store.getJSON(KEYS.save), { coins: 12, own: [1, 2] });
-  assert.equal(st.getItem(KEYS.save), save);
-  assert.equal(st.getItem("neonShardSave"), null);
-
-  store.setString(KEYS.save, "updated");
-  assert.equal(st.getItem(KEYS.save), "updated");
-  assert.equal(store.remove(KEYS.save), true);
-  assert.equal(st.getItem(KEYS.save), null);
-});
-
 test("SettingsStore：列舉與數值範圍驗證（畫質、幀率、解析度、操作配置）", () => {
   const st = memStorage(); const store = new SettingsStore(new SaveStore(st));
   store.set("quality", "low"); store.set("fpsCap", 30); store.set("renderScale", 0.75); store.set("controlMode", "mobile");

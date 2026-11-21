@@ -1,4 +1,4 @@
-/** api/extension — 對外擴充 API（window.NEON_FORMULA_API） */
+/** api/extension — 對外擴充 API（window.NEON_SHARD_API） */
 import { fsm, registerStateGuard, registerStateHook, registerStateTransition } from "../core/state-machine.js";
 import { ALLWEAPON } from "../game/weapons.js";
 import { registerAimLineExtension } from "../ui/aim.js";
@@ -10,11 +10,11 @@ export function init() {
 
 
 /*
- * NEON FORMULA 擴充 API。
- * 其他模組載入完成後可透過 window.NEON_FORMULA_API 註冊狀態與瞄準線擴充。
+ * NEON-FORMULA 擴充 API（全域名稱維持 NEON_SHARD_API，既有的外掛不用改）。
+ * 其他模組載入完成後可透過 window.NEON_SHARD_API 註冊狀態與瞄準線擴充。
  * getWeaponDefinitions() 回傳凍結的武器定義；前端封裝不是伺服器端防作弊機制。
  */
-Object.defineProperty(window, "NEON_FORMULA_API", {
+Object.defineProperty(window, "NEON_SHARD_API", {
   configurable: true,
   value: Object.freeze({
     registerStateTransition,

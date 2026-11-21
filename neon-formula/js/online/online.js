@@ -1,5 +1,5 @@
 const STORAGE_KEY = "neon-shard.custom-skin.v1";
-const API = window.NEON_FORMULA_API_BASE || "https://neon-shard-api.onrender.com";
+const API = window.NEON_SHARD_API_BASE || "https://neon-shard-api.onrender.com";
 const style = document.createElement("style");
 style.textContent = `
 #ns-tools{position:fixed;z-index:10001;right:12px;top:max(12px,env(safe-area-inset-top));display:flex;gap:6px}
@@ -16,12 +16,12 @@ const tools=document.createElement("div");tools.id="ns-tools";
 tools.innerHTML='<button class="ns-btn" id="ns-online">線上模式</button><button class="ns-btn" id="ns-skin">自訂外觀</button>';
 document.body.append(tools);
 const panel=document.createElement("section");panel.id="ns-panel";
-panel.innerHTML='<h2 id="ns-title">NEON FORMULA ONLINE</h2><div id="ns-content"></div><div class="ns-row"><button class="ns-btn" id="ns-close">關閉</button></div>';
+panel.innerHTML='<h2 id="ns-title">NEON-FORMULA ONLINE</h2><div id="ns-content"></div><div class="ns-row"><button class="ns-btn" id="ns-close">關閉</button></div>';
 document.body.append(panel);
 const $=id=>document.getElementById(id);
 const show=(title,html)=>{$("ns-title").textContent=title;$("ns-content").innerHTML=html;panel.style.display="block";};
 $("ns-close").onclick=()=>{panel.style.display="none";};
-function getToken(){try{const key="neonFormulaAuthSession";let session=sessionStorage.getItem(key);if(session===null){session=sessionStorage.getItem("neonShardAuthSession");if(session!==null){try{sessionStorage.setItem(key,session)}catch{}}}return JSON.parse(session||"{}").accessToken||""}catch{return ""}}
+function getToken(){try{return JSON.parse(sessionStorage.getItem("neonShardAuthSession")||"{}").accessToken||""}catch{return ""}}
 $("ns-online").onclick=()=>{
 show("線上模式",'<p>先選擇玩法與房間代碼（4–8 位英數字）。需登入帳號。</p><div class="ns-row"><select id="ns-mode"><option value="arena">競技場：弱敵人 + PvP</option><option value="boss">合作 Boss 討伐</option></select><input id="ns-code" maxlength="8" placeholder="房間代碼" value="NEON01"></div><div class="ns-row"><button class="ns-btn" id="ns-connect">連線並加入</button><button class="ns-btn" id="ns-hit">攻擊</button></div><div id="ns-status" class="ns-status">尚未連線</div><div id="ns-room"></div>');
 let ws=null;
