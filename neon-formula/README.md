@@ -30,7 +30,7 @@ node --expose-internals tools/check-undefined.cjs js         # 有沒有用到�
 
 **雲端同步**：登入並解鎖金鑰後，進度會自動加密同步，兩台裝置各自玩過會自動合併，詳見 `ARCHITECTURE.md` 的「雲端同步」。**線上聯機**：對戰中斷線會保留位置 30 秒並自動重連，詳見 `neon-shard-api/README-ONLINE.md`。
 
-**帳號登入頁網址**：共用帳號中心在 `/game/account/`（GitHub Pages 專案站台 `fuguangji/game`）。遊戲內「前往完整帳號中心」按鈕由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算（遊戲在 `/game/neon-shard/` 就會得到 `/game/account/`），不再寫死網域根目錄的 `/account/`；若改用自訂網域或測試，可在載入遊戲前設定 `window.NEON_SHARD_ACCOUNT_URL = "https://…/account/";`。
+**帳號登入頁網址**：共用帳號中心在 `/game/account/`（GitHub Pages 專案站台 `fuguangji/game`）。遊戲內「前往完整帳號中心」按鈕由 `js/account/config.js` 的 `accountPageUrl()` 依目前頁面位置推算（遊戲在 `/game/neon-formula/` 就會得到 `/game/account/`），不再寫死網域根目錄的 `/account/`；若改用自訂網域或測試，可在載入遊戲前設定 `window.NEON_SHARD_ACCOUNT_URL = "https://…/account/";`。
 
 我「不確定、已先用常數寫好」的其他項目（需要時再調，不影響上線）：
 
@@ -266,4 +266,4 @@ registerTile({
 | `neon-shard:key-bundle:v1`、`neon-shard:save-envelope:v1`、`neon-shard-save-v1` 等（`js/account/cloud-crypto.js`、`neon-shard-api/src/security.js`） | 這些是加密金鑰推導與簽章的「用途標籤」，前後端必須一致；改了，既有的雲端存檔**無法解密**、請求簽章也會被伺服器拒絕 |
 | 伺服器 `neon-shard-api`、`https://neon-shard-api.onrender.com`、`/api/health` 回傳的 `service` | 依需求保持不變（也是 Render 服務名稱與網址） |
 | `window.NEON_SHARD_API`、`NEON_SHARD_API_BASE`、`NEON_SHARD_ACCOUNT_URL`、`NEON_SHARD_ICE_SERVERS` | 對外的擴充與設定入口，改名會讓既有的外掛與設定失效 |
-| 資料夾與網址路徑 `neon-shard/`（`/game/neon-shard/`） | 改了會讓書籤與外部連結失效，且要同步改部署流程；如需改，請在舊路徑留一個導向頁 |
+| 資料夾與網址路徑 `neon-formula/`（`/game/neon-formula/`） | 遊戲頁的實際資料夾與站台路徑，引用或連結時請使用此名稱 |

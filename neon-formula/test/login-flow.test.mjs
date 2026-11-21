@@ -147,7 +147,7 @@ function withGlobals(fn) {
   return async () => {
     const had = { location: Object.getOwnPropertyDescriptor(globalThis, "location"), sessionStorage: Object.getOwnPropertyDescriptor(globalThis, "sessionStorage") };
     const mem = new Map();
-    set("location", { href: "https://fuguangji.github.io/game/neon-shard/", origin: "https://fuguangji.github.io", assign() {} });
+    set("location", { href: "https://fuguangji.github.io/game/neon-formula/", origin: "https://fuguangji.github.io", assign() {} });
     set("sessionStorage", { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) });
     try { await fn({ mem }); }
     finally { // 不論測試怎麼改，都把全域變數還原成進來之前的樣子
@@ -193,7 +193,7 @@ test("按下「前往帳號中心」：導向 /game/account/、帶 returnTo 回�
   byText(host, "前往帳號中心登入／註冊").click();
   const url = new URL(target);
   assert.equal(url.origin + url.pathname, "https://fuguangji.github.io/game/account/");
-  assert.equal(url.searchParams.get("returnTo"), "https://fuguangji.github.io/game/neon-shard/");
+  assert.equal(url.searchParams.get("returnTo"), "https://fuguangji.github.io/game/neon-formula/");
   assert.ok(mem.has(LOGIN_REDIRECT_FLAG), "有標記");
   assert.ok(![...mem.values()].some((v) => /token|password/i.test(v)), "標記裡沒有任何憑證");
 }));

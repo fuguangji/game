@@ -35,7 +35,7 @@ const hash = (file) => createHash("sha256").update(readFileSync(file)).digest("h
  *   - 那是整個站台共用的檔案（帳號頁 /account/ 也在用），應該只有一份、只由它自己更新；
  *     打包進來會在這台機器建置時「拍下當下的版本」，之後帳號檔改了，遊戲還在用舊的。
  *   - 在沒有真正帳號檔的環境（例如測試機、CI）建置時，不會把替身或殘缺的檔案悄悄寫進線上版。
- * dist/app.js 位在 <站台>/neon-shard/dist/，帳號檔在 <站台>/account/，所以改寫成 ../../account/<檔名>
+ * dist/app.js 位在 <站台>/neon-formula/dist/，帳號檔在 <站台>/account/，所以改寫成 ../../account/<檔名>
  * （部署在 /game/ 底下就是 /game/account/…，與 index.dev.html 直接載入原始模組時指到的是同一個檔案）。
  */
 const repoRoot = path.resolve(root, "..");

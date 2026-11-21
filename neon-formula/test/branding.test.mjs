@@ -59,10 +59,25 @@ test("不能改的識別字（二）：加密用途標籤逐一鎖定，前後�
   for (const [name, text] of [["cloud-crypto.js", clientText], ["security.js", serverText]]) assert.ok(!/formula/i.test(text), `${name} 不能出現新名稱`);
 });
 
-test("識別字不該被改名：整個前端與伺服器程式碼裡沒有 neon-formula／neonFormula／NEON_FORMULA 形式的識別字（只有顯示用的 NEON-FORMULA）", () => {
+test("識別字不該被改名：整個前端與伺服器程式碼裡沒有 neonFormula／NEON_FORMULA 形式的識別字（資料夾路徑 neon-formula 可用）", () => {
   const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "node_modules" ? [] : walk(path.join(dir, e.name))) : e.name.endsWith(".js") ? [path.join(dir, e.name)] : []));
-  const offenders = [...walk(path.join(root, "js")), ...walk(api("src"))].filter((f) => /neon-formula|neonFormula|NEON_FORMULA/.test(fs.readFileSync(f, "utf8")));
+  const offenders = [...walk(path.join(root, "js")), ...walk(api("src"))].filter((f) => /neonFormula|NEON_FORMULA/.test(fs.readFileSync(f, "utf8")));
   assert.deepEqual(offenders, []);
+});
+
+test("資料夾與測試路徑不再引用 neon-shard", () => {
+  const paths = [
+    path.join(root, "js/account/config.js"),
+    path.join(root, "test/account.test.mjs"),
+    path.join(root, "test/login-flow.test.mjs"),
+    path.join(root, "tools/build.mjs"),
+    api("package.json"),
+    api("test/browser-crypto.test.js"),
+    api("test/e2e-reconnect.test.js"),
+  ];
+  for (const file of paths) {
+    assert.doesNotMatch(fs.readFileSync(file, "utf8"), /neon-shard\//, `${file} 不該引用舊資料夾路徑`);
+  }
 });
 
 test("不能改的識別字（三）：伺服器維持 neon-shard-api（套件名、健康檢查、預設網址）", () => {

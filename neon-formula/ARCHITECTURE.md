@@ -1,7 +1,7 @@
 # NEON-FORMULA 前端架構
 
 原本單一的 `main.js`（13,700 行、87 個全域 `let`、11 個被「猴子補丁」改寫的函式）已拆成下列模組。
-所有模組都是 ES module，**必須透過 http(s) 伺服器開啟**（例如 `npx serve neon-shard`），直接雙擊 `index.html`（file://）瀏覽器會擋住。
+所有模組都是 ES module，**必須透過 http(s) 伺服器開啟**（例如 `npx serve neon-formula`），直接雙擊 `index.html`（file://）瀏覽器會擋住。
 
 ## 設計原則
 
@@ -183,7 +183,7 @@
 ## 測試與靜態檢查
 
 ```bash
-cd neon-shard
+cd neon-formula
 node --import ./test/stubs.mjs --test test/*.test.mjs      # 40 項
 node --expose-internals tools/check-imports.cjs js         # 每個 import 都有對應的 export
 node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告／沒 import 的名稱
@@ -325,7 +325,7 @@ node --expose-internals tools/check-undefined.cjs js       # 用到卻沒宣告�
 ## 登入流程（帳號中心登入 → 遊戲讀取）
 
 1. **登入只在帳號中心做**：遊戲內沒有帳號、密碼輸入欄位。遊戲的「雲端」頁在未登入時只有「前往帳號中心登入／註冊」按鈕，導向 `/game/account/?returnTo=<目前這一頁>`（`js/account/config.js` 的 `accountPageUrl()`；`returnTo` 只允許同一個網站）。離開前會在 `sessionStorage` 留一個**只含時間、不含任何憑證**的提示標記（`neonShardLoginRedirect`，30 分鐘過期）。
-2. **登入狀態存在哪裡**：帳號中心用 Firebase Auth 登入，登入狀態由 Firebase 存在瀏覽器的本機持久化（IndexedDB，見 `dev.md`「同來源頁面透過 Firebase Auth browser-local persistence 共用登入狀態」）。`/game/account/` 與 `/game/neon-shard/` 是同一個來源，所以遊戲載入 `account/shared-auth.js` 後用 `waitForAuthState()` 直接還原，並用 `observeAuth()` 接收跨分頁的登入／登出（在帳號中心登出，遊戲頁會同步登出並清掉記憶體裡的加密金鑰）。API 與 WebSocket 用的 ID token 也由同一個來源提供（`getIdentityToken()`），短期有效、由 Firebase SDK 自動更新。
+2. **登入狀態存在哪裡**：帳號中心用 Firebase Auth 登入，登入狀態由 Firebase 存在瀏覽器的本機持久化（IndexedDB，見 `dev.md`「同來源頁面透過 Firebase Auth browser-local persistence 共用登入狀態」）。`/game/account/` 與 `/game/neon-formula/` 是同一個來源，所以遊戲載入 `account/shared-auth.js` 後用 `waitForAuthState()` 直接還原，並用 `observeAuth()` 接收跨分頁的登入／登出（在帳號中心登出，遊戲頁會同步登出並清掉記憶體裡的加密金鑰）。API 與 WebSocket 用的 ID token 也由同一個來源提供（`getIdentityToken()`），短期有效、由 Firebase SDK 自動更新。
 3. **回到遊戲**：`main.js` 啟動時還原登入狀態；若帶有提示標記，會顯示「已從帳號中心登入」或「沒有完成登入」的提示（`ui/account.js` 的 `announceLoginReturn()`）。
 4. **雲端存檔的加密金鑰**：帳號密碼同時是存檔加密金鑰的來源，而遊戲不會拿到密碼，所以金鑰在遊戲內本機處理：
    - 帳號已設定過金鑰 → 顯示「解鎖」，輸入加密密碼（只在這台裝置的記憶體使用，不送出、不儲存）。每次開啟遊戲都要解鎖一次。
